@@ -394,16 +394,27 @@ export default function PlasticTradingApp({
     }
   }
 
+  /* RKN_PLASTIC_GLOBAL_UI_STATE_V2N */
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   const currentMenu = menus.find(([key]) => key === tab);
 
   return (
     <div className={styles.shell}>
-      <aside className={styles.sidebar}>
+      <aside
+        className={
+          mobileNavOpen
+            ? `${styles.sidebar} ${styles.sidebarOpen}`
+            : styles.sidebar
+        }
+      >
         <div className={styles.brand}>
-          <div className={styles.brandMark}>R</div>
+          <div className={styles.brandLogo}>
+            <img src="/rkn-logo.png" alt="RKN" />
+          </div>
           <div className={styles.brandText}>
             <strong>RKN ERP</strong>
-            <span>Plastic Trading</span>
+            <span>PLASTIC TRADING</span>
           </div>
         </div>
 
@@ -421,7 +432,10 @@ export default function PlasticTradingApp({
               className={
                 tab === key ? styles.navActive : styles.navButton
               }
-              onClick={() => setTab(key)}
+              onClick={() => {
+                setTab(key);
+                setMobileNavOpen(false);
+              }}
             >
               <span className={styles.navGlyph}>{glyph}</span>
               <span>{label}</span>
@@ -436,7 +450,10 @@ export default function PlasticTradingApp({
               className={
                 tab === key ? styles.navActive : styles.navButton
               }
-              onClick={() => setTab(key)}
+              onClick={() => {
+                setTab(key);
+                setMobileNavOpen(false);
+              }}
             >
               <span className={styles.navGlyph}>{glyph}</span>
               <span>{label}</span>
@@ -469,8 +486,27 @@ export default function PlasticTradingApp({
         </div>
       </aside>
 
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className={styles.mobileOverlay}
+          aria-label="Tutup menu"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
+
       <main className={styles.main}>
         <header className={styles.topbar}>
+          <button
+            type="button"
+            className={styles.mobileMenuButton}
+            aria-label="Buka menu"
+            aria-expanded={mobileNavOpen}
+            onClick={() => setMobileNavOpen(true)}
+          >
+            ☰
+          </button>
+
           <div className={styles.topbarTitle}>
             <span className={styles.breadcrumb}>
               RKN ERP / PLASTIC TRADING
@@ -559,6 +595,7 @@ export default function PlasticTradingApp({
               rows={data.rows || []}
               products={products}
               canWrite={!readOnly}
+              canEdit={canManage}
               busy={busy}
               run={run}
             />
@@ -603,7 +640,7 @@ export default function PlasticTradingApp({
           ) : null}
 
           {tab === "REPORTS" ? (
-            <Reports data={data} />
+            <Reports data={data} period={period} />
           ) : null}
 
           {tab === "CLOSING" ? (
@@ -1617,127 +1654,231 @@ function Inbound({
   rows,
   products,
   canWrite,
+  canEdit,
   busy,
   run,
 }: {
   rows: Row[];
   products: Row[];
   canWrite: boolean;
+  canEdit: boolean;
   busy: boolean;
   run: any;
 }) {
+  /* RKN_PLASTIC_INBOUND_EDIT_UI_V2N */
+  const emptyLine = () => ({
+    variantId: "",
+    qty: "1",
+    unit: "",
+    unitCostRp: "",
+  });
+
   const [dateKey, setDateKey] = useState(today());
   const [supplierName, setSupplierName] = useState("");
   const [supplierRef, setSupplierRef] = useState("");
-  const [lines, setLines] = useState([
-    {
-      variantId: "",
-      qty: "1",
-      unit: "",
-      unitCostRp: "",
-    },
-  ]);
+  const [note, setNote] = useState("");
+  const [lines, setLines] = useState([emptyLine()]);
+  const [editInboundId, setEditInboundId] = useState("");
+  const [editInboundNo, setEditInboundNo] = useState("");
+  const [editReason, setEditReason] = useState("");
 
-  const submit = (event: FormEvent) => {
+  const resetForm = () => {
+    setDateKey(today());
+    setSupplierName("");
+    setSupplierRef("");
+    setNote("");
+    setLines([emptyLine()]);
+    setEditInboundId("");
+    setEditInboundNo("");
+    setEditReason("");
+  };
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    run(
-      "CREATE_INBOUND",
-      {
-        dateKey,
-        supplierName,
-        supplierRef,
-        lines: lines.map((line) => ({
-          ...line,
-          qty: Number(line.qty),
-          unitCostRp: Number(line.unitCostRp || 0),
-        })),
-      },
-      "INBOUND"
+
+    const payload = {
+      dateKey,
+      supplierName,
+      supplierRef,
+      note,
+      lines: lines.map((line) => ({
+        ...line,
+        qty: Number(line.qty),
+        unitCostRp: Number(line.unitCostRp || 0),
+      })),
+    };
+
+    if (editInboundId) {
+      if (!editReason.trim()) {
+        if (typeof window !== "undefined") {
+          window.alert("Alasan edit Barang Masuk wajib diisi.");
+        }
+        return;
+      }
+
+      await run(
+        "UPDATE_INBOUND",
+        {
+          ...payload,
+          inboundId: editInboundId,
+          reason: editReason.trim(),
+        },
+        "INBOUND"
+      );
+      resetForm();
+      return;
+    }
+
+    await run("CREATE_INBOUND", payload, "INBOUND");
+    resetForm();
+  };
+
+  const startEdit = (row: Row) => {
+    const inboundId = String(row.inboundId || "");
+    const documentRows = rows.filter(
+      (item) => String(item.inboundId || "") === inboundId
     );
+
+    if (!documentRows.length) return;
+
+    const header = documentRows[0];
+
+    setEditInboundId(inboundId);
+    setEditInboundNo(String(header.inboundNo || ""));
+    setDateKey(String(header.dateKey || today()));
+    setSupplierName(String(header.supplierName || ""));
+    setSupplierRef(String(header.supplierRef || ""));
+    setNote(String(header.note || ""));
+    setEditReason("");
+
+    setLines(
+      documentRows.map((item) => {
+        const qtyInput = Number(item.qtyInput || 0);
+        const lineTotalRp = Number(item.lineTotalRp || 0);
+        const inputCost =
+          qtyInput > 0 ? Math.round(lineTotalRp / qtyInput) : 0;
+
+        return {
+          variantId: String(item.variantId || ""),
+          qty: String(qtyInput || 1),
+          unit: String(item.inputUnit || "").toUpperCase(),
+          unitCostRp: String(inputCost),
+        };
+      })
+    );
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   return (
     <>
       {canWrite ? (
         <Panel
-          title="Input Barang Masuk"
-          subtitle="HPP diisi berdasarkan unit yang dipilih. Engine mengonversi ke base cost otomatis."
+          title={
+            editInboundId
+              ? `Edit Barang Masuk / ${editInboundNo}`
+              : "Input Barang Masuk"
+          }
+          subtitle={
+            editInboundId
+              ? "Edit mengganti dokumen Barang Masuk secara auditable. Inventory dikoreksi dengan adjustment; COGS penjualan historis tidak ditulis ulang."
+              : "HPP diisi berdasarkan UOM yang dipilih. Engine mengonversi ke base cost otomatis."
+          }
         >
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid3}>
               <Field label="Tanggal">
                 <input
+                  required
                   type="date"
                   value={dateKey}
-                  onChange={(event) =>
-                    setDateKey(event.target.value)
-                  }
+                  onChange={(event) => setDateKey(event.target.value)}
                 />
               </Field>
+
               <Field label="Supplier">
                 <input
                   placeholder="Nama supplier"
                   value={supplierName}
-                  onChange={(event) =>
-                    setSupplierName(event.target.value)
-                  }
+                  onChange={(event) => setSupplierName(event.target.value)}
                 />
               </Field>
+
               <Field label="Invoice / Surat Jalan">
                 <input
                   placeholder="Nomor referensi"
                   value={supplierRef}
-                  onChange={(event) =>
-                    setSupplierRef(event.target.value)
-                  }
+                  onChange={(event) => setSupplierRef(event.target.value)}
                 />
               </Field>
+
+              <Field label="Catatan">
+                <input
+                  placeholder="Catatan transaksi"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </Field>
+
+              {editInboundId ? (
+                <Field
+                  label="Alasan Edit"
+                  hint="Wajib untuk Audit Trail."
+                >
+                  <input
+                    required
+                    placeholder="Contoh: salah qty / supplier / HPP"
+                    value={editReason}
+                    onChange={(event) => setEditReason(event.target.value)}
+                  />
+                </Field>
+              ) : null}
             </div>
 
             <div className={styles.lineSection}>
               <div className={styles.lineSectionHead}>
                 <div>
-                  <strong>Item Masuk</strong>
-                  <span>Tambahkan satu atau beberapa produk.</span>
+                  <strong>
+                    {editInboundId ? "Item Setelah Edit" : "Item Masuk"}
+                  </strong>
+                  <span>
+                    Produk, Qty, UOM dan HPP dapat dikoreksi saat mode Edit.
+                  </span>
                 </div>
+
                 <button
                   type="button"
                   className={styles.secondaryButton}
-                  onClick={() =>
-                    setLines([
-                      ...lines,
-                      {
-                        variantId: "",
-                        qty: "1",
-                        unit: "",
-                        unitCostRp: "",
-                      },
-                    ])
-                  }
+                  onClick={() => setLines([...lines, emptyLine()])}
                 >
                   + Tambah Item
                 </button>
               </div>
 
               {lines.map((line, index) => {
-                const selected = products.find(
-                  (product) => product.variantId === line.variantId
+                const product = products.find(
+                  (item) => item.variantId === line.variantId
                 );
-                const units = unitOptions(selected);
+                const units = unitOptions(product);
 
                 return (
-                  <div className={styles.itemRow} key={index}>
-                    <div className={styles.itemIndex}>
+                  <div className={styles.lineItem} key={index}>
+                    <span className={styles.lineNo}>
                       {String(index + 1).padStart(2, "0")}
-                    </div>
-                    <Field label="Warna / Ukuran / Produk" className={styles.itemProduct}>
+                    </span>
+
+                    <Field
+                      label="Warna / Ukuran / Produk"
+                      className={styles.itemProduct}
+                    >
                       <select
                         required
                         value={line.variantId}
                         onChange={(event) => {
                           const chosen = products.find(
-                            (product) =>
-                              product.variantId === event.target.value
+                            (item) => item.variantId === event.target.value
                           );
                           const next = [...lines];
                           next[index] = {
@@ -1754,22 +1895,23 @@ function Inbound({
                         }}
                       >
                         <option value="">Pilih warna / ukuran / produk</option>
-                        {products.map((product) => (
+                        {products.map((item) => (
                           <option
-                            key={product.variantId}
-                            value={product.variantId}
+                            key={item.variantId}
+                            value={item.variantId}
                           >
-                            {productLabel(product)}
+                            {productLabel(item)}
                           </option>
                         ))}
                       </select>
                     </Field>
+
                     <Field label="Qty">
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0.01"
                         required
+                        type="number"
+                        min="0.01"
+                        step="0.01"
                         value={line.qty}
                         onChange={(event) => {
                           const next = [...lines];
@@ -1781,7 +1923,8 @@ function Inbound({
                         }}
                       />
                     </Field>
-                    <Field label="Unit">
+
+                    <Field label="UOM">
                       <select
                         required
                         value={line.unit}
@@ -1800,14 +1943,14 @@ function Inbound({
                         ))}
                       </select>
                     </Field>
+
                     <Field
-                      label="HPP / Unit"
-                      hint="Biaya pembelian pada unit input."
+                      label="HPP / UOM"
+                      hint="Harga beli per UOM yang dipilih."
                     >
                       <input
                         type="number"
                         min="0"
-                        placeholder="0"
                         value={line.unitCostRp}
                         onChange={(event) => {
                           const next = [...lines];
@@ -1819,6 +1962,7 @@ function Inbound({
                         }}
                       />
                     </Field>
+
                     <div className={styles.itemAction}>
                       {lines.length > 1 ? (
                         <button
@@ -1842,8 +1986,21 @@ function Inbound({
             </div>
 
             <div className={styles.actions}>
+              {editInboundId ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={busy}
+                  onClick={resetForm}
+                >
+                  Batal Edit
+                </button>
+              ) : null}
+
               <button className={styles.primaryButton} disabled={busy}>
-                Simpan Barang Masuk
+                {editInboundId
+                  ? "Simpan Perubahan Barang Masuk"
+                  : "Simpan Barang Masuk"}
               </button>
             </div>
           </form>
@@ -1852,7 +2009,7 @@ function Inbound({
 
       <Panel
         title="Riwayat Barang Masuk"
-        subtitle="Transaksi penerimaan pada periode yang sedang dipilih."
+        subtitle="Edit dokumen tersedia untuk MANAGE / OWNER / System Admin. Closed period tetap dikunci."
       >
         <DataTable
           rows={rows}
@@ -1860,6 +2017,7 @@ function Inbound({
             ["dateKey", "Tanggal"],
             ["inboundNo", "No. IN"],
             ["supplierName", "Supplier"],
+            ["supplierRef", "Invoice / Ref"],
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
@@ -1872,14 +2030,25 @@ function Inbound({
                 }`,
             ],
             [
-              "unitCostRp",
-              "HPP / Base",
-              (row) => money.format(Number(row.unitCostRp || 0)),
-            ],
-            [
               "lineTotalRp",
               "Nilai",
               (row) => money.format(Number(row.lineTotalRp || 0)),
+            ],
+            [
+              "inboundAction",
+              "Aksi",
+              (row) =>
+                canEdit ? (
+                  <button
+                    type="button"
+                    className={styles.inlineEditButton}
+                    onClick={() => startEdit(row)}
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  "-"
+                ),
             ],
           ]}
         />
@@ -2769,15 +2938,357 @@ function Reconciliation({ data }: { data: Row }) {
   );
 }
 
-function Reports({ data }: { data: Row }) {
+function Reports({
+  data,
+  period,
+}: {
+  data: Row;
+  period: string;
+}) {
+  /* RKN_PLASTIC_REPORTS_UI_PDF_V2N */
+  const stockRows = Array.isArray(data.stock) ? data.stock : [];
+  const inboundRows = Array.isArray(data.inbound) ? data.inbound : [];
+  const outboundRows = Array.isArray(data.outbound) ? data.outbound : [];
+
+  const polymailer = stockRows.filter(
+    (row: Row) => String(row.category || "").toUpperCase() !== "THERMAL"
+  );
+
+  const thermal = stockRows.filter(
+    (row: Row) => String(row.category || "").toUpperCase() === "THERMAL"
+  );
+
+  const number2 = (value: unknown) =>
+    qtyFmt.format(Number(value || 0));
+
+  const pdfAscii = (value: unknown) =>
+    String(value ?? "")
+      .normalize("NFKD")
+      .replace(/[^\x20-\x7E]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const pdfCell = (value: unknown, width: number) => {
+    const raw = pdfAscii(value);
+    const clipped =
+      raw.length > width ? raw.slice(0, Math.max(0, width - 1)) + "~" : raw;
+    return clipped.padEnd(width, " ");
+  };
+
+  const buildPdf = (
+    title: string,
+    lines: string[],
+    filename: string
+  ) => {
+    const clean = [
+      title,
+      `RKN ERP / PLASTIC TRADING / PERIODE ${period}`,
+      `Generated: ${new Date().toLocaleString("id-ID")}`,
+      "",
+      ...lines,
+    ].map(pdfAscii);
+
+    const pageLines = 48;
+    const pages: string[][] = [];
+
+    for (let index = 0; index < clean.length; index += pageLines) {
+      pages.push(clean.slice(index, index + pageLines));
+    }
+
+    if (!pages.length) pages.push(["Tidak ada data."]);
+
+    const escapePdf = (value: string) =>
+      value
+        .replace(/\\/g, "\\\\")
+        .replace(/\(/g, "\\(")
+        .replace(/\)/g, "\\)");
+
+    const objects: string[] = [];
+    const pageRefs: string[] = [];
+
+    const fontObject = 3;
+    let nextObject = 4;
+
+    for (const page of pages) {
+      const pageObject = nextObject++;
+      const contentObject = nextObject++;
+
+      pageRefs.push(`${pageObject} 0 R`);
+
+      const commands = [
+        "BT",
+        "/F1 8 Tf",
+        "28 560 Td",
+        "10.5 TL",
+        ...page.flatMap((line, index) =>
+          index === 0
+            ? [`(${escapePdf(line)}) Tj`]
+            : ["T*", `(${escapePdf(line)}) Tj`]
+        ),
+        "ET",
+      ].join("\n");
+
+      objects[pageObject] =
+        `${pageObject} 0 obj\n` +
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] ` +
+        `/Resources << /Font << /F1 ${fontObject} 0 R >> >> ` +
+        `/Contents ${contentObject} 0 R >>\nendobj\n`;
+
+      objects[contentObject] =
+        `${contentObject} 0 obj\n` +
+        `<< /Length ${commands.length} >>\nstream\n` +
+        `${commands}\nendstream\nendobj\n`;
+    }
+
+    objects[1] =
+      "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+
+    objects[2] =
+      `2 0 obj\n<< /Type /Pages /Count ${pages.length} ` +
+      `/Kids [${pageRefs.join(" ")}] >>\nendobj\n`;
+
+    objects[fontObject] =
+      `${fontObject} 0 obj\n` +
+      "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n";
+
+    const maxObject = objects.length - 1;
+    let pdf = "%PDF-1.4\n";
+    const offsets = new Array(maxObject + 1).fill(0);
+
+    for (let objectNo = 1; objectNo <= maxObject; objectNo++) {
+      if (!objects[objectNo]) continue;
+      offsets[objectNo] = pdf.length;
+      pdf += objects[objectNo];
+    }
+
+    const xrefOffset = pdf.length;
+    pdf += `xref\n0 ${maxObject + 1}\n`;
+    pdf += "0000000000 65535 f \n";
+
+    for (let objectNo = 1; objectNo <= maxObject; objectNo++) {
+      pdf +=
+        String(offsets[objectNo] || 0).padStart(10, "0") +
+        " 00000 n \n";
+    }
+
+    pdf +=
+      `trailer\n<< /Size ${maxObject + 1} /Root 1 0 R >>\n` +
+      `startxref\n${xrefOffset}\n%%EOF`;
+
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+  };
+
+  const downloadPdf = () => {
+    const lines: string[] = [];
+
+    lines.push("POLYMAILER");
+    lines.push(
+      [
+        pdfCell("WARNA", 14),
+        pdfCell("UKURAN", 10),
+        pdfCell("BALL", 10),
+        pdfCell("ISI/BALL", 10),
+        pdfCell("TOTAL ROLL", 12),
+        pdfCell("HARGA/BALL", 15),
+      ].join(" ")
+    );
+
+    lines.push("-".repeat(78));
+
+    for (const row of polymailer) {
+      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 1));
+      const qtyBase = Number(row.qtyBase || 0);
+
+      lines.push(
+        [
+          pdfCell(row.color || "-", 14),
+          pdfCell(row.size || "-", 10),
+          pdfCell(number2(qtyBase / unitsPerPack), 10),
+          pdfCell(number2(unitsPerPack), 10),
+          pdfCell(number2(qtyBase), 12),
+          pdfCell(
+            `Rp ${Number(row.defaultSellPricePackRp || 0).toLocaleString("id-ID")}`,
+            15
+          ),
+        ].join(" ")
+      );
+    }
+
+    lines.push("");
+    lines.push("THERMAL");
+    lines.push(
+      [
+        pdfCell("PRODUK", 26),
+        pdfCell("DUS", 10),
+        pdfCell("STACK", 10),
+        pdfCell("LEMBAR", 12),
+        pdfCell("HARGA/DUS", 15),
+      ].join(" ")
+    );
+
+    lines.push("-".repeat(78));
+
+    for (const row of thermal) {
+      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 1));
+      const unitsPerMid = Math.max(1, Number(row.unitsPerMid || 1));
+      const qtyBase = Number(row.qtyBase || 0);
+
+      lines.push(
+        [
+          pdfCell(row.productName || "-", 26),
+          pdfCell(number2(qtyBase / unitsPerPack), 10),
+          pdfCell(number2(qtyBase / unitsPerMid), 10),
+          pdfCell(number2(qtyBase), 12),
+          pdfCell(
+            `Rp ${Number(row.defaultSellPricePackRp || 0).toLocaleString("id-ID")}`,
+            15
+          ),
+        ].join(" ")
+      );
+    }
+
+    lines.push("");
+    lines.push(`BARANG MASUK / ${inboundRows.length} BARIS`);
+    lines.push(`BARANG KELUAR / ${outboundRows.length} BARIS`);
+
+    buildPdf(
+      "RKN ERP - LAPORAN PLASTIC TRADING",
+      lines,
+      `RKN_PLASTIC_REPORT_${period}.pdf`
+    );
+  };
+
   return (
     <>
+      <div className={styles.reportToolbar}>
+        <div>
+          <strong>Laporan Plastic Trading</strong>
+          <span>
+            Format UOM operasional mengikuti master produk dan stock ledger.
+          </span>
+        </div>
+        <button
+          type="button"
+          className={styles.primaryButton}
+          onClick={downloadPdf}
+        >
+          Download PDF
+        </button>
+      </div>
+
+      <Panel
+        title="Stock Polymailer"
+        subtitle="Ball dihitung dari Total Roll / Isi per Ball sesuai master SKU. Tidak ada kolom Roll Satuan terpisah."
+      >
+        <DataTable
+          rows={polymailer}
+          columns={[
+            ["color", "Warna"],
+            ["size", "Ukuran"],
+            [
+              "ball",
+              "Ball",
+              (row) =>
+                number2(
+                  Number(row.qtyBase || 0) /
+                    Math.max(1, Number(row.unitsPerPack || 1))
+                ),
+            ],
+            [
+              "unitsPerPack",
+              "Isi / Ball",
+              (row) => number2(row.unitsPerPack),
+            ],
+            [
+              "qtyBase",
+              "Total Roll",
+              (row) => number2(row.qtyBase),
+            ],
+            [
+              "defaultSellPricePackRp",
+              "Harga Master / Ball",
+              (row) =>
+                money.format(Number(row.defaultSellPricePackRp || 0)),
+            ],
+            [
+              "avgCostRp",
+              "Avg HPP / Roll",
+              (row) => money.format(Number(row.avgCostRp || 0)),
+            ],
+            [
+              "stockValueRp",
+              "Nilai Stock",
+              (row) => money.format(Number(row.stockValueRp || 0)),
+            ],
+          ]}
+        />
+      </Panel>
+
+      <Panel
+        title="Stock Thermal"
+        subtitle="Konversi resmi: DUS / STACK / LEMBAR mengikuti master UOM masing-masing produk."
+      >
+        <DataTable
+          rows={thermal}
+          columns={[
+            ["productName", "Produk"],
+            [
+              "dus",
+              "Dus",
+              (row) =>
+                number2(
+                  Number(row.qtyBase || 0) /
+                    Math.max(1, Number(row.unitsPerPack || 1))
+                ),
+            ],
+            [
+              "stack",
+              "Stack",
+              (row) =>
+                number2(
+                  Number(row.qtyBase || 0) /
+                    Math.max(1, Number(row.unitsPerMid || 1))
+                ),
+            ],
+            [
+              "qtyBase",
+              "Lembar",
+              (row) => number2(row.qtyBase),
+            ],
+            [
+              "defaultSellPricePackRp",
+              "Harga Master / Dus",
+              (row) =>
+                money.format(Number(row.defaultSellPricePackRp || 0)),
+            ],
+            [
+              "avgCostRp",
+              "Avg HPP / Lembar",
+              (row) => money.format(Number(row.avgCostRp || 0)),
+            ],
+            [
+              "stockValueRp",
+              "Nilai Stock",
+              (row) => money.format(Number(row.stockValueRp || 0)),
+            ],
+          ]}
+        />
+      </Panel>
+
       <Panel
         title="Barang Masuk"
         subtitle="Cut-off sesuai periode yang dipilih."
       >
         <DataTable
-          rows={data.inbound || []}
+          rows={inboundRows}
           columns={[
             ["dateKey", "Tanggal"],
             ["referenceNo", "No. IN"],
@@ -2789,9 +3300,7 @@ function Reports({ data }: { data: Row }) {
               "qty",
               "Qty",
               (row) =>
-                `${qtyFmt.format(Number(row.qty || 0))} ${
-                  row.unit || ""
-                }`,
+                `${number2(row.qty)} ${row.unit || ""}`,
             ],
             [
               "totalRp",
@@ -2807,7 +3316,7 @@ function Reports({ data }: { data: Row }) {
         subtitle="Cut-off sesuai periode yang dipilih."
       >
         <DataTable
-          rows={data.outbound || []}
+          rows={outboundRows}
           columns={[
             ["dateKey", "Tanggal"],
             ["referenceNo", "Invoice"],
@@ -2815,7 +3324,7 @@ function Reports({ data }: { data: Row }) {
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
-            ["qtyBase", "Qty Base"],
+            ["qtyBase", "Qty Base", (row) => number2(row.qtyBase)],
             [
               "totalRp",
               "Sales",
