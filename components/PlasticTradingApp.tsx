@@ -792,6 +792,8 @@ export default function PlasticTradingApp({
   const [customers, setCustomers] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  /* RKN_PLASTIC_NAV_PERSIST_V2Q8 */
+  const [navigationReady, setNavigationReady] = useState(false);
 
   const actor = initialDashboard.actor || {};
   const readOnly =
@@ -834,12 +836,58 @@ export default function PlasticTradingApp({
   }, [tab, period]);
 
   useEffect(() => {
-    loadMasters();
-  }, [loadMasters]);
+    if (typeof window === "undefined") return;
+
+    const savedTab = window.localStorage.getItem(
+      "rkn-plastic-active-tab"
+    );
+    const savedPeriod = window.localStorage.getItem(
+      "rkn-plastic-active-period"
+    );
+
+    if (
+      savedTab &&
+      menus.some(([key]) => key === savedTab)
+    ) {
+      setTab(savedTab);
+    }
+
+    if (
+      savedPeriod &&
+      /^\d{4}-\d{2}$/.test(savedPeriod)
+    ) {
+      setPeriod(savedPeriod);
+    }
+
+    setNavigationReady(true);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!navigationReady || typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      "rkn-plastic-active-tab",
+      tab
+    );
+    window.localStorage.setItem(
+      "rkn-plastic-active-period",
+      period
+    );
+  }, [tab, period, navigationReady]);
+
+  useEffect(() => {
+    if (navigationReady) {
+      loadMasters();
+    }
+  }, [loadMasters, navigationReady]);
+
+  useEffect(() => {
+    if (navigationReady) {
+      load();
+    }
+  }, [load, navigationReady]);
 
   async function run(
     command: string,
@@ -3462,7 +3510,7 @@ function Opname({
   busy: boolean;
   run: any;
 }) {
-  /* RKN_PLASTIC_SO_WORKFLOW_UI_V2P */
+  /* RKN_PLASTIC_SO_SEQUENTIAL_UI_V2Q8 */
   const active = data.active || null;
   const lines = Array.isArray(data.activeLines)
     ? data.activeLines
@@ -3479,21 +3527,45 @@ function Opname({
   const [soDate, setSoDate] = useState(defaultDate);
   const [startReason, setStartReason] =
     useState("Stock Opname Bulanan");
+  const [variantId, setVariantId] = useState("");
+  const [physicalQty, setPhysicalQty] = useState("");
+  const [physicalUnit, setPhysicalUnit] = useState("");
+  const [physicalNote, setPhysicalNote] = useState("");
   const [postReason, setPostReason] = useState("");
-  const [physical, setPhysical] = useState<
-    Record<
-      string,
-      {
-        pack: string;
-        mid: string;
-        base: string;
-        note: string;
-        entered: boolean;
-      }
-    >
-  >({});
 
-  const decompose = (row: Row, total: number) => {
+  const selected = lines.find(
+    (row: Row) => String(row.variantId) === variantId
+  );
+
+  const toBase = (
+    row: Row,
+    qtyValue: number,
+    unitValue: string
+  ) => {
+    const unit = String(unitValue || "").toUpperCase();
+
+    if (
+      row.packUnit &&
+      unit === String(row.packUnit).toUpperCase()
+    ) {
+      return (
+        qtyValue * Math.max(1, Number(row.unitsPerPack || 1))
+      );
+    }
+
+    if (
+      row.midUnit &&
+      unit === String(row.midUnit).toUpperCase()
+    ) {
+      return (
+        qtyValue * Math.max(1, Number(row.unitsPerMid || 1))
+      );
+    }
+
+    return qtyValue;
+  };
+
+  const decompose = (row: Row, totalValue: number) => {
     const packFactor = Math.max(
       1,
       Number(row.unitsPerPack || 1)
@@ -3505,7 +3577,7 @@ function Opname({
     const hasPack = Boolean(row.packUnit);
     const hasMid = Boolean(row.midUnit);
 
-    let rest = Math.max(0, Number(total || 0));
+    let rest = Math.max(0, Number(totalValue || 0));
     let pack = 0;
     let mid = 0;
 
@@ -3520,128 +3592,139 @@ function Opname({
     }
 
     return {
-      pack: pack ? String(pack) : "",
-      mid: mid ? String(mid) : "",
-      base: rest ? String(rest) : "",
+      pack,
+      mid,
+      base: rest,
     };
   };
 
-  useEffect(() => {
-    const next: Record<
-      string,
-      {
-        pack: string;
-        mid: string;
-        base: string;
-        note: string;
-        entered: boolean;
-      }
-    > = {};
-
-    for (const row of lines) {
-      const entered = Number(row.physicalEntered || 0) === 1;
-      const parts = entered
-        ? decompose(row, Number(row.physicalQtyBase || 0))
-        : { pack: "", mid: "", base: "" };
-
-      next[String(row.variantId)] = {
-        ...parts,
-        note: String(row.note || ""),
-        entered,
-      };
-    }
-
-    setPhysical(next);
-  }, [active?.soId, lines.length]);
-
-  const composePhysical = (row: Row) => {
-    const state = physical[String(row.variantId)] || {
-      pack: "",
-      mid: "",
-      base: "",
-      note: "",
-      entered: false,
-    };
-
-    return (
-      Number(state.pack || 0) *
-        Math.max(1, Number(row.unitsPerPack || 1)) +
-      Number(state.mid || 0) *
-        Math.max(1, Number(row.unitsPerMid || 1)) +
-      Number(state.base || 0)
-    );
-  };
-
-  const systemText = (row: Row) => {
-    const parts = decompose(
-      row,
-      Number(row.systemQtyBase || 0)
-    );
+  const qtyText = (row: Row, totalValue: number) => {
+    const parts = decompose(row, totalValue);
 
     return [
       row.packUnit
-        ? `${parts.pack || "0"} ${row.packUnit}`
+        ? `${qtyFmt.format(parts.pack)} ${row.packUnit}`
         : "",
       row.midUnit
-        ? `${parts.mid || "0"} ${row.midUnit}`
+        ? `${qtyFmt.format(parts.mid)} ${row.midUnit}`
         : "",
-      `${parts.base || "0"} ${row.baseUnit || ""}`,
+      `${qtyFmt.format(parts.base)} ${row.baseUnit || ""}`,
     ]
       .filter(Boolean)
       .join(" / ");
   };
 
+  const bestEditableValue = (row: Row, totalValue: number) => {
+    const total = Math.max(0, Number(totalValue || 0));
+    const packFactor = Math.max(
+      1,
+      Number(row.unitsPerPack || 1)
+    );
+    const midFactor = Math.max(
+      1,
+      Number(row.unitsPerMid || 1)
+    );
+
+    if (
+      row.packUnit &&
+      total % packFactor === 0
+    ) {
+      return {
+        qty: String(total / packFactor),
+        unit: String(row.packUnit).toUpperCase(),
+      };
+    }
+
+    if (
+      row.midUnit &&
+      total % midFactor === 0
+    ) {
+      return {
+        qty: String(total / midFactor),
+        unit: String(row.midUnit).toUpperCase(),
+      };
+    }
+
+    return {
+      qty: String(total),
+      unit: String(row.baseUnit || "").toUpperCase(),
+    };
+  };
+
   const statusOf = (row: Row) => {
-    const state = physical[String(row.variantId)];
-    if (!state?.entered) return "BELUM DIHITUNG";
+    if (Number(row.physicalEntered || 0) !== 1) {
+      return "BELUM DIHITUNG";
+    }
 
     const diff =
-      composePhysical(row) - Number(row.systemQtyBase || 0);
+      Number(row.physicalQtyBase || 0) -
+      Number(row.systemQtyBase || 0);
 
     if (Math.abs(diff) < 0.000001) return "BALANCE";
     return diff > 0 ? "LEBIH" : "KURANG";
   };
 
-  const updatePart = (
-    variantId: string,
-    key: "pack" | "mid" | "base" | "note",
-    value: string
-  ) => {
-    setPhysical((current) => ({
-      ...current,
-      [variantId]: {
-        pack: current[variantId]?.pack || "",
-        mid: current[variantId]?.mid || "",
-        base: current[variantId]?.base || "",
-        note: current[variantId]?.note || "",
-        entered:
-          key === "note"
-            ? current[variantId]?.entered || false
-            : true,
-        [key]: value,
-      },
-    }));
-  };
-
-  const payloadLines = () =>
-    lines
-      .filter(
-        (row: Row) =>
-          physical[String(row.variantId)]?.entered
-      )
-      .map((row: Row) => ({
-        variantId: row.variantId,
-        physicalQtyBase: composePhysical(row),
-        note:
-          physical[String(row.variantId)]?.note || "",
-      }));
+  const countedRows = lines.filter(
+    (row: Row) => Number(row.physicalEntered || 0) === 1
+  );
 
   const allEntered =
-    lines.length > 0 &&
-    lines.every(
-      (row: Row) =>
-        physical[String(row.variantId)]?.entered
+    lines.length > 0 && countedRows.length === lines.length;
+
+  const clearEntry = () => {
+    setVariantId("");
+    setPhysicalQty("");
+    setPhysicalUnit("");
+    setPhysicalNote("");
+  };
+
+  const chooseVariant = (
+    nextVariantId: string,
+    chosen?: Row
+  ) => {
+    setVariantId(nextVariantId);
+
+    if (!nextVariantId) {
+      setPhysicalQty("");
+      setPhysicalUnit("");
+      setPhysicalNote("");
+      return;
+    }
+
+    const row =
+      chosen ||
+      lines.find(
+        (item: Row) =>
+          String(item.variantId) === nextVariantId
+      );
+
+    if (!row) return;
+
+    const alreadyEntered =
+      Number(row.physicalEntered || 0) === 1;
+
+    if (alreadyEntered) {
+      const edit = bestEditableValue(
+        row,
+        Number(row.physicalQtyBase || 0)
+      );
+      setPhysicalQty(edit.qty);
+      setPhysicalUnit(edit.unit);
+      setPhysicalNote(String(row.note || ""));
+      return;
+    }
+
+    setPhysicalQty("");
+    setPhysicalUnit(
+      String(
+        row.packUnit ||
+          row.midUnit ||
+          row.baseUnit ||
+          ""
+      ).toUpperCase()
     );
+    setPhysicalNote("");
+  };
 
   const startSo = async () => {
     await run(
@@ -3654,30 +3737,108 @@ function Opname({
     );
   };
 
-  const saveDraft = async () => {
-    const payload = payloadLines();
-
-    if (!payload.length) {
-      window.alert("Isi minimal satu hasil fisik.");
+  const savePhysicalItem = async () => {
+    if (!active?.soId || !selected) {
+      window.alert("Pilih produk yang dihitung.");
       return;
     }
 
+    if (
+      physicalQty.trim() === "" ||
+      Number.isNaN(Number(physicalQty)) ||
+      Number(physicalQty) < 0
+    ) {
+      window.alert(
+        "Isi qty fisik. Gunakan 0 jika stok benar-benar kosong."
+      );
+      return;
+    }
+
+    if (!physicalUnit) {
+      window.alert("Pilih UOM fisik.");
+      return;
+    }
+
+    const physicalQtyBase = toBase(
+      selected,
+      Number(physicalQty),
+      physicalUnit
+    );
+
     await run(
       "SAVE_SO_DRAFT",
-      { soId: active.soId, lines: payload },
+      {
+        soId: active.soId,
+        lines: [
+          {
+            variantId: selected.variantId,
+            physicalQtyBase,
+            note: physicalNote.trim(),
+          },
+        ],
+      },
       "OPNAME"
     );
+
+    clearEntry();
+  };
+
+  const editCounted = (row: Row) => {
+    const edit = bestEditableValue(
+      row,
+      Number(row.physicalQtyBase || 0)
+    );
+
+    setVariantId(String(row.variantId));
+    setPhysicalQty(edit.qty);
+    setPhysicalUnit(edit.unit);
+    setPhysicalNote(String(row.note || ""));
+
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const reviewSo = async () => {
     if (!allEntered) {
-      window.alert("Semua SKU harus dihitung sebelum Review.");
+      window.alert(
+        `Masih ada ${Math.max(
+          0,
+          lines.length - countedRows.length
+        )} SKU yang belum dihitung.`
+      );
       return;
     }
 
     await run(
       "REVIEW_SO_SESSION",
-      { soId: active.soId, lines: payloadLines() },
+      {
+        soId: active.soId,
+        lines: [],
+      },
+      "OPNAME"
+    );
+  };
+
+  const backToDraft = async () => {
+    const row = lines[0];
+
+    if (!row) return;
+
+    await run(
+      "SAVE_SO_DRAFT",
+      {
+        soId: active.soId,
+        lines: [
+          {
+            variantId: row.variantId,
+            physicalQtyBase: Number(
+              row.physicalQtyBase || 0
+            ),
+            note: String(row.note || ""),
+          },
+        ],
+      },
       "OPNAME"
     );
   };
@@ -3708,73 +3869,12 @@ function Opname({
     setPostReason("");
   };
 
-  const physicalInput = (row: Row) => {
-    const id = String(row.variantId);
-    const state = physical[id] || {
-      pack: "",
-      mid: "",
-      base: "",
-      note: "",
-      entered: false,
-    };
-
-    return (
-      <div className={styles.soQtyInputs}>
-        {row.packUnit ? (
-          <label>
-            <span>{row.packUnit}</span>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={state.pack}
-              disabled={!canManage || active?.status === "POSTED"}
-              onChange={(event) =>
-                updatePart(id, "pack", event.target.value)
-              }
-            />
-          </label>
-        ) : null}
-
-        {row.midUnit ? (
-          <label>
-            <span>{row.midUnit}</span>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              value={state.mid}
-              disabled={!canManage || active?.status === "POSTED"}
-              onChange={(event) =>
-                updatePart(id, "mid", event.target.value)
-              }
-            />
-          </label>
-        ) : null}
-
-        <label>
-          <span>{row.baseUnit || "BASE"}</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={state.base}
-            disabled={!canManage || active?.status === "POSTED"}
-            onChange={(event) =>
-              updatePart(id, "base", event.target.value)
-            }
-          />
-        </label>
-      </div>
-    );
-  };
-
   return (
     <>
       {!active ? (
         <Panel
           title="Mulai Stock Opname"
-          subtitle="Snapshot stok sistem dibuat saat SO dimulai."
+          subtitle="Sistem menyimpan snapshot stok saat SO dimulai."
         >
           <div className={styles.soStartGrid}>
             <Field label="Tanggal SO">
@@ -3818,138 +3918,292 @@ function Opname({
             </div>
 
             <div>
-              <span>Progress</span>
+              <span>Progress Fisik</span>
               <strong>
-                {
-                  lines.filter(
-                    (row: Row) =>
-                      physical[String(row.variantId)]?.entered
-                  ).length
-                }{" "}
-                / {lines.length} SKU
+                {countedRows.length} / {lines.length} SKU
+              </strong>
+            </div>
+
+            <div>
+              <span>Sisa</span>
+              <strong>
+                {Math.max(0, lines.length - countedRows.length)} SKU
               </strong>
             </div>
           </div>
 
-          <Panel
-            title="Input Fisik"
-            subtitle="Isi hasil hitung fisik. Selisih dihitung otomatis."
-          >
-            <DataTable
-              rows={lines}
-              columns={[
-                ["productName", "Produk"],
-                ["color", "Warna"],
-                [
-                  "size",
-                  "Ukuran / Varian",
-                  (row) => row.size || row.productName || "-",
-                ],
-                [
-                  "system",
-                  "System",
-                  (row) => systemText(row),
-                ],
-                [
-                  "physical",
-                  "Fisik",
-                  (row) => physicalInput(row),
-                ],
-                [
-                  "physicalTotal",
-                  "Total Fisik",
-                  (row) =>
-                    physical[String(row.variantId)]?.entered
-                      ? `${qtyFmt.format(
-                          composePhysical(row)
-                        )} ${row.baseUnit || ""}`
-                      : "-",
-                ],
-                [
-                  "variance",
-                  "Selisih",
-                  (row) =>
-                    physical[String(row.variantId)]?.entered
-                      ? `${qtyFmt.format(
-                          composePhysical(row) -
-                            Number(row.systemQtyBase || 0)
-                        )} ${row.baseUnit || ""}`
-                      : "-",
-                ],
-                [
-                  "status",
-                  "Status",
-                  (row) => statusOf(row),
-                ],
-                [
-                  "note",
-                  "Catatan",
-                  (row) => {
-                    const id = String(row.variantId);
-                    return (
-                      <input
-                        className={styles.soNoteInput}
-                        value={physical[id]?.note || ""}
-                        disabled={!canManage}
-                        onChange={(event) =>
-                          updatePart(
-                            id,
-                            "note",
-                            event.target.value
-                          )
-                        }
-                      />
-                    );
-                  },
-                ],
-              ]}
-            />
+          {active.status === "DRAFT" ? (
+            <>
+              <Panel
+                title="Input Fisik"
+                subtitle="Masukkan satu per satu. Angka sistem disembunyikan sampai Review."
+              >
+                <div className={styles.soEntryGrid}>
+                  <VariantPicker
+                    products={lines}
+                    value={variantId}
+                    onChange={chooseVariant}
+                  />
 
-            {canManage ? (
-              <div className={styles.soActionBar}>
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  disabled={busy}
-                  onClick={saveDraft}
-                >
-                  Simpan Draft
-                </button>
-
-                {active.status === "DRAFT" ? (
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    disabled={busy || !allEntered}
-                    onClick={reviewSo}
-                  >
-                    Review
-                  </button>
-                ) : null}
-
-                {active.status === "REVIEW" ? (
-                  <>
+                  <Field label="Qty Fisik">
                     <input
-                      className={styles.soPostReason}
-                      placeholder="Alasan adjustment"
-                      value={postReason}
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="0"
+                      value={physicalQty}
+                      disabled={!selected}
                       onChange={(event) =>
-                        setPostReason(event.target.value)
+                        setPhysicalQty(event.target.value)
                       }
                     />
+                  </Field>
+
+                  <Field label="UOM">
+                    <select
+                      value={physicalUnit}
+                      disabled={!selected}
+                      onChange={(event) =>
+                        setPhysicalUnit(event.target.value)
+                      }
+                    >
+                      <option value="">Pilih unit</option>
+                      {unitOptions(selected).map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Catatan">
+                    <input
+                      placeholder="Opsional"
+                      value={physicalNote}
+                      disabled={!selected}
+                      onChange={(event) =>
+                        setPhysicalNote(event.target.value)
+                      }
+                    />
+                  </Field>
+
+                  <div className={styles.soEntryAction}>
                     <button
                       type="button"
                       className={styles.primaryButton}
-                      disabled={busy || !postReason.trim()}
-                      onClick={postSo}
+                      disabled={
+                        busy ||
+                        !canManage ||
+                        !selected ||
+                        physicalQty.trim() === "" ||
+                        !physicalUnit
+                      }
+                      onClick={savePhysicalItem}
                     >
-                      Post Adjustment
+                      Simpan Item
                     </button>
-                  </>
-                ) : null}
+                  </div>
+                </div>
+
+                <div className={styles.soZeroHint}>
+                  Stok kosong harus diinput Qty 0. SKU yang belum
+                  diinput tetap berstatus Belum Dihitung.
+                </div>
+              </Panel>
+
+              <Panel
+                title="Hasil Hitung Fisik"
+                subtitle={`${countedRows.length} dari ${lines.length} SKU sudah dicatat.`}
+              >
+                <DataTable
+                  rows={countedRows}
+                  columns={[
+                    ["productName", "Produk"],
+                    ["color", "Warna"],
+                    [
+                      "size",
+                      "Ukuran / Varian",
+                      (row) =>
+                        row.size || row.productName || "-",
+                    ],
+                    [
+                      "physicalQtyBase",
+                      "Fisik",
+                      (row) =>
+                        qtyText(
+                          row,
+                          Number(row.physicalQtyBase || 0)
+                        ),
+                    ],
+                    ["note", "Catatan"],
+                    [
+                      "action",
+                      "Aksi",
+                      (row) => (
+                        <button
+                          type="button"
+                          className={styles.inlineEditButton}
+                          disabled={busy || !canManage}
+                          onClick={() => editCounted(row)}
+                        >
+                          Edit
+                        </button>
+                      ),
+                    ],
+                  ]}
+                />
+
+                <div className={styles.soActionBar}>
+                  <div className={styles.soProgressCopy}>
+                    <strong>
+                      {countedRows.length}/{lines.length} SKU
+                    </strong>
+                    <span>
+                      {allEntered
+                        ? "Semua SKU siap direview."
+                        : `${Math.max(
+                            0,
+                            lines.length - countedRows.length
+                          )} SKU belum dihitung.`}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    disabled={busy || !canManage || !allEntered}
+                    onClick={reviewSo}
+                  >
+                    Review SO
+                  </button>
+                </div>
+              </Panel>
+            </>
+          ) : null}
+
+          {active.status === "REVIEW" ? (
+            <Panel
+              title="Review SO"
+              subtitle="Bandingkan sistem dengan fisik sebelum posting adjustment."
+            >
+              <div className={styles.soReviewSummary}>
+                <div>
+                  <span>Total SKU</span>
+                  <strong>{lines.length}</strong>
+                </div>
+                <div>
+                  <span>Balance</span>
+                  <strong>
+                    {
+                      lines.filter(
+                        (row: Row) => statusOf(row) === "BALANCE"
+                      ).length
+                    }
+                  </strong>
+                </div>
+                <div>
+                  <span>Kurang</span>
+                  <strong>
+                    {
+                      lines.filter(
+                        (row: Row) => statusOf(row) === "KURANG"
+                      ).length
+                    }
+                  </strong>
+                </div>
+                <div>
+                  <span>Lebih</span>
+                  <strong>
+                    {
+                      lines.filter(
+                        (row: Row) => statusOf(row) === "LEBIH"
+                      ).length
+                    }
+                  </strong>
+                </div>
               </div>
-            ) : null}
-          </Panel>
+
+              <DataTable
+                rows={lines}
+                columns={[
+                  ["productName", "Produk"],
+                  ["color", "Warna"],
+                  [
+                    "size",
+                    "Ukuran / Varian",
+                    (row) =>
+                      row.size || row.productName || "-",
+                  ],
+                  [
+                    "systemQtyBase",
+                    "System",
+                    (row) =>
+                      qtyText(
+                        row,
+                        Number(row.systemQtyBase || 0)
+                      ),
+                  ],
+                  [
+                    "physicalQtyBase",
+                    "Fisik",
+                    (row) =>
+                      qtyText(
+                        row,
+                        Number(row.physicalQtyBase || 0)
+                      ),
+                  ],
+                  [
+                    "variance",
+                    "Selisih",
+                    (row) =>
+                      `${qtyFmt.format(
+                        Number(row.physicalQtyBase || 0) -
+                          Number(row.systemQtyBase || 0)
+                      )} ${row.baseUnit || ""}`,
+                  ],
+                  [
+                    "status",
+                    "Status",
+                    (row) => statusOf(row),
+                  ],
+                  ["note", "Catatan"],
+                ]}
+              />
+
+              <div className={styles.soReviewActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={busy || !canManage}
+                  onClick={backToDraft}
+                >
+                  Kembali Input
+                </button>
+
+                <input
+                  className={styles.soPostReason}
+                  placeholder="Alasan adjustment"
+                  value={postReason}
+                  onChange={(event) =>
+                    setPostReason(event.target.value)
+                  }
+                />
+
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  disabled={
+                    busy ||
+                    !canManage ||
+                    !postReason.trim()
+                  }
+                  onClick={postSo}
+                >
+                  Post Adjustment
+                </button>
+              </div>
+            </Panel>
+          ) : null}
         </>
       )}
 
