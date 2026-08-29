@@ -42,36 +42,172 @@ const today = () => {
 };
 
 const menus = [
-  ["DASHBOARD", "Dashboard", "DB"],
-  ["OPENING", "Opening Stock", "OP"],
-  ["INBOUND", "Barang Masuk", "IN"],
-  ["OUTBOUND", "Barang Keluar", "OUT"],
-  ["INVENTORY", "Inventory", "ST"],
-  ["PRODUCTS", "Master Produk", "PR"],
-  ["CUSTOMERS", "Customers", "CU"],
-  ["RECEIVABLES", "Piutang", "AR"],
-  ["OPNAME", "Stock Opname", "SO"],
-  ["RECONCILIATION", "Rekonsiliasi 28/08", "RC"],
-  ["REPORTS", "Reports", "RP"],
-  ["CLOSING", "Monthly Closing", "CL"],
-  ["AUDIT", "Audit Trail", "AU"],
+  ["DASHBOARD", "Dashboard", "dashboard"],
+  ["OPENING", "Opening", "opening"],
+  ["INBOUND", "Masuk", "inbound"],
+  ["OUTBOUND", "Keluar", "outbound"],
+  ["INVENTORY", "Stok", "inventory"],
+  ["PRODUCTS", "Produk", "products"],
+  ["CUSTOMERS", "Customer", "customers"],
+  ["RECEIVABLES", "Piutang", "receivables"],
+  ["OPNAME", "Opname", "opname"],
+  ["RECONCILIATION", "Rekonsiliasi", "reconciliation"],
+  ["REPORTS", "Laporan", "reports"],
+  ["CLOSING", "Closing", "closing"],
+  ["AUDIT", "Audit", "audit"],
 ] as const;
 
 const pageDescriptions: Record<string, string> = {
-  DASHBOARD: "Ringkasan operasional, penjualan, piutang, dan nilai persediaan.",
-  OPENING: "Input saldo awal stock opname 28/07/2026. Ini bukan transaksi pembelian.",
-  INBOUND: "Catat penerimaan barang, supplier, kuantitas, satuan, dan HPP aktual.",
-  OUTBOUND: "Catat penjualan langsung. Nama customer boleh diketik bebas tanpa membuat master lebih dulu.",
-  INVENTORY: "Pantau stock on hand, konversi unit, average cost, dan nilai persediaan.",
-  PRODUCTS: "Master produk dan konversi UOM yang menjadi sumber transaksi.",
-  CUSTOMERS: "Daftar customer yang dibuat manual maupun otomatis dari transaksi penjualan.",
-  RECEIVABLES: "Pantau invoice belum lunas dan catat pembayaran customer.",
-  OPNAME: "Rekonsiliasi stok fisik dengan stok sistem secara auditable.",
-  RECONCILIATION: "Bandingkan saldo sistem as-of 28/08/2026 dengan snapshot SO fisik 28/08/2026.",
-  REPORTS: "Laporan barang masuk dan barang keluar per periode.",
-  CLOSING: "Kunci periode bulanan setelah transaksi dan rekonsiliasi selesai.",
-  AUDIT: "Jejak perubahan dan transaksi Plastic Trading.",
+  DASHBOARD: "Ringkasan bisnis.",
+  OPENING: "Saldo awal 28/07.",
+  INBOUND: "Penerimaan barang.",
+  OUTBOUND: "Penjualan dan piutang.",
+  INVENTORY: "Stok dan nilai barang.",
+  PRODUCTS: "Master produk dan UOM.",
+  CUSTOMERS: "Daftar customer.",
+  RECEIVABLES: "Sisa piutang dan pembayaran.",
+  OPNAME: "Cocokkan stok fisik.",
+  RECONCILIATION: "Cek fisik 28/08.",
+  REPORTS: "Laporan dan PDF.",
+  CLOSING: "Tutup periode.",
+  AUDIT: "Riwayat perubahan.",
 };
+
+/* RKN_PLASTIC_MENU_ICONS_V2N2 */
+function MenuIcon({ name }: { name: string }) {
+  const common = {
+    width: 16,
+    height: 16,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  switch (name) {
+    case "dashboard":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "opening":
+      return (
+        <svg {...common}>
+          <path d="M4 7.5 12 3l8 4.5" />
+          <path d="M5 8v10.5h14V8" />
+          <path d="M9 18.5v-6h6v6" />
+        </svg>
+      );
+    case "inbound":
+      return (
+        <svg {...common}>
+          <path d="M12 3v12" />
+          <path d="m7.5 10.5 4.5 4.5 4.5-4.5" />
+          <path d="M4 20h16" />
+        </svg>
+      );
+    case "outbound":
+      return (
+        <svg {...common}>
+          <path d="M12 21V9" />
+          <path d="m7.5 13.5 4.5-4.5 4.5 4.5" />
+          <path d="M4 4h16" />
+        </svg>
+      );
+    case "inventory":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16v13H4z" />
+          <path d="M3 7 5 3h14l2 4" />
+          <path d="M9 11h6" />
+        </svg>
+      );
+    case "products":
+      return (
+        <svg {...common}>
+          <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+          <path d="m4.5 7.8 7.5 4.2 7.5-4.2" />
+          <path d="M12 12v9" />
+        </svg>
+      );
+    case "customers":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 20c.4-4 2.3-6 5.5-6s5.1 2 5.5 6" />
+          <circle cx="17" cy="9" r="2.2" />
+          <path d="M15.5 14.5c3.1-.2 4.8 1.5 5 4.5" />
+        </svg>
+      );
+    case "receivables":
+      return (
+        <svg {...common}>
+          <rect x="3" y="5" width="18" height="14" rx="2.5" />
+          <path d="M3 9h18" />
+          <path d="M7 15h4" />
+          <circle cx="17" cy="14" r="1.5" />
+        </svg>
+      );
+    case "opname":
+      return (
+        <svg {...common}>
+          <rect x="5" y="4" width="14" height="17" rx="2" />
+          <path d="M9 4.5V3h6v1.5" />
+          <path d="m8.5 12 2 2 5-5" />
+          <path d="M9 17h6" />
+        </svg>
+      );
+    case "reconciliation":
+      return (
+        <svg {...common}>
+          <path d="M4 7h12" />
+          <path d="m13 4 3 3-3 3" />
+          <path d="M20 17H8" />
+          <path d="m11 14-3 3 3 3" />
+        </svg>
+      );
+    case "reports":
+      return (
+        <svg {...common}>
+          <path d="M5 3h10l4 4v14H5z" />
+          <path d="M15 3v5h5" />
+          <path d="M8 17v-4" />
+          <path d="M12 17V9" />
+          <path d="M16 17v-6" />
+        </svg>
+      );
+    case "closing":
+      return (
+        <svg {...common}>
+          <rect x="4" y="5" width="16" height="15" rx="2" />
+          <path d="M8 3v4M16 3v4M4 10h16" />
+          <path d="m9 15 2 2 4-4" />
+        </svg>
+      );
+    case "audit":
+      return (
+        <svg {...common}>
+          <circle cx="11" cy="11" r="6" />
+          <path d="m15.5 15.5 4 4" />
+          <path d="M8.5 11h5M11 8.5v5" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="8" />
+        </svg>
+      );
+  }
+}
+
 
 async function read(view: string, period: string) {
   const response = await fetch(
@@ -420,11 +556,11 @@ export default function PlasticTradingApp({
 
         <div className={styles.environment}>
           <span className={styles.statusDot} />
-          PRODUCTION WORKSPACE
+          LIVE
         </div>
 
         <nav className={styles.nav}>
-          <div className={styles.navGroupLabel}>OPERATIONS</div>
+          <div className={styles.navGroupLabel}>OPERASI</div>
           {menus.slice(0, 8).map(([key, label, glyph]) => (
             <button
               key={key}
@@ -437,12 +573,12 @@ export default function PlasticTradingApp({
                 setMobileNavOpen(false);
               }}
             >
-              <span className={styles.navGlyph}>{glyph}</span>
+              <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
               <span>{label}</span>
             </button>
           ))}
 
-          <div className={styles.navGroupLabel}>CONTROL</div>
+          <div className={styles.navGroupLabel}>KONTROL</div>
           {menus.slice(8).map(([key, label, glyph]) => (
             <button
               key={key}
@@ -455,7 +591,7 @@ export default function PlasticTradingApp({
                 setMobileNavOpen(false);
               }}
             >
-              <span className={styles.navGlyph}>{glyph}</span>
+              <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
               <span>{label}</span>
             </button>
           ))}
@@ -463,7 +599,7 @@ export default function PlasticTradingApp({
 
         <div className={styles.sidebarBottom}>
           <div className={styles.accessCard}>
-            <span>ACCESS LEVEL</span>
+            <span>AKSES</span>
             <strong>{actor.accessLevel || "-"}</strong>
             <small>{actor.roleCode || "-"}</small>
           </div>
@@ -509,7 +645,7 @@ export default function PlasticTradingApp({
 
           <div className={styles.topbarTitle}>
             <span className={styles.breadcrumb}>
-              RKN ERP / PLASTIC TRADING
+              RKN / PLASTIC
             </span>
             <h1>{currentMenu?.[1] || "Plastic Trading"}</h1>
             <p>{pageDescriptions[tab]}</p>
@@ -1783,8 +1919,8 @@ function Inbound({
           }
           subtitle={
             editInboundId
-              ? "Edit mengganti dokumen Barang Masuk secara auditable. Inventory dikoreksi dengan adjustment; COGS penjualan historis tidak ditulis ulang."
-              : "HPP diisi berdasarkan UOM yang dipilih. Engine mengonversi ke base cost otomatis."
+              ? "Edit aman; stok dan audit ikut disesuaikan."
+              : "HPP mengikuti UOM."
           }
         >
           <form onSubmit={submit} className={styles.formStack}>
@@ -1844,7 +1980,7 @@ function Inbound({
                     {editInboundId ? "Item Setelah Edit" : "Item Masuk"}
                   </strong>
                   <span>
-                    Produk, Qty, UOM dan HPP dapat dikoreksi saat mode Edit.
+                    Produk, qty, UOM, dan HPP bisa diedit.
                   </span>
                 </div>
 
@@ -2009,7 +2145,7 @@ function Inbound({
 
       <Panel
         title="Riwayat Barang Masuk"
-        subtitle="Edit dokumen tersedia untuk MANAGE / OWNER / System Admin. Closed period tetap dikunci."
+        subtitle="Edit sesuai akses. Periode tutup tetap terkunci."
       >
         <DataTable
           rows={rows}
@@ -2072,22 +2208,14 @@ function Outbound({
   busy: boolean;
   run: any;
 }) {
+  /* RKN_PLASTIC_OUTBOUND_SIMPLE_NO_SHIPPING_NO_DUE_V2N2 */
   const [dateKey, setDateKey] = useState(today());
   const [customerName, setCustomerName] = useState("");
   const [discountRp, setDiscountRp] = useState("0");
-  const [shippingRp, setShippingRp] = useState("0");
-  const [paymentStatus, setPaymentStatus] =
-    useState("PAID");
-  const [paymentMethod, setPaymentMethod] =
-    useState("TRANSFER");
-  const [dueDateKey, setDueDateKey] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("PAID");
+  const [paymentMethod, setPaymentMethod] = useState("TRANSFER");
   const [lines, setLines] = useState([
-    {
-      variantId: "",
-      qty: "1",
-      unit: "",
-      unitPriceRp: "",
-    },
+    { variantId: "", qty: "1", unit: "", unitPriceRp: "" },
   ]);
 
   const exactCustomer = useMemo(() => {
@@ -2115,14 +2243,11 @@ function Outbound({
 
   const estimatedGrand = Math.max(
     0,
-    estimatedSubtotal -
-      Number(discountRp || 0) +
-      Number(shippingRp || 0)
+    estimatedSubtotal - Number(discountRp || 0)
   );
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-
     run(
       "CREATE_SALE",
       {
@@ -2130,16 +2255,9 @@ function Outbound({
         customerId: exactCustomer?.customerId || "",
         customerName: customerName.trim(),
         discountRp: Number(discountRp || 0),
-        shippingRp: Number(shippingRp || 0),
         paymentStatus,
         paymentMethod:
-          paymentStatus === "PAID"
-            ? paymentMethod
-            : "",
-        dueDateKey:
-          paymentStatus === "NOT_PAID"
-            ? dueDateKey
-            : "",
+          paymentStatus === "PAID" ? paymentMethod : "",
         lines: lines.map((line) => ({
           ...line,
           qty: Number(line.qty),
@@ -2154,34 +2272,25 @@ function Outbound({
     <>
       {canWrite ? (
         <Panel
-          title="Input Barang Keluar / Penjualan"
-          subtitle="Harga otomatis mengikuti Master Produk. Pilih PAID atau NOT PAID; transaksi belum lunas otomatis masuk Piutang."
+          title="Barang Keluar"
+          subtitle="PAID = lunas. NOT PAID = piutang."
         >
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid4}>
               <Field label="Tanggal">
                 <input
+                  required
                   type="date"
                   value={dateKey}
-                  onChange={(event) =>
-                    setDateKey(event.target.value)
-                  }
+                  onChange={(event) => setDateKey(event.target.value)}
                 />
               </Field>
 
-              <Field
-                label="Nama Customer"
-                hint={
-                  exactCustomer
-                    ? "Customer master ditemukan."
-                    : "Nama baru akan otomatis masuk Customer Ledger."
-                }
-                className={styles.customerField}
-              >
+              <Field label="Customer" className={styles.customerField}>
                 <input
                   required
                   list="plastic-customer-options"
-                  placeholder="Ketik nama customer..."
+                  placeholder="Nama customer"
                   value={customerName}
                   autoComplete="off"
                   onChange={(event) =>
@@ -2198,24 +2307,20 @@ function Outbound({
                 </datalist>
               </Field>
 
-              <Field label="Status Pembayaran">
+              <Field label="Pembayaran">
                 <select
                   value={paymentStatus}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    setPaymentStatus(next);
-                    if (next === "PAID") {
-                      setDueDateKey("");
-                    }
-                  }}
+                  onChange={(event) =>
+                    setPaymentStatus(event.target.value)
+                  }
                 >
-                  <option value="PAID">PAID</option>
-                  <option value="NOT_PAID">NOT PAID</option>
+                  <option value="PAID">LUNAS</option>
+                  <option value="NOT_PAID">PIUTANG</option>
                 </select>
               </Field>
 
               {paymentStatus === "PAID" ? (
-                <Field label="Metode Bayar">
+                <Field label="Metode">
                   <select
                     value={paymentMethod}
                     onChange={(event) =>
@@ -2225,33 +2330,19 @@ function Outbound({
                     <option>TRANSFER</option>
                     <option>CASH</option>
                     <option>QRIS</option>
-                    <option>LAINNYA</option>
                   </select>
                 </Field>
               ) : (
-                <Field
-                  label="Jatuh Tempo"
-                  hint="Opsional, tapi disarankan untuk piutang."
-                >
-                  <input
-                    type="date"
-                    value={dueDateKey}
-                    onChange={(event) =>
-                      setDueDateKey(event.target.value)
-                    }
-                  />
-                </Field>
+                <div className={styles.simpleInfoCard}>
+                  <span>PIUTANG</span>
+                  <strong>{money.format(estimatedGrand)}</strong>
+                </div>
               )}
             </div>
 
             <div className={styles.lineSection}>
               <div className={styles.lineSectionHead}>
-                <div>
-                  <strong>Item Penjualan</strong>
-                  <span>
-                    Harga terisi otomatis dari Master dan tetap boleh dioverride.
-                  </span>
-                </div>
+                <strong>Item</strong>
                 <button
                   type="button"
                   className={styles.secondaryButton}
@@ -2267,7 +2358,7 @@ function Outbound({
                     ])
                   }
                 >
-                  + Tambah Item
+                  + Item
                 </button>
               </div>
 
@@ -2276,17 +2367,14 @@ function Outbound({
                   (product) => product.variantId === line.variantId
                 );
                 const units = unitOptions(selected);
-                const resolvedPrice =
-                  Number(line.unitPriceRp || 0) ||
-                  defaultPrice(selected, line.unit);
 
                 return (
-                  <div className={styles.itemRow} key={index}>
-                    <div className={styles.itemIndex}>
+                  <div className={styles.lineItem} key={index}>
+                    <span className={styles.lineNo}>
                       {String(index + 1).padStart(2, "0")}
-                    </div>
+                    </span>
 
-                    <Field label="Warna / Ukuran / Produk" className={styles.itemProduct}>
+                    <Field label="Produk" className={styles.itemProduct}>
                       <select
                         required
                         value={line.variantId}
@@ -2296,27 +2384,24 @@ function Outbound({
                               product.variantId === event.target.value
                           );
                           const chosenUnit = String(
-                            chosen?.baseUnit ||
+                            chosen?.packUnit ||
                               chosen?.midUnit ||
-                              chosen?.packUnit ||
+                              chosen?.baseUnit ||
                               ""
                           ).toUpperCase();
-                          const masterPrice =
-                            defaultPrice(chosen, chosenUnit);
                           const next = [...lines];
                           next[index] = {
                             ...line,
                             variantId: event.target.value,
                             unit: chosenUnit,
-                            unitPriceRp:
-                              masterPrice > 0
-                                ? String(masterPrice)
-                                : "",
+                            unitPriceRp: String(
+                              defaultPrice(chosen, chosenUnit) || ""
+                            ),
                           };
                           setLines(next);
                         }}
                       >
-                        <option value="">Pilih warna / ukuran / produk</option>
+                        <option value="">Pilih produk</option>
                         {products.map((product) => (
                           <option
                             key={product.variantId}
@@ -2332,8 +2417,8 @@ function Outbound({
                       <input
                         required
                         type="number"
-                        step="0.01"
                         min="0.01"
+                        step="0.01"
                         value={line.qty}
                         onChange={(event) => {
                           const next = [...lines];
@@ -2346,46 +2431,38 @@ function Outbound({
                       />
                     </Field>
 
-                    <Field label="Unit">
+                    <Field label="UOM">
                       <select
                         required
                         value={line.unit}
                         onChange={(event) => {
-                          const nextUnit = event.target.value;
-                          const masterPrice =
-                            defaultPrice(selected, nextUnit);
                           const next = [...lines];
                           next[index] = {
                             ...line,
-                            unit: nextUnit,
-                            unitPriceRp:
-                              masterPrice > 0
-                                ? String(masterPrice)
-                                : "",
+                            unit: event.target.value,
+                            unitPriceRp: String(
+                              defaultPrice(
+                                selected,
+                                event.target.value
+                              ) || ""
+                            ),
                           };
                           setLines(next);
                         }}
                       >
-                        <option value="">Pilih unit</option>
+                        <option value="">Unit</option>
                         {units.map((unit) => (
                           <option key={unit}>{unit}</option>
                         ))}
                       </select>
                     </Field>
 
-                    <Field
-                      label="Harga Jual / Unit"
-                      hint={
-                        resolvedPrice
-                          ? `Master / aktif: ${money.format(resolvedPrice)}`
-                          : "Belum ada harga master."
-                      }
-                    >
+                    <Field label="Harga">
                       <input
+                        required
                         type="number"
                         min="0"
                         value={line.unitPriceRp}
-                        placeholder="Harga master"
                         onChange={(event) => {
                           const next = [...lines];
                           next[index] = {
@@ -2419,66 +2496,39 @@ function Outbound({
               })}
             </div>
 
-            <div className={styles.saleFooter}>
-              <div className={styles.saleAdjustments}>
-                <Field label="Diskon">
-                  <input
-                    type="number"
-                    min="0"
-                    value={discountRp}
-                    onChange={(event) =>
-                      setDiscountRp(event.target.value)
-                    }
-                  />
-                </Field>
-
-                <Field label="Ongkir">
-                  <input
-                    type="number"
-                    min="0"
-                    value={shippingRp}
-                    onChange={(event) =>
-                      setShippingRp(event.target.value)
-                    }
-                  />
-                </Field>
-
-                <Field label="Payment">
-                  <input
-                    readOnly
-                    value={
-                      paymentStatus === "PAID"
-                        ? money.format(estimatedGrand)
-                        : "Rp0 / masuk Piutang"
-                    }
-                  />
-                </Field>
+            <div className={styles.saleSummary}>
+              <div>
+                <span>SUBTOTAL</span>
+                <strong>{money.format(estimatedSubtotal)}</strong>
               </div>
 
-              <div className={styles.saleSummary}>
-                <span>Total Invoice</span>
+              <Field label="Diskon">
+                <input
+                  type="number"
+                  min="0"
+                  value={discountRp}
+                  onChange={(event) =>
+                    setDiscountRp(event.target.value)
+                  }
+                />
+              </Field>
+
+              <div className={styles.saleGrand}>
+                <span>TOTAL</span>
                 <strong>{money.format(estimatedGrand)}</strong>
-                <small>
-                  {paymentStatus === "PAID"
-                    ? "Invoice langsung lunas."
-                    : "Outstanding otomatis masuk Piutang customer."}
-                </small>
               </div>
             </div>
 
             <div className={styles.actions}>
               <button className={styles.primaryButton} disabled={busy}>
-                Simpan Penjualan
+                Simpan
               </button>
             </div>
           </form>
         </Panel>
       ) : null}
 
-      <Panel
-        title="Riwayat Barang Keluar"
-        subtitle="Invoice dan status pembayaran pada periode aktif."
-      >
+      <Panel title="Riwayat Keluar">
         <DataTable
           rows={rows}
           columns={[
@@ -2498,7 +2548,7 @@ function Outbound({
             ],
             [
               "grossProfitRp",
-              "Gross Profit",
+              "Profit",
               (row) =>
                 money.format(Number(row.grossProfitRp || 0)),
             ],
@@ -2509,19 +2559,12 @@ function Outbound({
                 money.format(Number(row.outstandingRp || 0)),
             ],
             [
-              "paymentLabel",
-              "Status Bayar",
-              (row) => (
-                <span
-                  className={
-                    row.paymentLabel === "PAID"
-                      ? styles.statusPaid
-                      : styles.statusOpen
-                  }
-                >
-                  {row.paymentLabel || "NOT PAID"}
-                </span>
-              ),
+              "status",
+              "Status",
+              (row) =>
+                Number(row.outstandingRp || 0) > 0
+                  ? "BELUM LUNAS"
+                  : "LUNAS",
             ],
           ]}
         />
@@ -2529,6 +2572,7 @@ function Outbound({
     </>
   );
 }
+
 
 function Inventory({ rows }: { rows: Row[] }) {
   return (
@@ -2571,13 +2615,19 @@ function Receivables({
   busy: boolean;
   run: any;
 }) {
+  /* RKN_PLASTIC_RECEIVABLES_NO_DUE_DATE_V2N2 */
   const [invoiceId, setInvoiceId] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("TRANSFER");
 
-  const submit = (event: FormEvent) => {
+  const totalReceivable = rows.reduce(
+    (total, row) => total + Number(row.outstandingRp || 0),
+    0
+  );
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    run(
+    await run(
       "ADD_PAYMENT",
       {
         invoiceId,
@@ -2587,18 +2637,21 @@ function Receivables({
       },
       "RECEIVABLES"
     );
+    setAmount("");
   };
 
   return (
     <>
+      <div className={styles.receivableSummary}>
+        <span>TOTAL PIUTANG</span>
+        <strong>{money.format(totalReceivable)}</strong>
+      </div>
+
       {canWrite && rows.length ? (
-        <Panel
-          title="Catat Pembayaran"
-          subtitle="Pilih invoice dan masukkan pembayaran yang diterima."
-        >
+        <Panel title="Pembayaran">
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid3}>
-              <Field label="Invoice">
+              <Field label="Piutang">
                 <select
                   required
                   value={invoiceId}
@@ -2606,18 +2659,21 @@ function Receivables({
                     setInvoiceId(event.target.value)
                   }
                 >
-                  <option value="">Pilih invoice</option>
+                  <option value="">Pilih transaksi</option>
                   {rows.map((row) => (
                     <option
                       key={row.invoiceId}
                       value={row.invoiceId}
                     >
                       {row.invoiceNo} / {row.customerName} /{" "}
-                      {money.format(Number(row.outstandingRp || 0))}
+                      {money.format(
+                        Number(row.outstandingRp || 0)
+                      )}
                     </option>
                   ))}
                 </select>
               </Field>
+
               <Field label="Nominal">
                 <input
                   required
@@ -2629,6 +2685,7 @@ function Receivables({
                   }
                 />
               </Field>
+
               <Field label="Metode">
                 <select
                   value={method}
@@ -2642,23 +2699,22 @@ function Receivables({
                 </select>
               </Field>
             </div>
+
             <div className={styles.actions}>
               <button className={styles.primaryButton} disabled={busy}>
-                Simpan Pembayaran
+                Simpan
               </button>
             </div>
           </form>
         </Panel>
       ) : null}
 
-      <Panel
-        title="Piutang Aktif"
-        subtitle="Invoice dengan saldo outstanding lebih dari nol."
-      >
+      <Panel title="Piutang Aktif">
         <DataTable
           rows={rows}
           columns={[
             ["invoiceNo", "Invoice"],
+            ["dateKey", "Tanggal"],
             ["customerName", "Customer"],
             [
               "grandTotalRp",
@@ -2669,7 +2725,8 @@ function Receivables({
             [
               "paidRp",
               "Dibayar",
-              (row) => money.format(Number(row.paidRp || 0)),
+              (row) =>
+                money.format(Number(row.paidRp || 0)),
             ],
             [
               "outstandingRp",
@@ -2677,13 +2734,13 @@ function Receivables({
               (row) =>
                 money.format(Number(row.outstandingRp || 0)),
             ],
-            ["dueDateKey", "Jatuh Tempo"],
           ]}
         />
       </Panel>
     </>
   );
 }
+
 
 function Opname({
   rows,
@@ -2982,7 +3039,7 @@ function Reports({
   ) => {
     const clean = [
       title,
-      `RKN ERP / PLASTIC TRADING / PERIODE ${period}`,
+      `RKN / PLASTIC / PERIODE ${period}`,
       `Generated: ${new Date().toLocaleString("id-ID")}`,
       "",
       ...lines,
@@ -3172,7 +3229,7 @@ function Reports({
         <div>
           <strong>Laporan Plastic Trading</strong>
           <span>
-            Format UOM operasional mengikuti master produk dan stock ledger.
+            Format mengikuti master UOM.
           </span>
         </div>
         <button
@@ -3186,7 +3243,7 @@ function Reports({
 
       <Panel
         title="Stock Polymailer"
-        subtitle="Ball dihitung dari Total Roll / Isi per Ball sesuai master SKU. Tidak ada kolom Roll Satuan terpisah."
+        subtitle="Ball dihitung dari isi per Ball."
       >
         <DataTable
           rows={polymailer}
@@ -3234,7 +3291,7 @@ function Reports({
 
       <Panel
         title="Stock Thermal"
-        subtitle="Konversi resmi: DUS / STACK / LEMBAR mengikuti master UOM masing-masing produk."
+        subtitle="Dus / Stack / Lembar sesuai master."
       >
         <DataTable
           rows={thermal}
@@ -3285,7 +3342,7 @@ function Reports({
 
       <Panel
         title="Barang Masuk"
-        subtitle="Cut-off sesuai periode yang dipilih."
+        subtitle="Periode aktif."
       >
         <DataTable
           rows={inboundRows}
@@ -3313,7 +3370,7 @@ function Reports({
 
       <Panel
         title="Barang Keluar"
-        subtitle="Cut-off sesuai periode yang dipilih."
+        subtitle="Periode aktif."
       >
         <DataTable
           rows={outboundRows}
