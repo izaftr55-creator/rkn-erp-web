@@ -2621,3 +2621,33 @@
     max-width: none;
   }
 }
+
+
+/* RKN_PLASTIC_THERMAL_PICKER_UI_V2P1 */
+
+/* Product name is longer for Thermal, so give it more room. */
+.variantPicker {
+  grid-template-columns:
+    minmax(260px, 1.45fr)
+    minmax(145px, .8fr)
+    minmax(150px, .85fr) !important;
+}
+
+.variantPicker select {
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1100px) and (min-width: 821px) {
+  .variantPicker {
+    grid-template-columns:
+      minmax(220px, 1.35fr)
+      minmax(120px, .8fr)
+      minmax(130px, .85fr) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .variantPicker {
+    grid-template-columns: 1fr !important;
+  }
+}

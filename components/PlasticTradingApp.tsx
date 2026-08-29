@@ -322,6 +322,7 @@ function humanizeDisplay(value: unknown) {
 }
 
 /* RKN_PLASTIC_VARIANT_PICKER_V2O5 */
+/* RKN_PLASTIC_THERMAL_PRODUCT_PICKER_V2P1 */
 function VariantPicker({
   products,
   value,
@@ -335,23 +336,44 @@ function VariantPicker({
   className?: string;
   onChange: (variantId: string, product?: Row) => void;
 }) {
-  const keyOf = (product: Row) =>
-    String(product.category || product.productName || "").trim();
+  const categoryOf = (product: Row) =>
+    String(product.category || "")
+      .trim()
+      .toUpperCase();
+
+  const productKeyOf = (product: Row) => {
+    const category = categoryOf(product);
+    const productName = String(product.productName || "").trim();
+
+    if (category === "THERMAL") {
+      return productName;
+    }
+
+    if (category === "POLYMAILER") {
+      return "POLYMAILER";
+    }
+
+    return productName || category;
+  };
+
+  const productLabelOf = (key: string) => {
+    if (key === "POLYMAILER") return "Polymailer";
+    return humanizeDisplay(key);
+  };
 
   const selected = products.find(
     (product) =>
       String(product.variantId || "") === String(value || "")
   );
 
-  const [productType, setProductType] = useState(
-    selected ? keyOf(selected) : ""
+  const [productKey, setProductKey] = useState(
+    selected ? productKeyOf(selected) : ""
   );
   const [color, setColor] = useState(
     String(selected?.color || "").trim()
   );
-  const [third, setThird] = useState(
-    String(selected?.size || "").trim() ||
-      String(selected?.productName || "").trim()
+  const [size, setSize] = useState(
+    String(selected?.size || "").trim()
   );
 
   useEffect(() => {
@@ -361,51 +383,73 @@ function VariantPicker({
     );
 
     if (current) {
-      setProductType(keyOf(current));
+      setProductKey(productKeyOf(current));
       setColor(String(current.color || "").trim());
-      setThird(
-        String(current.size || "").trim() ||
-          String(current.productName || "").trim()
-      );
+      setSize(String(current.size || "").trim());
       return;
     }
 
     if (!value) {
-      setProductType("");
+      setProductKey("");
       setColor("");
-      setThird("");
+      setSize("");
     }
   }, [value, products]);
 
-  const productTypes = useMemo(
+  const productKeys = useMemo(
     () =>
       Array.from(
         new Set(
           products
-            .map((product) => keyOf(product))
+            .map((product) => productKeyOf(product))
             .filter(Boolean)
         )
-      ).sort((a, b) => a.localeCompare(b, "id")),
+      ).sort((a, b) => {
+        const priority = (value: string) => {
+          if (value === "POLYMAILER") return 0;
+
+          const upper = value.toUpperCase();
+          if (upper.includes("GOLDWIN")) return 10;
+          if (
+            upper.includes("DUS PANJANG") ||
+            upper.includes("PANJANG")
+          ) {
+            return 11;
+          }
+          if (
+            upper.includes("DUS KOTAK") ||
+            upper.includes("KOTAK")
+          ) {
+            return 12;
+          }
+
+          return 20;
+        };
+
+        const pa = priority(a);
+        const pb = priority(b);
+
+        if (pa !== pb) return pa - pb;
+        return a.localeCompare(b, "id");
+      }),
     [products]
   );
 
   const scoped = useMemo(
     () =>
-      productType
+      productKey
         ? products.filter(
-            (product) => keyOf(product) === productType
+            (product) => productKeyOf(product) === productKey
           )
         : [],
-    [products, productType]
+    [products, productKey]
   );
 
-  const hasColor = scoped.some((product) =>
-    Boolean(String(product.color || "").trim())
-  );
+  const category = scoped.length
+    ? categoryOf(scoped[0])
+    : "";
 
-  const hasSize = scoped.some((product) =>
-    Boolean(String(product.size || "").trim())
-  );
+  const isThermal = category === "THERMAL";
 
   const colorChoices = useMemo(
     () =>
@@ -421,43 +465,40 @@ function VariantPicker({
     [scoped]
   );
 
-  const thirdChoices = useMemo(
+  const sizeChoices = useMemo(
     () =>
       Array.from(
         new Set(
           scoped
             .map((product) =>
-              hasSize
-                ? String(product.size || "").trim()
-                : String(product.productName || "").trim()
+              String(product.size || "").trim()
             )
             .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "id")),
-    [scoped, hasSize]
+    [scoped]
   );
 
-  const resolve = (
-    nextType: string,
+  const hasColor = colorChoices.length > 0;
+  const hasSize = sizeChoices.length > 0;
+
+  const resolveVariant = (
+    nextProductKey: string,
     nextColor: string,
-    nextThird: string,
-    groupHasColor = hasColor,
-    groupHasSize = hasSize
+    nextSize: string
   ) => {
     const candidates = products.filter((product) => {
-      if (keyOf(product) !== nextType) return false;
-
-      const productColor = String(product.color || "").trim();
-
-      if (groupHasColor && productColor !== nextColor) {
+      if (productKeyOf(product) !== nextProductKey) {
         return false;
       }
 
-      const thirdValue = groupHasSize
-        ? String(product.size || "").trim()
-        : String(product.productName || "").trim();
+      const productColor = String(product.color || "").trim();
+      const productSize = String(product.size || "").trim();
 
-      return thirdValue === nextThird;
+      if (productColor !== nextColor) return false;
+      if (productSize !== nextSize) return false;
+
+      return true;
     });
 
     const match =
@@ -469,62 +510,52 @@ function VariantPicker({
     );
   };
 
-  const chooseType = (nextType: string) => {
+  const chooseProduct = (nextProductKey: string) => {
     const group = products.filter(
-      (product) => keyOf(product) === nextType
-    );
-
-    const groupHasColor = group.some((product) =>
-      Boolean(String(product.color || "").trim())
-    );
-
-    const groupHasSize = group.some((product) =>
-      Boolean(String(product.size || "").trim())
+      (product) => productKeyOf(product) === nextProductKey
     );
 
     const colors = Array.from(
       new Set(
-        group
-          .map((product) =>
-            String(product.color || "").trim()
-          )
-          .filter(Boolean)
+        group.map((product) =>
+          String(product.color || "").trim()
+        )
       )
     );
 
-    const thirds = Array.from(
+    const sizes = Array.from(
       new Set(
         group
           .map((product) =>
-            groupHasSize
-              ? String(product.size || "").trim()
-              : String(product.productName || "").trim()
+            String(product.size || "").trim()
           )
           .filter(Boolean)
       )
     );
 
+    const groupHasColor = colors.some(Boolean);
+
     const nextColor =
-      groupHasColor && colors.length === 1 ? colors[0] : "";
+      groupHasColor && colors.filter(Boolean).length === 1
+        ? colors.filter(Boolean)[0]
+        : "";
 
-    const nextThird =
-      thirds.length === 1 ? thirds[0] : "";
+    const nextSize =
+      sizes.length === 1 ? sizes[0] : "";
 
-    setProductType(nextType);
+    setProductKey(nextProductKey);
     setColor(nextColor);
-    setThird(nextThird);
+    setSize(nextSize);
 
     if (
-      nextType &&
-      nextThird &&
-      (!groupHasColor || nextColor)
+      nextProductKey &&
+      (!groupHasColor || nextColor) &&
+      (sizes.length === 0 || nextSize)
     ) {
-      resolve(
-        nextType,
+      resolveVariant(
+        nextProductKey,
         nextColor,
-        nextThird,
-        groupHasColor,
-        groupHasSize
+        nextSize
       );
     } else {
       onChange("", undefined);
@@ -534,18 +565,18 @@ function VariantPicker({
   const chooseColor = (nextColor: string) => {
     setColor(nextColor);
 
-    if (third) {
-      resolve(productType, nextColor, third);
+    if (productKey && (!hasSize || size)) {
+      resolveVariant(productKey, nextColor, size);
     } else {
       onChange("", undefined);
     }
   };
 
-  const chooseThird = (nextThird: string) => {
-    setThird(nextThird);
+  const chooseSize = (nextSize: string) => {
+    setSize(nextSize);
 
-    if (nextThird && (!hasColor || color)) {
-      resolve(productType, color, nextThird);
+    if (productKey && (!hasColor || color)) {
+      resolveVariant(productKey, color, nextSize);
     } else {
       onChange("", undefined);
     }
@@ -557,29 +588,29 @@ function VariantPicker({
         <select
           required
           disabled={disabled}
-          value={productType}
+          value={productKey}
           onChange={(event) =>
-            chooseType(event.target.value)
+            chooseProduct(event.target.value)
           }
         >
           <option value="">Pilih produk</option>
-          {productTypes.map((type) => (
-            <option key={type} value={type}>
-              {humanizeDisplay(type)}
+          {productKeys.map((key) => (
+            <option key={key} value={key}>
+              {productLabelOf(key)}
             </option>
           ))}
         </select>
       </Field>
 
       <Field label="Warna">
-        {productType && !hasColor ? (
+        {productKey && !hasColor ? (
           <select disabled value="NO_COLOR">
             <option value="NO_COLOR">Tanpa warna</option>
           </select>
         ) : (
           <select
             required
-            disabled={disabled || !productType}
+            disabled={disabled || !productKey}
             value={color}
             onChange={(event) =>
               chooseColor(event.target.value)
@@ -595,24 +626,32 @@ function VariantPicker({
         )}
       </Field>
 
-      <Field label={hasSize ? "Ukuran" : "Varian"}>
-        <select
-          required
-          disabled={disabled || !productType}
-          value={third}
-          onChange={(event) =>
-            chooseThird(event.target.value)
-          }
-        >
-          <option value="">
-            {hasSize ? "Pilih ukuran" : "Pilih varian"}
-          </option>
-          {thirdChoices.map((itemThird) => (
-            <option key={itemThird} value={itemThird}>
-              {itemThird}
+      <Field label={isThermal ? "Ukuran / Varian" : "Ukuran"}>
+        {productKey && !hasSize ? (
+          <select disabled value="NO_SIZE">
+            <option value="NO_SIZE">Tanpa ukuran</option>
+          </select>
+        ) : (
+          <select
+            required
+            disabled={disabled || !productKey}
+            value={size}
+            onChange={(event) =>
+              chooseSize(event.target.value)
+            }
+          >
+            <option value="">
+              {isThermal
+                ? "Pilih ukuran / varian"
+                : "Pilih ukuran"}
             </option>
-          ))}
-        </select>
+            {sizeChoices.map((itemSize) => (
+              <option key={itemSize} value={itemSize}>
+                {itemSize}
+              </option>
+            ))}
+          </select>
+        )}
       </Field>
     </div>
   );
