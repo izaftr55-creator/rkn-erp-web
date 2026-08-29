@@ -66,3 +66,4 @@ Blueprint sudah diperluas untuk kebutuhan lintas akun:
 - Zero-Credential Mode tetap aktif.
 - Tidak menyertakan `.env.local`, password, token, cookie, OTP, atau credential marketplace.
 - Patch hanya overlay source app; konfigurasi lokal tidak disentuh.
+Git deployment baseline verified.
