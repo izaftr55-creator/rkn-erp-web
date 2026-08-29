@@ -11,6 +11,8 @@
     "better-auth": "^1.6.26",
     "better-sqlite3": "^12.11.1",
     "googleapis": "^144.0.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "jszip": "^3.10.1",
     "next": "^15.2.0",
     "react": "^19.0.0",

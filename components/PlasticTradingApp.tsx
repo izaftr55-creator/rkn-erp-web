@@ -321,6 +321,303 @@ function humanizeDisplay(value: unknown) {
     .trim();
 }
 
+/* RKN_PLASTIC_VARIANT_PICKER_V2O5 */
+function VariantPicker({
+  products,
+  value,
+  disabled = false,
+  className = "",
+  onChange,
+}: {
+  products: Row[];
+  value: string;
+  disabled?: boolean;
+  className?: string;
+  onChange: (variantId: string, product?: Row) => void;
+}) {
+  const keyOf = (product: Row) =>
+    String(product.category || product.productName || "").trim();
+
+  const selected = products.find(
+    (product) =>
+      String(product.variantId || "") === String(value || "")
+  );
+
+  const [productType, setProductType] = useState(
+    selected ? keyOf(selected) : ""
+  );
+  const [color, setColor] = useState(
+    String(selected?.color || "").trim()
+  );
+  const [third, setThird] = useState(
+    String(selected?.size || "").trim() ||
+      String(selected?.productName || "").trim()
+  );
+
+  useEffect(() => {
+    const current = products.find(
+      (product) =>
+        String(product.variantId || "") === String(value || "")
+    );
+
+    if (current) {
+      setProductType(keyOf(current));
+      setColor(String(current.color || "").trim());
+      setThird(
+        String(current.size || "").trim() ||
+          String(current.productName || "").trim()
+      );
+      return;
+    }
+
+    if (!value) {
+      setProductType("");
+      setColor("");
+      setThird("");
+    }
+  }, [value, products]);
+
+  const productTypes = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          products
+            .map((product) => keyOf(product))
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [products]
+  );
+
+  const scoped = useMemo(
+    () =>
+      productType
+        ? products.filter(
+            (product) => keyOf(product) === productType
+          )
+        : [],
+    [products, productType]
+  );
+
+  const hasColor = scoped.some((product) =>
+    Boolean(String(product.color || "").trim())
+  );
+
+  const hasSize = scoped.some((product) =>
+    Boolean(String(product.size || "").trim())
+  );
+
+  const colorChoices = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          scoped
+            .map((product) =>
+              String(product.color || "").trim()
+            )
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [scoped]
+  );
+
+  const thirdChoices = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          scoped
+            .map((product) =>
+              hasSize
+                ? String(product.size || "").trim()
+                : String(product.productName || "").trim()
+            )
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [scoped, hasSize]
+  );
+
+  const resolve = (
+    nextType: string,
+    nextColor: string,
+    nextThird: string,
+    groupHasColor = hasColor,
+    groupHasSize = hasSize
+  ) => {
+    const candidates = products.filter((product) => {
+      if (keyOf(product) !== nextType) return false;
+
+      const productColor = String(product.color || "").trim();
+
+      if (groupHasColor && productColor !== nextColor) {
+        return false;
+      }
+
+      const thirdValue = groupHasSize
+        ? String(product.size || "").trim()
+        : String(product.productName || "").trim();
+
+      return thirdValue === nextThird;
+    });
+
+    const match =
+      candidates.length === 1 ? candidates[0] : undefined;
+
+    onChange(
+      match ? String(match.variantId || "") : "",
+      match
+    );
+  };
+
+  const chooseType = (nextType: string) => {
+    const group = products.filter(
+      (product) => keyOf(product) === nextType
+    );
+
+    const groupHasColor = group.some((product) =>
+      Boolean(String(product.color || "").trim())
+    );
+
+    const groupHasSize = group.some((product) =>
+      Boolean(String(product.size || "").trim())
+    );
+
+    const colors = Array.from(
+      new Set(
+        group
+          .map((product) =>
+            String(product.color || "").trim()
+          )
+          .filter(Boolean)
+      )
+    );
+
+    const thirds = Array.from(
+      new Set(
+        group
+          .map((product) =>
+            groupHasSize
+              ? String(product.size || "").trim()
+              : String(product.productName || "").trim()
+          )
+          .filter(Boolean)
+      )
+    );
+
+    const nextColor =
+      groupHasColor && colors.length === 1 ? colors[0] : "";
+
+    const nextThird =
+      thirds.length === 1 ? thirds[0] : "";
+
+    setProductType(nextType);
+    setColor(nextColor);
+    setThird(nextThird);
+
+    if (
+      nextType &&
+      nextThird &&
+      (!groupHasColor || nextColor)
+    ) {
+      resolve(
+        nextType,
+        nextColor,
+        nextThird,
+        groupHasColor,
+        groupHasSize
+      );
+    } else {
+      onChange("", undefined);
+    }
+  };
+
+  const chooseColor = (nextColor: string) => {
+    setColor(nextColor);
+
+    if (third) {
+      resolve(productType, nextColor, third);
+    } else {
+      onChange("", undefined);
+    }
+  };
+
+  const chooseThird = (nextThird: string) => {
+    setThird(nextThird);
+
+    if (nextThird && (!hasColor || color)) {
+      resolve(productType, color, nextThird);
+    } else {
+      onChange("", undefined);
+    }
+  };
+
+  return (
+    <div className={`${styles.variantPicker} ${className}`}>
+      <Field label="Produk">
+        <select
+          required
+          disabled={disabled}
+          value={productType}
+          onChange={(event) =>
+            chooseType(event.target.value)
+          }
+        >
+          <option value="">Pilih produk</option>
+          {productTypes.map((type) => (
+            <option key={type} value={type}>
+              {humanizeDisplay(type)}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Warna">
+        {productType && !hasColor ? (
+          <select disabled value="NO_COLOR">
+            <option value="NO_COLOR">Tanpa warna</option>
+          </select>
+        ) : (
+          <select
+            required
+            disabled={disabled || !productType}
+            value={color}
+            onChange={(event) =>
+              chooseColor(event.target.value)
+            }
+          >
+            <option value="">Pilih warna</option>
+            {colorChoices.map((itemColor) => (
+              <option key={itemColor} value={itemColor}>
+                {itemColor}
+              </option>
+            ))}
+          </select>
+        )}
+      </Field>
+
+      <Field label={hasSize ? "Ukuran" : "Varian"}>
+        <select
+          required
+          disabled={disabled || !productType}
+          value={third}
+          onChange={(event) =>
+            chooseThird(event.target.value)
+          }
+        >
+          <option value="">
+            {hasSize ? "Pilih ukuran" : "Pilih varian"}
+          </option>
+          {thirdChoices.map((itemThird) => (
+            <option key={itemThird} value={itemThird}>
+              {itemThird}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </div>
+  );
+}
+
 function Field({
   label,
   hint,
@@ -1500,37 +1797,21 @@ function OpeningStock({
                       {String(index + 1).padStart(2, "0")}
                     </span>
 
-                    <Field
-                      label="Warna / Ukuran / Produk"
+                    <VariantPicker
+                      products={products}
+                      value={line.variantId}
+                      disabled={Boolean(editVariantId)}
                       className={styles.itemProduct}
-                    >
-                      <select
-                        required
-                        value={line.variantId}
-                        disabled={Boolean(editVariantId)}
-                        onChange={(event) => {
-                          const next = [...lines];
-                          next[index] = {
-                            ...line,
-                            variantId: event.target.value,
-                            unit: "",
-                          };
-                          setLines(next);
-                        }}
-                      >
-                        <option value="">
-                          Pilih warna / ukuran / produk
-                        </option>
-                        {products.map((item) => (
-                          <option
-                            key={item.variantId}
-                            value={item.variantId}
-                          >
-                            {productLabel(item)}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
+                      onChange={(variantId) => {
+                        const next = [...lines];
+                        next[index] = {
+                          ...line,
+                          variantId,
+                          unit: "",
+                        };
+                        setLines(next);
+                      }}
+                    />
 
                     <Field label="Qty">
                       <input
@@ -1572,6 +1853,7 @@ function OpeningStock({
 
                     <Field
                       label="HPP / UOM"
+                      className={styles.moneyField}
                       hint="Bukan harga jual. Isi HPP aktual jika tersedia."
                     >
                       <input
@@ -1985,42 +2267,25 @@ function Inbound({
                       {String(index + 1).padStart(2, "0")}
                     </span>
 
-                    <Field
-                      label="Warna / Ukuran / Produk"
+                    <VariantPicker
+                      products={products}
+                      value={line.variantId}
                       className={styles.itemProduct}
-                    >
-                      <select
-                        required
-                        value={line.variantId}
-                        onChange={(event) => {
-                          const chosen = products.find(
-                            (item) => item.variantId === event.target.value
-                          );
-                          const next = [...lines];
-                          next[index] = {
-                            ...line,
-                            variantId: event.target.value,
-                            unit: String(
-                              chosen?.packUnit ||
-                                chosen?.midUnit ||
-                                chosen?.baseUnit ||
-                                ""
-                            ).toUpperCase(),
-                          };
-                          setLines(next);
-                        }}
-                      >
-                        <option value="">Pilih warna / ukuran / produk</option>
-                        {products.map((item) => (
-                          <option
-                            key={item.variantId}
-                            value={item.variantId}
-                          >
-                            {productLabel(item)}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
+                      onChange={(variantId, chosen) => {
+                        const next = [...lines];
+                        next[index] = {
+                          ...line,
+                          variantId,
+                          unit: String(
+                            chosen?.packUnit ||
+                              chosen?.midUnit ||
+                              chosen?.baseUnit ||
+                              ""
+                          ).toUpperCase(),
+                        };
+                        setLines(next);
+                      }}
+                    />
 
                     <Field label="Qty">
                       <input
@@ -2062,6 +2327,7 @@ function Inbound({
 
                     <Field
                       label="HPP / UOM"
+                      className={styles.moneyField}
                       hint="Harga beli per UOM yang dipilih."
                     >
                       <input
@@ -2494,44 +2760,32 @@ function Outbound({
                       {String(index + 1).padStart(2, "0")}
                     </span>
 
-                    <Field label="Produk" className={styles.itemProduct}>
-                      <select
-                        required
-                        value={line.variantId}
-                        onChange={(event) => {
-                          const chosen = products.find(
-                            (product) =>
-                              product.variantId === event.target.value
-                          );
-                          const chosenUnit = String(
-                            chosen?.packUnit ||
-                              chosen?.midUnit ||
-                              chosen?.baseUnit ||
-                              ""
-                          ).toUpperCase();
-                          const next = [...lines];
-                          next[index] = {
-                            ...line,
-                            variantId: event.target.value,
-                            unit: chosenUnit,
-                            unitPriceRp: String(
-                              defaultPrice(chosen, chosenUnit) || ""
-                            ),
-                          };
-                          setLines(next);
-                        }}
-                      >
-                        <option value="">Pilih produk</option>
-                        {products.map((product) => (
-                          <option
-                            key={product.variantId}
-                            value={product.variantId}
-                          >
-                            {productLabel(product)}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
+                    <VariantPicker
+                      products={products}
+                      value={line.variantId}
+                      className={styles.itemProduct}
+                      onChange={(variantId, chosen) => {
+                        const chosenUnit = String(
+                          chosen?.packUnit ||
+                            chosen?.midUnit ||
+                            chosen?.baseUnit ||
+                            ""
+                        ).toUpperCase();
+
+                        const next = [...lines];
+                        next[index] = {
+                          ...line,
+                          variantId,
+                          unit: chosenUnit,
+                          unitPriceRp: variantId
+                            ? String(
+                                defaultPrice(chosen, chosenUnit) || ""
+                              )
+                            : "",
+                        };
+                        setLines(next);
+                      }}
+                    />
 
                     <Field label="Qty">
                       <input
@@ -2578,7 +2832,7 @@ function Outbound({
                       </select>
                     </Field>
 
-                    <Field label="Harga">
+                    <Field label="Harga" className={styles.moneyField}>
                       <input
                         required
                         disabled={!selected}
@@ -3105,26 +3359,13 @@ function Opname({
         >
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid3}>
-              <Field label="Produk">
-                <select
-                  required
-                  value={variantId}
-                  onChange={(event) =>
-                    setVariantId(event.target.value)
-                  }
-                >
-                  <option value="">Pilih warna / ukuran / produk</option>
-                  {products.map((product) => (
-                    <option
-                      key={product.variantId}
-                      value={product.variantId}
-                    >
-                      {productLabel(product)} /{" "}
-                      {stockText(product)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <VariantPicker
+                products={products}
+                value={variantId}
+                onChange={(nextVariantId) =>
+                  setVariantId(nextVariantId)
+                }
+              />
               <Field label="Stok Fisik / Base Unit">
                 <input
                   required
@@ -3321,7 +3562,18 @@ function Reports({
   data: Row;
   period: string;
 }) {
-  /* RKN_PLASTIC_REPORTS_GRID_PDF_V2O */
+  /* RKN_PLASTIC_REPORT_CENTER_V2O5 */
+  type ReportTab =
+    | "STOCK"
+    | "SO_PREP"
+    | "SO_RESULT"
+    | "RECEIVABLES";
+
+  const [reportTab, setReportTab] =
+    useState<ReportTab>("STOCK");
+
+  const [soDate, setSoDate] = useState("2026-09-28");
+
   const stockRows = Array.isArray(data.stock) ? data.stock : [];
   const opnameRows = Array.isArray(data.opname) ? data.opname : [];
   const receivables = Array.isArray(data.receivables)
@@ -3330,40 +3582,202 @@ function Reports({
   const metrics = data.metrics || {};
 
   const polymailer = stockRows.filter(
-    (row: Row) => String(row.category || "").toUpperCase() !== "THERMAL"
-  );
-  const thermal = stockRows.filter(
-    (row: Row) => String(row.category || "").toUpperCase() === "THERMAL"
+    (row: Row) =>
+      String(row.category || "").toUpperCase() !== "THERMAL"
   );
 
-  const n = (value: unknown) =>
+  const thermal = stockRows.filter(
+    (row: Row) =>
+      String(row.category || "").toUpperCase() === "THERMAL"
+  );
+
+  const qty = (value: unknown) =>
     qtyFmt.format(Number(value || 0));
 
-  const varianceStatus = (value: unknown) => {
-    const v = Number(value || 0);
-    if (Math.abs(v) < 0.000001) return "BALANCE";
-    return v > 0 ? "LEBIH" : "KURANG";
+  const dateId = (value: string) => {
+    const [year, month, day] = value.split("-");
+    return [day, month, year].filter(Boolean).join("/");
   };
 
-  const ascii = (value: unknown) =>
-    String(value ?? "")
-      .normalize("NFKD")
-      .replace(/[^\x20-\x7E]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+  const varianceStatus = (value: unknown) => {
+    const variance = Number(value || 0);
+    if (Math.abs(variance) < 0.000001) return "BALANCE";
+    return variance > 0 ? "LEBIH" : "KURANG";
+  };
 
-  const downloadPdf = () => {
-    type PdfTable = {
-      title: string;
-      headers: string[];
-      widths: number[];
-      rows: Array<Array<string | number>>;
+  const prepRows = stockRows.map((row: Row) => ({
+    ...row,
+    systemText: `${qty(row.qtyBase)} ${row.baseUnit || ""}`,
+    physicalText: "",
+    varianceText: "",
+    noteText: "",
+  }));
+
+  const loadLogoData = async () => {
+    const response = await fetch("/rkn-logo.png", {
+      cache: "force-cache",
+    });
+
+    if (!response.ok) return "";
+
+    const blob = await response.blob();
+
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () =>
+        resolve(String(reader.result || ""));
+      reader.onerror = () =>
+        reject(new Error("RKN_LOGO_READ_FAILED"));
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const downloadPdf = async () => {
+    const [{ jsPDF }, autoTableModule] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+
+    const autoTable = autoTableModule.default;
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const tableWidth = pageWidth - 8;
+
+    let logoData = "";
+
+    try {
+      logoData = await loadLogoData();
+    } catch {
+      logoData = "";
+    }
+
+    const reportMeta =
+      reportTab === "STOCK"
+        ? {
+            title: "LAPORAN STOK",
+            subtitle: `PERIODE ${period}`,
+            filename: `RKN_STOCK_${period}.pdf`,
+          }
+        : reportTab === "SO_PREP"
+          ? {
+              title: "PERSIAPAN STOCK OPNAME",
+              subtitle: `TANGGAL SO ${dateId(soDate)}`,
+              filename: `RKN_SO_PREP_${soDate}.pdf`,
+            }
+          : reportTab === "SO_RESULT"
+            ? {
+                title: "HASIL STOCK OPNAME",
+                subtitle: `PERIODE ${period}`,
+                filename: `RKN_SO_RESULT_${period}.pdf`,
+              }
+            : {
+                title: "PIUTANG BELUM BAYAR",
+                subtitle: `PERIODE ${period}`,
+                filename: `RKN_PIUTANG_BELUM_BAYAR_${period}.pdf`,
+              };
+
+    const drawHeader = (pageNumber: number) => {
+      doc.setFillColor(7, 22, 39);
+      doc.rect(0, 0, pageWidth, 29, "F");
+
+      if (logoData) {
+        doc.addImage(
+          logoData,
+          "PNG",
+          7,
+          4.5,
+          19,
+          19,
+          "RKN_LOGO",
+          "FAST"
+        );
+      }
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.text("RKN ERP", 31, 11);
+
+      doc.setFontSize(8.5);
+      doc.text("PLASTIC TRADING", 31, 17);
+
+      doc.setFontSize(11);
+      doc.text(
+        reportMeta.title,
+        pageWidth - 7,
+        10,
+        { align: "right" }
+      );
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(
+        reportMeta.subtitle,
+        pageWidth - 7,
+        16,
+        { align: "right" }
+      );
+
+      doc.text(
+        `HALAMAN ${pageNumber}`,
+        pageWidth - 7,
+        21.5,
+        { align: "right" }
+      );
+
+      doc.setTextColor(20, 30, 42);
     };
 
-    const tables: PdfTable[] = [
-      {
-        title: "STOCK POLYMAILER",
-        headers: [
+    const common = {
+      theme: "grid" as const,
+      tableWidth,
+      margin: {
+        left: 4,
+        right: 4,
+        top: 34,
+        bottom: 8,
+      },
+      styles: {
+        font: "helvetica",
+        fontSize: 7.4,
+        textColor: [23, 33, 45] as [number, number, number],
+        cellPadding: 1.45,
+        lineColor: [70, 84, 101] as [number, number, number],
+        lineWidth: 0.15,
+        overflow: "linebreak" as const,
+        valign: "middle" as const,
+      },
+      headStyles: {
+        fillColor: [18, 53, 88] as [number, number, number],
+        textColor: [255, 255, 255] as [number, number, number],
+        fontStyle: "bold" as const,
+        lineColor: [70, 84, 101] as [number, number, number],
+        lineWidth: 0.15,
+      },
+      alternateRowStyles: {
+        fillColor: [246, 248, 251] as [number, number, number],
+      },
+      willDrawPage: (hook: any) => {
+        drawHeader(Number(hook.pageNumber || 1));
+      },
+    };
+
+    const nextY = () => {
+      const last = (doc as any).lastAutoTable;
+      return last?.finalY ? Number(last.finalY) + 5 : 34;
+    };
+
+    if (reportTab === "STOCK") {
+      autoTable(doc, {
+        ...common,
+        startY: 34,
+        head: [[
           "Warna",
           "Ukuran",
           "Ball",
@@ -3371,50 +3785,99 @@ function Reports({
           "Total Roll",
           "Harga/Ball",
           "Stock Value",
-        ],
-        widths: [105, 75, 60, 70, 78, 105, 115],
-        rows: polymailer.map((row: Row) => {
-          const per = Math.max(1, Number(row.unitsPerPack || 1));
-          const qty = Number(row.qtyBase || 0);
+        ]],
+        body: polymailer.map((row: Row) => {
+          const per = Math.max(
+            1,
+            Number(row.unitsPerPack || 1)
+          );
+          const base = Number(row.qtyBase || 0);
+
           return [
             row.color || "-",
             row.size || "-",
-            n(qty / per),
-            n(per),
-            n(qty),
-            money.format(Number(row.defaultSellPricePackRp || 0)),
+            qty(base / per),
+            qty(per),
+            qty(base),
+            money.format(
+              Number(row.defaultSellPricePackRp || 0)
+            ),
             money.format(Number(row.stockValueRp || 0)),
           ];
         }),
-      },
-      {
-        title: "STOCK THERMAL",
-        headers: [
-          "Produk",
+        didDrawPage: undefined,
+      });
+
+      autoTable(doc, {
+        ...common,
+        startY: nextY(),
+        head: [[
+          "Produk Thermal",
           "Dus",
           "Stack",
           "Lembar",
           "Harga/Dus",
           "Stock Value",
-        ],
-        widths: [185, 60, 65, 75, 110, 120],
-        rows: thermal.map((row: Row) => {
-          const pack = Math.max(1, Number(row.unitsPerPack || 1));
-          const mid = Math.max(1, Number(row.unitsPerMid || 1));
-          const qty = Number(row.qtyBase || 0);
+        ]],
+        body: thermal.map((row: Row) => {
+          const pack = Math.max(
+            1,
+            Number(row.unitsPerPack || 1)
+          );
+          const mid = Math.max(
+            1,
+            Number(row.unitsPerMid || 1)
+          );
+          const base = Number(row.qtyBase || 0);
+
           return [
             row.productName || "-",
-            n(qty / pack),
-            n(qty / mid),
-            n(qty),
-            money.format(Number(row.defaultSellPricePackRp || 0)),
+            qty(base / pack),
+            qty(base / mid),
+            qty(base),
+            money.format(
+              Number(row.defaultSellPricePackRp || 0)
+            ),
             money.format(Number(row.stockValueRp || 0)),
           ];
         }),
-      },
-      {
-        title: "STOCK OPNAME - BALANCE / SELISIH",
-        headers: [
+        didDrawPage: undefined,
+      });
+    }
+
+    if (reportTab === "SO_PREP") {
+      autoTable(doc, {
+        ...common,
+        startY: 34,
+        head: [[
+          "Produk",
+          "Warna",
+          "Ukuran / Varian",
+          "UOM",
+          "System",
+          "Fisik",
+          "Selisih",
+          "Catatan",
+        ]],
+        body: prepRows.map((row: Row) => [
+          row.category || row.productName || "-",
+          row.color || "-",
+          row.size || row.productName || "-",
+          row.baseUnit || "-",
+          row.systemText,
+          "",
+          "",
+          "",
+        ]),
+        didDrawPage: undefined,
+      });
+    }
+
+    if (reportTab === "SO_RESULT") {
+      autoTable(doc, {
+        ...common,
+        startY: 34,
+        head: [[
           "Tanggal",
           "No. SO",
           "Produk",
@@ -3424,32 +3887,35 @@ function Reports({
           "Fisik",
           "Selisih",
           "Status",
-        ],
-        widths: [62, 100, 145, 70, 65, 68, 68, 68, 65],
-        rows: opnameRows.map((row: Row) => [
+        ]],
+        body: opnameRows.map((row: Row) => [
           row.dateKey || "-",
           row.opnameNo || "-",
           row.productName || "-",
           row.color || "-",
           row.size || "-",
-          `${n(row.systemQtyBase)} ${row.baseUnit || ""}`,
-          `${n(row.physicalQtyBase)} ${row.baseUnit || ""}`,
-          `${n(row.varianceQtyBase)} ${row.baseUnit || ""}`,
+          `${qty(row.systemQtyBase)} ${row.baseUnit || ""}`,
+          `${qty(row.physicalQtyBase)} ${row.baseUnit || ""}`,
+          `${qty(row.varianceQtyBase)} ${row.baseUnit || ""}`,
           varianceStatus(row.varianceQtyBase),
         ]),
-      },
-      {
-        title: "PIUTANG AKTIF",
-        headers: [
+        didDrawPage: undefined,
+      });
+    }
+
+    if (reportTab === "RECEIVABLES") {
+      autoTable(doc, {
+        ...common,
+        startY: 34,
+        head: [[
           "Tanggal",
           "Invoice",
           "Customer",
           "Total",
           "Dibayar",
-          "Sisa",
-        ],
-        widths: [72, 120, 190, 115, 115, 115],
-        rows: receivables.map((row: Row) => [
+          "Belum Bayar",
+        ]],
+        body: receivables.map((row: Row) => [
           row.dateKey || "-",
           row.invoiceNo || "-",
           row.customerName || "-",
@@ -3457,249 +3923,21 @@ function Reports({
           money.format(Number(row.paidRp || 0)),
           money.format(Number(row.outstandingRp || 0)),
         ]),
-      },
-    ];
-
-    const PAGE_W = 842;
-    const PAGE_H = 595;
-    const M = 28;
-    const BOTTOM = 28;
-    const pages: string[][] = [];
-    let commands: string[] = [];
-    let y = 0;
-    let pageNo = 0;
-
-    const esc = (value: unknown) =>
-      ascii(value)
-        .replace(/\\/g, "\\\\")
-        .replace(/\(/g, "\\(")
-        .replace(/\)/g, "\\)");
-
-    const text = (
-      x: number,
-      yy: number,
-      value: unknown,
-      size = 8,
-      bold = false
-    ) => {
-      commands.push(
-        `BT /${bold ? "F2" : "F1"} ${size} Tf ${x.toFixed(
-          1
-        )} ${yy.toFixed(1)} Td (${esc(value)}) Tj ET`
-      );
-    };
-
-    const rect = (
-      x: number,
-      yy: number,
-      w: number,
-      h: number,
-      fill = ""
-    ) => {
-      if (fill) commands.push(`${fill} rg`);
-      commands.push(
-        `${x.toFixed(1)} ${yy.toFixed(1)} ${w.toFixed(
-          1
-        )} ${h.toFixed(1)} re ${fill ? "B" : "S"}`
-      );
-      if (fill) commands.push("0 0 0 rg");
-    };
-
-    const startPage = () => {
-      if (commands.length) pages.push(commands);
-      commands = [];
-      pageNo += 1;
-
-      commands.push("0.06 0.12 0.20 rg");
-      commands.push(`0 ${PAGE_H - 58} ${PAGE_W} 58 re f`);
-      commands.push("1 1 1 rg");
-      text(M, PAGE_H - 25, "RKN ERP", 15, true);
-      text(M, PAGE_H - 41, "PLASTIC TRADING", 8, true);
-      commands.push("0 0 0 rg");
-
-      text(
-        PAGE_W - 220,
-        PAGE_H - 25,
-        `PERIODE ${period}`,
-        9,
-        true
-      );
-      text(
-        PAGE_W - 220,
-        PAGE_H - 41,
-        `HALAMAN ${pageNo}`,
-        7,
-        false
-      );
-
-      y = PAGE_H - 82;
-    };
-
-    const ensure = (height: number) => {
-      if (y - height < BOTTOM) startPage();
-    };
-
-    const summary = () => {
-      const items = [
-        ["STOCK VALUE", money.format(Number(metrics.stockValueRp || 0))],
-        ["PIUTANG", money.format(Number(metrics.receivableRp || 0))],
-        ["SALES", money.format(Number(metrics.salesRp || 0))],
-        ["GROSS PROFIT", money.format(Number(metrics.grossProfitRp || 0))],
-      ];
-
-      ensure(58);
-      const gap = 8;
-      const w = (PAGE_W - M * 2 - gap * 3) / 4;
-
-      items.forEach(([label, value], index) => {
-        const x = M + index * (w + gap);
-        rect(x, y - 44, w, 44, "0.96 0.97 0.99");
-        text(x + 8, y - 16, label, 6.5, true);
-        text(x + 8, y - 33, value, 9, true);
+        didDrawPage: undefined,
       });
-
-      y -= 58;
-    };
-
-    const table = (spec: PdfTable) => {
-      if (!spec.rows.length) return;
-
-      const widths = [...spec.widths];
-      const total = widths.reduce((a, b) => a + b, 0);
-      const available = PAGE_W - M * 2;
-      const scale = total > available ? available / total : 1;
-      for (let i = 0; i < widths.length; i += 1) {
-        widths[i] *= scale;
-      }
-
-      const headerH = 20;
-      const rowH = 18;
-
-      const drawHeader = () => {
-        let x = M;
-        spec.headers.forEach((header, index) => {
-          const w = widths[index];
-          rect(x, y - headerH, w, headerH, "0.88 0.92 0.96");
-          text(x + 4, y - 13, header, 6.4, true);
-          x += w;
-        });
-        y -= headerH;
-      };
-
-      ensure(50);
-      text(M, y, spec.title, 10, true);
-      y -= 15;
-      drawHeader();
-
-      for (const row of spec.rows) {
-        if (y - rowH < BOTTOM) {
-          startPage();
-          text(M, y, spec.title, 9, true);
-          y -= 14;
-          drawHeader();
-        }
-
-        let x = M;
-        row.forEach((cell, index) => {
-          const w = widths[index] || 60;
-          rect(x, y - rowH, w, rowH);
-          const limit = Math.max(4, Math.floor(w / 4.4));
-          const raw = ascii(cell);
-          const clipped =
-            raw.length > limit
-              ? raw.slice(0, Math.max(1, limit - 3)) + "..."
-              : raw;
-          text(x + 4, y - 12, clipped, 6.2, false);
-          x += w;
-        });
-        y -= rowH;
-      }
-
-      y -= 16;
-    };
-
-    startPage();
-    summary();
-    tables.forEach(table);
-
-    if (commands.length) pages.push(commands);
-
-    const objects: string[] = [];
-    const pageRefs: string[] = [];
-    const fontNormal = 3;
-    const fontBold = 4;
-    let nextObject = 5;
-
-    pages.forEach((page) => {
-      const pageObject = nextObject++;
-      const contentObject = nextObject++;
-      pageRefs.push(`${pageObject} 0 R`);
-
-      const stream = page.join("\n");
-
-      objects[pageObject] =
-        `${pageObject} 0 obj\n` +
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] ` +
-        `/Resources << /Font << /F1 ${fontNormal} 0 R /F2 ${fontBold} 0 R >> >> ` +
-        `/Contents ${contentObject} 0 R >>\nendobj\n`;
-
-      objects[contentObject] =
-        `${contentObject} 0 obj\n` +
-        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`;
-    });
-
-    objects[1] =
-      "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-    objects[2] =
-      `2 0 obj\n<< /Type /Pages /Count ${pages.length} /Kids [${pageRefs.join(
-        " "
-      )}] >>\nendobj\n`;
-    objects[fontNormal] =
-      `${fontNormal} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`;
-    objects[fontBold] =
-      `${fontBold} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n`;
-
-    const maxObject = objects.length - 1;
-    let pdf = "%PDF-1.4\n";
-    const offsets = new Array(maxObject + 1).fill(0);
-
-    for (let objectNo = 1; objectNo <= maxObject; objectNo += 1) {
-      if (!objects[objectNo]) continue;
-      offsets[objectNo] = pdf.length;
-      pdf += objects[objectNo];
     }
 
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${maxObject + 1}\n`;
-    pdf += "0000000000 65535 f \n";
-    for (let objectNo = 1; objectNo <= maxObject; objectNo += 1) {
-      pdf +=
-        String(offsets[objectNo] || 0).padStart(10, "0") +
-        " 00000 n \n";
-    }
-
-    pdf +=
-      `trailer\n<< /Size ${maxObject + 1} /Root 1 0 R >>\n` +
-      `startxref\n${xrefOffset}\n%%EOF`;
-
-    const blob = new Blob([pdf], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `RKN_PLASTIC_REPORT_${period}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+    doc.save(reportMeta.filename);
   };
 
   return (
     <>
-      <div className={styles.reportToolbar}>
+      <div className={styles.reportCenterHead}>
         <div>
-          <strong>Laporan</strong>
-          <span>Stok, opname, piutang.</span>
+          <strong>Report Center</strong>
+          <span>Pilih laporan.</span>
         </div>
+
         <button
           type="button"
           className={styles.primaryButton}
@@ -3709,133 +3947,300 @@ function Reports({
         </button>
       </div>
 
-      <Panel title="Stock Polymailer">
-        <DataTable
-          rows={polymailer}
-          columns={[
-            ["color", "Warna"],
-            ["size", "Ukuran"],
-            [
-              "ball",
-              "Ball",
-              (row) =>
-                n(
-                  Number(row.qtyBase || 0) /
-                    Math.max(1, Number(row.unitsPerPack || 1))
-                ),
-            ],
-            ["unitsPerPack", "Isi/Ball", (row) => n(row.unitsPerPack)],
-            ["qtyBase", "Total Roll", (row) => n(row.qtyBase)],
-            [
-              "defaultSellPricePackRp",
-              "Harga/Ball",
-              (row) =>
-                money.format(Number(row.defaultSellPricePackRp || 0)),
-            ],
-            [
-              "stockValueRp",
-              "Stock Value",
-              (row) => money.format(Number(row.stockValueRp || 0)),
-            ],
-          ]}
-        />
-      </Panel>
+      <div className={styles.reportSubnav}>
+        <button
+          type="button"
+          className={
+            reportTab === "STOCK"
+              ? styles.reportSubnavActive
+              : styles.reportSubnavButton
+          }
+          onClick={() => setReportTab("STOCK")}
+        >
+          Stok
+        </button>
 
-      <Panel title="Stock Thermal">
-        <DataTable
-          rows={thermal}
-          columns={[
-            ["productName", "Produk"],
-            [
-              "dus",
-              "Dus",
-              (row) =>
-                n(
-                  Number(row.qtyBase || 0) /
-                    Math.max(1, Number(row.unitsPerPack || 1))
-                ),
-            ],
-            [
-              "stack",
-              "Stack",
-              (row) =>
-                n(
-                  Number(row.qtyBase || 0) /
-                    Math.max(1, Number(row.unitsPerMid || 1))
-                ),
-            ],
-            ["qtyBase", "Lembar", (row) => n(row.qtyBase)],
-            [
-              "stockValueRp",
-              "Stock Value",
-              (row) => money.format(Number(row.stockValueRp || 0)),
-            ],
-          ]}
-        />
-      </Panel>
+        <button
+          type="button"
+          className={
+            reportTab === "SO_PREP"
+              ? styles.reportSubnavActive
+              : styles.reportSubnavButton
+          }
+          onClick={() => setReportTab("SO_PREP")}
+        >
+          Persiapan SO
+        </button>
 
-      <Panel title="Stock Opname">
-        <DataTable
-          rows={opnameRows}
-          columns={[
-            ["dateKey", "Tanggal"],
-            ["opnameNo", "No. SO"],
-            ["productName", "Produk"],
-            ["color", "Warna"],
-            ["size", "Ukuran"],
-            [
-              "systemQtyBase",
-              "System",
-              (row) =>
-                `${n(row.systemQtyBase)} ${row.baseUnit || ""}`,
-            ],
-            [
-              "physicalQtyBase",
-              "Fisik",
-              (row) =>
-                `${n(row.physicalQtyBase)} ${row.baseUnit || ""}`,
-            ],
-            [
-              "varianceQtyBase",
-              "Selisih",
-              (row) =>
-                `${n(row.varianceQtyBase)} ${row.baseUnit || ""}`,
-            ],
-            [
-              "varianceStatus",
-              "Status",
-              (row) => varianceStatus(row.varianceQtyBase),
-            ],
-          ]}
-        />
-      </Panel>
+        <button
+          type="button"
+          className={
+            reportTab === "SO_RESULT"
+              ? styles.reportSubnavActive
+              : styles.reportSubnavButton
+          }
+          onClick={() => setReportTab("SO_RESULT")}
+        >
+          Hasil SO
+        </button>
 
-      <Panel title="Piutang">
-        <DataTable
-          rows={receivables}
-          columns={[
-            ["dateKey", "Tanggal"],
-            ["invoiceNo", "Invoice"],
-            ["customerName", "Customer"],
-            [
-              "grandTotalRp",
-              "Total",
-              (row) => money.format(Number(row.grandTotalRp || 0)),
-            ],
-            [
-              "paidRp",
-              "Dibayar",
-              (row) => money.format(Number(row.paidRp || 0)),
-            ],
-            [
-              "outstandingRp",
-              "Sisa",
-              (row) =>
-                money.format(Number(row.outstandingRp || 0)),
-            ],
-          ]}
-        />
-      </Panel>
+        <button
+          type="button"
+          className={
+            reportTab === "RECEIVABLES"
+              ? styles.reportSubnavActive
+              : styles.reportSubnavButton
+          }
+          onClick={() => setReportTab("RECEIVABLES")}
+        >
+          Piutang Belum Bayar
+        </button>
+      </div>
+
+      {reportTab === "STOCK" ? (
+        <>
+          <section className={styles.metricGrid}>
+            <MetricCard
+              label="Stock Value"
+              value={money.format(
+                Number(metrics.stockValueRp || 0)
+              )}
+            />
+            <MetricCard
+              label="Piutang"
+              value={money.format(
+                Number(metrics.receivableRp || 0)
+              )}
+            />
+            <MetricCard
+              label="Sales"
+              value={money.format(
+                Number(metrics.salesRp || 0)
+              )}
+            />
+            <MetricCard
+              label="Gross Profit"
+              value={money.format(
+                Number(metrics.grossProfitRp || 0)
+              )}
+            />
+          </section>
+
+          <Panel title="Polymailer">
+            <DataTable
+              rows={polymailer}
+              columns={[
+                ["color", "Warna"],
+                ["size", "Ukuran"],
+                [
+                  "ball",
+                  "Ball",
+                  (row) =>
+                    qty(
+                      Number(row.qtyBase || 0) /
+                        Math.max(
+                          1,
+                          Number(row.unitsPerPack || 1)
+                        )
+                    ),
+                ],
+                [
+                  "unitsPerPack",
+                  "Isi/Ball",
+                  (row) => qty(row.unitsPerPack),
+                ],
+                [
+                  "qtyBase",
+                  "Total Roll",
+                  (row) => qty(row.qtyBase),
+                ],
+                [
+                  "defaultSellPricePackRp",
+                  "Harga/Ball",
+                  (row) =>
+                    money.format(
+                      Number(
+                        row.defaultSellPricePackRp || 0
+                      )
+                    ),
+                ],
+                [
+                  "stockValueRp",
+                  "Stock Value",
+                  (row) =>
+                    money.format(
+                      Number(row.stockValueRp || 0)
+                    ),
+                ],
+              ]}
+            />
+          </Panel>
+
+          <Panel title="Thermal">
+            <DataTable
+              rows={thermal}
+              columns={[
+                ["productName", "Produk"],
+                [
+                  "dus",
+                  "Dus",
+                  (row) =>
+                    qty(
+                      Number(row.qtyBase || 0) /
+                        Math.max(
+                          1,
+                          Number(row.unitsPerPack || 1)
+                        )
+                    ),
+                ],
+                [
+                  "stack",
+                  "Stack",
+                  (row) =>
+                    qty(
+                      Number(row.qtyBase || 0) /
+                        Math.max(
+                          1,
+                          Number(row.unitsPerMid || 1)
+                        )
+                    ),
+                ],
+                [
+                  "qtyBase",
+                  "Lembar",
+                  (row) => qty(row.qtyBase),
+                ],
+                [
+                  "stockValueRp",
+                  "Stock Value",
+                  (row) =>
+                    money.format(
+                      Number(row.stockValueRp || 0)
+                    ),
+                ],
+              ]}
+            />
+          </Panel>
+        </>
+      ) : null}
+
+      {reportTab === "SO_PREP" ? (
+        <Panel
+          title="Persiapan Stock Opname"
+          subtitle={`Template SO ${dateId(soDate)}.`}
+        >
+          <div className={styles.soDateRow}>
+            <Field label="Tanggal SO">
+              <input
+                type="date"
+                value={soDate}
+                onChange={(event) =>
+                  setSoDate(event.target.value)
+                }
+              />
+            </Field>
+          </div>
+
+          <DataTable
+            rows={prepRows}
+            columns={[
+              ["category", "Produk"],
+              ["color", "Warna"],
+              [
+                "size",
+                "Ukuran / Varian",
+                (row) =>
+                  row.size || row.productName || "-",
+              ],
+              ["baseUnit", "UOM"],
+              ["systemText", "System"],
+              ["physicalText", "Fisik"],
+              ["varianceText", "Selisih"],
+              ["noteText", "Catatan"],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "SO_RESULT" ? (
+        <Panel title="Hasil Stock Opname">
+          <DataTable
+            rows={opnameRows}
+            columns={[
+              ["dateKey", "Tanggal"],
+              ["opnameNo", "No. SO"],
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              [
+                "systemQtyBase",
+                "System",
+                (row) =>
+                  `${qty(row.systemQtyBase)} ${
+                    row.baseUnit || ""
+                  }`,
+              ],
+              [
+                "physicalQtyBase",
+                "Fisik",
+                (row) =>
+                  `${qty(row.physicalQtyBase)} ${
+                    row.baseUnit || ""
+                  }`,
+              ],
+              [
+                "varianceQtyBase",
+                "Selisih",
+                (row) =>
+                  `${qty(row.varianceQtyBase)} ${
+                    row.baseUnit || ""
+                  }`,
+              ],
+              [
+                "varianceStatus",
+                "Status",
+                (row) =>
+                  varianceStatus(row.varianceQtyBase),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "RECEIVABLES" ? (
+        <Panel title="Piutang Belum Bayar">
+          <DataTable
+            rows={receivables}
+            columns={[
+              ["dateKey", "Tanggal"],
+              ["invoiceNo", "Invoice"],
+              ["customerName", "Customer"],
+              [
+                "grandTotalRp",
+                "Total",
+                (row) =>
+                  money.format(
+                    Number(row.grandTotalRp || 0)
+                  ),
+              ],
+              [
+                "paidRp",
+                "Dibayar",
+                (row) =>
+                  money.format(Number(row.paidRp || 0)),
+              ],
+              [
+                "outstandingRp",
+                "Belum Bayar",
+                (row) =>
+                  money.format(
+                    Number(row.outstandingRp || 0)
+                  ),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
     </>
   );
 }

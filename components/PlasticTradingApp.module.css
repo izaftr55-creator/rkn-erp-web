@@ -1919,3 +1919,223 @@
     text-align: left !important;
   }
 }
+
+
+/* RKN_PLASTIC_V2O5_GLOBAL_VISIBILITY_REPORT_UI */
+
+.brandLogo {
+  width: 58px !important;
+  height: 58px !important;
+  flex: 0 0 58px !important;
+  padding: 4px !important;
+}
+
+.brandLogo img {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 50px !important;
+  max-height: 50px !important;
+  object-fit: contain !important;
+}
+
+.brandText strong {
+  font-size: 15px !important;
+}
+
+.brandText span {
+  font-size: 10px !important;
+}
+
+.navButton,
+.navActive {
+  min-height: 46px !important;
+}
+
+.navButton > span:last-child,
+.navActive > span:last-child {
+  font-size: 12px !important;
+}
+
+.fieldLabel {
+  font-size: 10px !important;
+}
+
+.field input,
+.field select {
+  min-height: 44px !important;
+  height: 44px !important;
+  font-size: 12px !important;
+}
+
+.panelHead h2 {
+  font-size: 15px !important;
+}
+
+.panelHead p {
+  font-size: 11px !important;
+}
+
+.dataTable {
+  font-size: 11px !important;
+}
+
+.dataTable th {
+  padding: 11px 12px !important;
+  font-size: 9px !important;
+}
+
+.dataTable td {
+  padding: 12px !important;
+  font-size: 11px !important;
+}
+
+.topbarTitle h1 {
+  font-size: 24px !important;
+}
+
+.topbarTitle p {
+  font-size: 11px !important;
+}
+
+.metricCard strong {
+  font-size: 20px !important;
+}
+
+.saleSummary strong {
+  font-size: 14px !important;
+}
+
+.variantPicker {
+  min-width: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(150px, .8fr)
+    minmax(150px, 1fr)
+    minmax(150px, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.moneyField {
+  width: min(100%, 220px) !important;
+  justify-self: start !important;
+}
+
+.moneyField input {
+  max-width: 220px !important;
+}
+
+.reportCenterHead {
+  padding: 14px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #1c3555;
+  border-radius: 13px;
+  background: #0a1727;
+}
+
+.reportCenterHead > div {
+  display: grid;
+  gap: 3px;
+}
+
+.reportCenterHead strong {
+  font-size: 15px;
+}
+
+.reportCenterHead span {
+  color: #7286a3;
+  font-size: 10px;
+}
+
+.reportSubnav {
+  padding: 6px;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border: 1px solid #172d48;
+  border-radius: 12px;
+  background: #07131f;
+  scrollbar-width: none;
+}
+
+.reportSubnav::-webkit-scrollbar {
+  display: none;
+}
+
+.reportSubnavButton,
+.reportSubnavActive {
+  min-height: 38px;
+  padding: 0 13px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8195b0;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.reportSubnavActive {
+  border-color: #315d99;
+  background: #14345f;
+  color: #ffffff;
+}
+
+.soDateRow {
+  width: min(100%, 250px);
+  margin-bottom: 14px;
+}
+
+@media (min-width: 1280px) {
+  .lineItem {
+    grid-template-columns:
+      28px
+      minmax(480px, 2.5fr)
+      minmax(80px, .45fr)
+      minmax(105px, .55fr)
+      minmax(150px, .7fr)
+      auto !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .variantPicker {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .brandLogo {
+    width: 48px !important;
+    height: 48px !important;
+    flex-basis: 48px !important;
+  }
+
+  .brandLogo img {
+    max-width: 42px !important;
+    max-height: 42px !important;
+  }
+
+  .variantPicker {
+    grid-template-columns: 1fr !important;
+  }
+
+  .moneyField,
+  .moneyField input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .reportCenterHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reportCenterHead button {
+    width: 100%;
+  }
+}
