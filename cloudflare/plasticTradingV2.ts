@@ -188,9 +188,9 @@ if(view==='OPENING'){
        COALESCE(SUM(
          CASE
            WHEN m.movement_type='OPENING' THEN m.qty_base
-           WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID')
+           WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
              AND m.movement_type='ADJUSTMENT_IN' THEN m.qty_base
-           WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID')
+           WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
              AND m.movement_type='ADJUSTMENT_OUT' THEN -m.qty_base
            ELSE 0
          END
@@ -204,7 +204,7 @@ if(view==='OPENING'){
                AND m.movement_type='ADJUSTMENT_IN' THEN m.qty_base*m.unit_cost_rp
              WHEN m.source_type='OPENING_REVISION'
                AND m.movement_type='ADJUSTMENT_OUT' THEN -m.qty_base*m.unit_cost_rp
-             WHEN m.source_type='OPENING_VOID'
+             WHEN m.source_type IN('OPENING_VOID','OPENING_RESET')
                AND m.movement_type='ADJUSTMENT_OUT' THEN -m.qty_base*m.unit_cost_rp
              ELSE 0
            END
@@ -220,7 +220,7 @@ if(view==='OPENING'){
        AND (
          m.movement_type='OPENING'
          OR (
-           m.source_type IN('OPENING_REVISION','OPENING_VOID')
+           m.source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
            AND m.movement_type IN('ADJUSTMENT_IN','ADJUSTMENT_OUT')
          )
        )
@@ -230,9 +230,9 @@ if(view==='OPENING'){
      HAVING COALESCE(SUM(
        CASE
          WHEN m.movement_type='OPENING' THEN m.qty_base
-         WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID')
+         WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
            AND m.movement_type='ADJUSTMENT_IN' THEN m.qty_base
-         WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID')
+         WHEN m.source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
            AND m.movement_type='ADJUSTMENT_OUT' THEN -m.qty_base
          ELSE 0
        END
@@ -247,7 +247,20 @@ if(view==='OPENING'){
 }
 
 if(view==='OPENING_HISTORY'){
+  const latestReset=T(
+    sql.exec(
+      `SELECT COALESCE(MAX(created_at),'') resetAt
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND date_key='2026-07-28'
+         AND source_type='OPENING_RESET'
+         AND movement_type='ADJUSTMENT_OUT'`
+    ).toArray()[0]?.resetAt,
+    80
+  );
+
   const rows=sql.exec(
+
     `SELECT
        m.source_key postingNo,
        m.date_key dateKey,
@@ -291,10 +304,11 @@ if(view==='OPENING_HISTORY'){
     const posted=N(r.postedQtyBase);
     const voided=N(r.voidedQtyBase);
     const net=Math.max(0,posted-voided);
+    const createdAt=T(r.createdAt,80);
     return{
       ...r,
       netQtyBase:net,
-      status:net<=1e-9?'VOID':'ACTIVE'
+      status:latestReset&&createdAt&&createdAt<=latestReset?'RESET':net<=1e-9?'VOID':'ACTIVE'
     };
   });
 
@@ -583,9 +597,9 @@ if(cmd==='SET_OPENING_BALANCE'){
         `SELECT COALESCE(SUM(
            CASE
              WHEN movement_type='OPENING' THEN qty_base
-             WHEN source_type IN('OPENING_REVISION','OPENING_VOID')
+             WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
                AND movement_type='ADJUSTMENT_IN' THEN qty_base
-             WHEN source_type IN('OPENING_REVISION','OPENING_VOID')
+             WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
                AND movement_type='ADJUSTMENT_OUT' THEN -qty_base
              ELSE 0
            END
@@ -678,6 +692,161 @@ if(cmd==='SET_OPENING_BALANCE'){
       dateKey:date,
       mode:'SET_TOTAL',
       changes
+    };
+  });
+}
+
+/* RKN_PLASTIC_OPENING_RESET_ALL_V2M1 */
+if(cmd==='RESET_OPENING_BALANCE'){
+  mg(a);
+  const date='2026-07-28';
+  const period='2026-07';
+  open(sql,period);
+
+  const reason=T(p.reason,500);
+  const confirmToken=T(p.confirmToken,80).trim().toUpperCase();
+
+  if(!reason)throw Error('PLASTIC_REASON_REQUIRED');
+  if(confirmToken!=='RESET OPENING')throw Error('PLASTIC_OPENING_RESET_CONFIRMATION_REQUIRED');
+
+  return atomic(()=>{
+    const resetId=crypto.randomUUID();
+    const resetNo='OPEN-RESET-'+date.replaceAll('-','')+'-'+resetId.replaceAll('-','').slice(0,6).toUpperCase();
+    const t=now();
+
+    const rows=sql.exec(
+      `SELECT
+         variant_id variantId,
+         COALESCE(SUM(
+           CASE
+             WHEN movement_type='OPENING' THEN qty_base
+             WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+               AND movement_type='ADJUSTMENT_IN' THEN qty_base
+             WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+               AND movement_type='ADJUSTMENT_OUT' THEN -qty_base
+             ELSE 0
+           END
+         ),0) effectiveQty
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND date_key=?
+       GROUP BY variant_id
+       HAVING COALESCE(SUM(
+         CASE
+           WHEN movement_type='OPENING' THEN qty_base
+           WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+             AND movement_type='ADJUSTMENT_IN' THEN qty_base
+           WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+             AND movement_type='ADJUSTMENT_OUT' THEN -qty_base
+           ELSE 0
+         END
+       ),0) > 0.0000001
+       ORDER BY variant_id`,
+      date
+    ).toArray();
+
+    const prepared:any[]=[];
+
+    for(const raw of rows){
+      const variantId=T(raw.variantId,160);
+      const effectiveQty=N(raw.effectiveQty);
+
+      if(effectiveQty<=1e-9)continue;
+
+      const b=sql.exec(
+        `SELECT qty_base,avg_cost_rp
+         FROM plastic_inventory_balance
+         WHERE business_unit_id='BU-PLASTIC'
+           AND variant_id=?
+         LIMIT 1`,
+        variantId
+      ).toArray()[0];
+
+      const currentQty=N(b?.qty_base);
+      const avgCost=I(b?.avg_cost_rp);
+
+      if(currentQty+1e-9<effectiveQty){
+        throw Error('PLASTIC_OPENING_RESET_INSUFFICIENT_BALANCE:'+variantId);
+      }
+
+      prepared.push({
+        variantId,
+        effectiveQty,
+        currentQty,
+        avgCost,
+      });
+    }
+
+    let resetQtyBase=0;
+
+    for(const row of prepared){
+      const nextQty=Math.max(0,row.currentQty-row.effectiveQty);
+
+      sql.exec(
+        `INSERT INTO plastic_inventory_balance(
+           business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at
+         ) VALUES('BU-PLASTIC',?,?,?,?)
+         ON CONFLICT(business_unit_id,variant_id)
+         DO UPDATE SET
+           qty_base=excluded.qty_base,
+           avg_cost_rp=excluded.avg_cost_rp,
+           updated_at=excluded.updated_at`,
+        row.variantId,
+        nextQty,
+        nextQty>0?row.avgCost:0,
+        t
+      ).toArray();
+
+      sql.exec(
+        `INSERT INTO plastic_inventory_movement(
+           movement_id,business_unit_id,variant_id,period_key,date_key,
+           movement_type,qty_base,unit_cost_rp,source_type,source_key,
+           actor_user_id,note,occurred_at,created_at
+         ) VALUES(?,'BU-PLASTIC',?,?,?,'ADJUSTMENT_OUT',?,?,?,?,?,?,?,?)`,
+        crypto.randomUUID(),
+        row.variantId,
+        period,
+        date,
+        row.effectiveQty,
+        row.avgCost,
+        'OPENING_RESET',
+        resetNo,
+        a.id,
+        'RESET OPENING / '+reason,
+        t,
+        t
+      ).toArray();
+
+      resetQtyBase+=row.effectiveQty;
+    }
+
+    audit(
+      sql,
+      a,
+      'PLASTIC_OPENING_BALANCE_RESET_ALL',
+      'PLASTIC_OPENING_BALANCE',
+      resetId,
+      reason,
+      {
+        resetNo,
+        date,
+        variantCount:prepared.length,
+        resetQtyBase,
+        variants:prepared.map((row:any)=>({
+          variantId:row.variantId,
+          resetBase:row.effectiveQty,
+        })),
+      }
+    );
+
+    return{
+      ok:true,
+      resetId,
+      resetNo,
+      dateKey:date,
+      variantCount:prepared.length,
+      resetQtyBase,
+      mode:'RESET_ALL'
     };
   });
 }

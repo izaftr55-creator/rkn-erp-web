@@ -1212,6 +1212,51 @@ function OpeningStock({
     setHistoryRows([]);
     setHistoryVariantId("");
   };
+  /* RKN_PLASTIC_OPENING_RESET_ALL_UI_V2M1 */
+  const resetAllOpening = async () => {
+    if (typeof window === "undefined") return;
+
+    if (!rows.length) {
+      window.alert("Opening Stock sudah kosong.");
+      return;
+    }
+
+    const reason = window.prompt(
+      "Alasan reset seluruh Opening Stock? Semua saldo opening aktif akan direversal agar kamu bisa input ulang dari awal."
+    );
+
+    if (!reason?.trim()) return;
+
+    const confirmToken = window.prompt(
+      'Ketik persis "RESET OPENING" untuk melanjutkan.'
+    );
+
+    if (String(confirmToken || "").trim().toUpperCase() !== "RESET OPENING") {
+      window.alert("Reset dibatalkan. Konfirmasi tidak cocok.");
+      return;
+    }
+
+    const ok = window.confirm(
+      "Reset SEMUA Opening Stock aktif sekarang? Riwayat tetap tersimpan di Audit Trail."
+    );
+
+    if (!ok) return;
+
+    await run(
+      "RESET_OPENING_BALANCE",
+      {
+        reason: reason.trim(),
+        confirmToken: "RESET OPENING",
+      },
+      "OPENING"
+    );
+
+    setHistoryRows([]);
+    setHistoryVariantId("");
+    resetForm();
+  };
+
+
 
   return (
     <>
@@ -1415,6 +1460,17 @@ function OpeningStock({
             </div>
 
             <div className={styles.actions}>
+              {!editVariantId && rows.length ? (
+                <button
+                  type="button"
+                  className={styles.inlineDangerButton}
+                  disabled={busy}
+                  onClick={resetAllOpening}
+                >
+                  Reset Semua Opening
+                </button>
+              ) : null}
+
               {editVariantId ? (
                 <button
                   type="button"
