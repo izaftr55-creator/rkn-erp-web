@@ -804,7 +804,28 @@ export default function PlasticTradingApp({
   const canClose =
     actor.isSystemAdmin || actor.accessLevel === "OWNER";
 
-  const loadMasters = useCallback(async () => {
+
+  /* RKN_PLASTIC_ROLE_LOGOUT_V2R1 */
+  const plasticAccessLabel =
+    actor.isSystemAdmin
+      ? "OWNER"
+      : actor.accessLevel === "OWNER"
+        ? "OWNER"
+        : actor.accessLevel === "VIEW"
+          ? "READ ONLY"
+          : humanizeDisplay(actor.accessLevel || "-");
+
+  const plasticRoleLabel =
+    actor.isSystemAdmin
+      ? "SYSTEM ADMIN"
+      : String(actor.roleCode || "").toUpperCase() ===
+          "SUPERVISORY_BOARD"
+        ? "SUPERVISORY BOARD"
+        : actor.accessLevel === "OWNER"
+          ? "OWNER"
+          : humanizeDisplay(actor.roleCode || "-");
+
+const loadMasters = useCallback(async () => {
     try {
       const [productData, customerData] = await Promise.all([
         read("PRODUCTS", period),
@@ -996,9 +1017,9 @@ export default function PlasticTradingApp({
 
         <div className={styles.sidebarBottom}>
           <div className={styles.accessCard}>
-            <span>AKSES</span>
-            <strong>{humanizeDisplay(actor.accessLevel)}</strong>
-            <small>{humanizeDisplay(actor.roleCode)}</small>
+            <span>PLASTIC ACCESS</span>
+            <strong>{plasticAccessLabel}</strong>
+            <small>{plasticRoleLabel}</small>
           </div>
 
           <div className={styles.userCard}>
@@ -1011,7 +1032,39 @@ export default function PlasticTradingApp({
             </div>
           </div>
 
-          {actor.isSystemAdmin ? (
+                    <form
+            action="/api/rkn/native-logout"
+            method="post"
+            className={styles.logoutForm}
+            onSubmit={() => {
+              if (typeof window !== "undefined") {
+                window.localStorage.removeItem(
+                  "rkn-plastic-active-tab"
+                );
+                window.localStorage.removeItem(
+                  "rkn-plastic-active-period"
+                );
+              }
+            }}
+          >
+            <button
+              type="submit"
+              className={styles.logoutButton}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4" />
+                <path d="M14 8l4 4-4 4" />
+                <path d="M18 12H9" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </form>
+
+{actor.isSystemAdmin ? (
             <Link className={styles.adminLink} href="/">
               Kembali ke System Admin
             </Link>
@@ -3512,6 +3565,16 @@ function Opname({
 }) {
   /* RKN_PLASTIC_SO_SEQUENTIAL_UI_V2Q8 */
   const active = data.active || null;
+
+  /* RKN_PLASTIC_SO_DATE_VISIBILITY_V2Q81 */
+  const formatSoDate = (value: unknown) => {
+    const raw = String(value || "");
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+
+    if (!match) return raw || "-";
+
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  };
   const lines = Array.isArray(data.activeLines)
     ? data.activeLines
     : [];
@@ -3914,7 +3977,9 @@ function Opname({
             <div>
               <span>{active.status}</span>
               <strong>{active.soNo}</strong>
-              <small>{active.dateKey}</small>
+              <small>
+                Tanggal SO · {formatSoDate(active.dateKey)}
+              </small>
             </div>
 
             <div>
@@ -3938,6 +4003,18 @@ function Opname({
                 title="Input Fisik"
                 subtitle="Masukkan satu per satu. Angka sistem disembunyikan sampai Review."
               >
+                <div className={styles.soDateStrip}>
+                  <div>
+                    <span>Tanggal SO</span>
+                    <strong>
+                      {formatSoDate(active.dateKey)}
+                    </strong>
+                  </div>
+                  <small>
+                    Tanggal ini berlaku untuk seluruh item fisik
+                    dalam sesi SO ini.
+                  </small>
+                </div>
                 <div className={styles.soEntryGrid}>
                   <VariantPicker
                     products={lines}
@@ -4018,6 +4095,11 @@ function Opname({
                 <DataTable
                   rows={countedRows}
                   columns={[
+                    [
+                      "soDate",
+                      "Tanggal",
+                      () => formatSoDate(active.dateKey),
+                    ],
                     ["productName", "Produk"],
                     ["color", "Warna"],
                     [

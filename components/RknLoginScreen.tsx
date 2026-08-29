@@ -157,9 +157,10 @@ export default function RknLoginScreen() {
         <form
           className={styles.form}
           onSubmit={handleSubmit}
-        
+
         action="/api/rkn/native-login"
         method="post">
+          {/* RKN_LOGIN_ROLE_FINAL_UI_V2R1 */}
           <label className={styles.field}>
             <span>USERNAME</span>
 
@@ -322,7 +323,7 @@ export default function RknLoginScreen() {
                 disabled={busy}
               >
                 <option value="" disabled>
-                  Pilih workspace dan role
+                  Pilih workspace
                 </option>
 
                 <option value="MARKETPLACE_ADMIN">
@@ -337,12 +338,9 @@ export default function RknLoginScreen() {
                   Plastic Trading - Owner
                 </option>
 
-                <option value="PLASTIC_ADMIN">
-                  Plastic Trading - Admin
-                </option>
 
-                <option value="PLASTIC_SUPERVISOR">
-                  Plastic Trading - Supervisi
+<option value="PLASTIC_SUPERVISOR">
+                  Plastic Trading - Supervisory Board
                 </option>
               </select>
 
