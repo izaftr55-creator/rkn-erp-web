@@ -782,7 +782,8 @@ export default function PlasticTradingApp({
 }: {
   initialDashboard: Row;
 }) {
-  const [tab, setTab] = useState("DASHBOARD");
+  /* RKN_PLASTIC_NAV_NO_FLICKER_V2Q82 */
+  const [tab, setTab] = useState("");
   const [period, setPeriod] = useState(
     String(initialDashboard.periodKey || today().slice(0, 7))
   );
@@ -866,12 +867,13 @@ const loadMasters = useCallback(async () => {
       "rkn-plastic-active-period"
     );
 
-    if (
+    const restoredTab =
       savedTab &&
       menus.some(([key]) => key === savedTab)
-    ) {
-      setTab(savedTab);
-    }
+        ? savedTab
+        : "DASHBOARD";
+
+    setTab(restoredTab);
 
     if (
       savedPeriod &&
@@ -952,6 +954,15 @@ const loadMasters = useCallback(async () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const currentMenu = menus.find(([key]) => key === tab);
+
+  if (!navigationReady) {
+    return (
+      <div
+        className={styles.navigationBootGate}
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <div className={styles.shell}>
