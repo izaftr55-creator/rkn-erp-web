@@ -731,14 +731,18 @@ function DataTable({
         <tbody>
           {rows.map((row, index) => (
             <tr
-              key={
+              key={`${
+                row.lineId ||
+                row.paymentId ||
+                row.movementId ||
+                row.opnameLineId ||
                 row.variantId ||
                 row.customerId ||
                 row.invoiceId ||
                 row.inboundId ||
                 row.id ||
-                index
-              }
+                "row"
+              }-${index}`}
             >
               {columns.map(([key, , render]) => (
                 <td key={key}>
