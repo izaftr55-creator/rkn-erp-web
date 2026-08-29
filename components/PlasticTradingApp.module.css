@@ -3440,3 +3440,406 @@
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
+
+
+
+/* =========================================================
+   RKN_PLASTIC_TRANSACTION_PRECISION_V2Q2
+   Final transaction geometry:
+   Opening / Masuk / Keluar / transaction edit rows.
+   ========================================================= */
+
+/* One baseline for every form field. */
+.field {
+  min-width: 0 !important;
+  width: 100% !important;
+  align-self: start !important;
+}
+
+.fieldLabel {
+  min-height: 13px !important;
+  margin-bottom: 5px !important;
+  line-height: 1.2 !important;
+}
+
+.field input,
+.field select {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  box-sizing: border-box !important;
+}
+
+/* ---------------- OUTBOUND HEADER ---------------- */
+
+.outboundHeaderGrid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+.outboundHeaderGrid > * {
+  min-width: 0 !important;
+}
+
+.outboundWideField {
+  grid-column: 1 / -1 !important;
+}
+
+.outboundHeaderGrid .simpleInfoCard {
+  width: 100% !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  align-self: end !important;
+  box-sizing: border-box !important;
+}
+
+/* ---------------- INBOUND HEADER ---------------- */
+
+.inboundHeaderGrid {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: minmax(190px, 3fr) minmax(0, 9fr) !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+
+.inboundHeaderGrid > * {
+  min-width: 0 !important;
+}
+
+/* ---------------- ITEM SECTION ---------------- */
+
+.lineSection {
+  width: 100% !important;
+  display: grid !important;
+  gap: 8px !important;
+}
+
+.lineSectionHead {
+  width: 100% !important;
+  min-height: 48px !important;
+  height: auto !important;
+  padding: 8px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.lineSectionHead > div,
+.lineSectionHead > strong {
+  min-width: 0 !important;
+}
+
+.lineSectionHead .secondaryButton {
+  flex: 0 0 auto !important;
+}
+
+/*
+  The picker is one grid cell containing:
+  Produk / Warna / Ukuran.
+  Qty / UOM / Harga-HPP are separate cells.
+*/
+.lineItem {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 10px !important;
+  display: grid !important;
+  grid-template-columns:
+    30px
+    minmax(0, 1.72fr)
+    minmax(105px, .42fr)
+    minmax(125px, .50fr)
+    minmax(150px, .62fr)
+    56px !important;
+  column-gap: 9px !important;
+  row-gap: 7px !important;
+  align-items: end !important;
+  align-content: start !important;
+  box-sizing: border-box !important;
+}
+
+.lineItem > * {
+  min-width: 0 !important;
+}
+
+.lineNo {
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  align-self: end !important;
+}
+
+/* Global product / color / size picker. */
+.lineItem .variantPicker,
+.variantPicker {
+  width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns:
+    minmax(0, 1.55fr)
+    minmax(0, .90fr)
+    minmax(0, .95fr) !important;
+  gap: 8px !important;
+  align-items: start !important;
+}
+
+.variantPicker > * {
+  min-width: 0 !important;
+}
+
+.itemProduct {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/*
+  Old compact-price rule made HPP/Harga appear detached from the
+  transaction grid. Inside an item row it must fill its assigned cell.
+*/
+.lineItem .moneyField,
+.lineItem .moneyField input {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.itemAction {
+  width: 56px !important;
+  min-width: 56px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  align-self: end !important;
+}
+
+.itemAction:empty {
+  visibility: hidden !important;
+}
+
+/* ---------------- OUTBOUND TOTAL BAR ---------------- */
+
+/*
+  Do not stretch Subtotal / Discount / Total across the full panel.
+  It becomes one compact accounting strip on the right.
+*/
+.saleSummary {
+  width: min(100%, 760px) !important;
+  max-width: 760px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  margin: 8px 0 0 auto !important;
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns:
+    minmax(170px, 1fr)
+    minmax(180px, .85fr)
+    minmax(170px, 1fr) !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.saleSummary > div {
+  min-width: 0 !important;
+  min-height: 64px !important;
+  height: 64px !important;
+  padding: 9px 11px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  border: 1px solid #1d3554 !important;
+  border-radius: 10px !important;
+  background: #0b1a2b !important;
+  box-sizing: border-box !important;
+}
+
+.saleSummary > .field {
+  justify-content: center !important;
+}
+
+.saleSummary > .field .fieldLabel {
+  margin-bottom: 4px !important;
+}
+
+.saleSummary > .field input {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+}
+
+.saleSummary span {
+  margin: 0 !important;
+  font-size: 8px !important;
+  line-height: 1.15 !important;
+  letter-spacing: .07em !important;
+}
+
+.saleSummary strong {
+  margin: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+}
+
+.saleGrand {
+  align-items: flex-end !important;
+  justify-self: stretch !important;
+  text-align: right !important;
+}
+
+/* Keep action button visually attached to the accounting strip. */
+.saleSummary + .actions {
+  width: min(100%, 760px) !important;
+  margin: 7px 0 0 auto !important;
+  justify-content: flex-end !important;
+}
+
+/* Other forms still use their full panel action width. */
+.formStack > .actions:not(.saleSummary + .actions) {
+  margin-top: 7px !important;
+}
+
+/* ---------------- HISTORY TABLES ---------------- */
+
+.tableWrap {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.dataTable {
+  width: 100% !important;
+}
+
+.dataTable th,
+.dataTable td {
+  vertical-align: middle !important;
+}
+
+/* ---------------- DESKTOP LARGE ---------------- */
+
+@media (min-width: 1500px) {
+  .lineItem {
+    grid-template-columns:
+      30px
+      minmax(0, 1.78fr)
+      minmax(115px, .40fr)
+      minmax(135px, .48fr)
+      minmax(165px, .60fr)
+      56px !important;
+  }
+}
+
+/* ---------------- TABLET / SMALL DESKTOP ---------------- */
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .outboundHeaderGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .outboundWideField {
+    grid-column: 1 / -1 !important;
+  }
+
+  .inboundHeaderGrid {
+    grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr) !important;
+  }
+
+  .lineItem {
+    grid-template-columns:
+      30px
+      minmax(0, 1fr)
+      minmax(105px, .35fr)
+      minmax(125px, .42fr)
+      minmax(150px, .50fr)
+      56px !important;
+  }
+
+  .lineItem .variantPicker,
+  .variantPicker {
+    grid-template-columns:
+      minmax(0, 1.35fr)
+      minmax(0, .90fr)
+      minmax(0, .95fr) !important;
+  }
+
+  .saleSummary,
+  .saleSummary + .actions {
+    width: min(100%, 690px) !important;
+    max-width: 690px !important;
+  }
+}
+
+/* ---------------- MOBILE ---------------- */
+
+@media (max-width: 820px) {
+  .outboundHeaderGrid,
+  .inboundHeaderGrid,
+  .lineItem,
+  .lineItem .variantPicker,
+  .variantPicker,
+  .saleSummary {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .outboundWideField {
+    grid-column: auto !important;
+  }
+
+  .lineNo {
+    display: none !important;
+  }
+
+  .itemAction {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    justify-content: stretch !important;
+  }
+
+  .itemAction > button {
+    width: 100% !important;
+  }
+
+  .saleSummary,
+  .saleSummary + .actions {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+  }
+
+  .saleSummary > div {
+    min-height: 58px !important;
+    height: auto !important;
+  }
+
+  .saleGrand {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  .saleSummary + .actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .saleSummary + .actions > button {
+    width: 100% !important;
+  }
+}

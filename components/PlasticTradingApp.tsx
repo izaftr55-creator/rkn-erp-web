@@ -2778,7 +2778,7 @@ function Outbound({
           }
         >
           <form onSubmit={submit} className={styles.formStack}>
-            <div className={styles.formGrid4}>
+            <div className={styles.outboundHeaderGrid}>
               <Field label="Tanggal">
                 <input
                   required
@@ -2846,7 +2846,7 @@ function Outbound({
                 </Field>
               ) : null}
 
-              <Field label="Catatan">
+              <Field label="Catatan" className={styles.outboundWideField}>
                 <input
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
@@ -2854,7 +2854,7 @@ function Outbound({
               </Field>
 
               {editInvoiceId ? (
-                <Field label="Alasan Edit">
+                <Field label="Alasan Edit" className={styles.outboundWideField}>
                   <input
                     required
                     value={editReason}
