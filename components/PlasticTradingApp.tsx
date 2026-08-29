@@ -1073,7 +1073,7 @@ export default function PlasticTradingApp({
 
 {tab === "OPNAME" ? (
             <Opname
-              rows={data.rows || []}
+              data={data}
               products={products}
               canManage={canManage}
               busy={busy}
@@ -1124,18 +1124,41 @@ export default function PlasticTradingApp({
 }
 
 function Dashboard({ data }: { data: Row }) {
-  /* RKN_PLASTIC_DASHBOARD_UI_V2O */
+  /* RKN_PLASTIC_DASHBOARD_CHART_UI_V2P */
   const metrics = data.metrics || {};
+  const so = data.soBalance || {};
+  const daily = Array.isArray(data.salesDaily)
+    ? [...data.salesDaily].reverse()
+    : [];
   const topReceivables = Array.isArray(data.topReceivables)
     ? data.topReceivables
     : [];
 
+  const maxSales = Math.max(
+    1,
+    ...daily.map((row: Row) => Number(row.salesRp || 0))
+  );
+
+  const totalSo = Number(so.total || 0);
+  const balancePct = Number(so.balancePct || 0);
+  const lessPct =
+    totalSo > 0
+      ? (Number(so.less || 0) / totalSo) * 100
+      : 0;
+  const morePct =
+    totalSo > 0
+      ? (Number(so.more || 0) / totalSo) * 100
+      : 0;
+
   return (
-    <>
+    <div className={styles.dashboardShell}>
       <section className={styles.metricGrid}>
         <MetricCard
           label="Stock Value"
           value={money.format(Number(metrics.stockValueRp || 0))}
+          note={`${qtyFmt.format(
+            Number(metrics.skuCount || 0)
+          )} SKU aktif`}
         />
         <MetricCard
           label="Piutang"
@@ -1149,6 +1172,101 @@ function Dashboard({ data }: { data: Row }) {
           label="Gross Profit"
           value={money.format(Number(metrics.grossProfitRp || 0))}
         />
+      </section>
+
+      <section className={styles.dashboardCharts}>
+        <Panel
+          title="System Balance"
+          subtitle={
+            so.dateKey
+              ? `SO terakhir ${so.dateKey}`
+              : "Belum ada hasil SO"
+          }
+        >
+          <div className={styles.soChart}>
+            <div className={styles.soChartTop}>
+              <strong>{balancePct}%</strong>
+              <span>
+                {Number(so.balance || 0)} / {totalSo} SKU balance
+              </span>
+            </div>
+
+            <div className={styles.soSegmentBar}>
+              <span
+                className={styles.soBalanceSegment}
+                style={{ width: `${balancePct}%` }}
+              />
+              <span
+                className={styles.soLessSegment}
+                style={{ width: `${lessPct}%` }}
+              />
+              <span
+                className={styles.soMoreSegment}
+                style={{ width: `${morePct}%` }}
+              />
+            </div>
+
+            <div className={styles.soLegend}>
+              <div>
+                <i className={styles.legendBalance} />
+                <span>Balance</span>
+                <strong>{Number(so.balance || 0)}</strong>
+              </div>
+              <div>
+                <i className={styles.legendLess} />
+                <span>Kurang</span>
+                <strong>{Number(so.less || 0)}</strong>
+              </div>
+              <div>
+                <i className={styles.legendMore} />
+                <span>Lebih</span>
+                <strong>{Number(so.more || 0)}</strong>
+              </div>
+            </div>
+
+            {data.activeSo ? (
+              <div className={styles.activeSoStrip}>
+                <span>SO Aktif</span>
+                <strong>
+                  {data.activeSo.soNo} / {data.activeSo.status}
+                </strong>
+              </div>
+            ) : null}
+          </div>
+        </Panel>
+
+        <Panel title="Sales Harian" subtitle="14 hari transaksi terakhir.">
+          {daily.length ? (
+            <div className={styles.salesBars}>
+              {daily.map((row: Row) => {
+                const value = Number(row.salesRp || 0);
+                const height = Math.max(
+                  5,
+                  Math.round((value / maxSales) * 100)
+                );
+
+                return (
+                  <div
+                    className={styles.salesBarItem}
+                    key={String(row.dateKey)}
+                    title={`${row.dateKey} / ${money.format(value)}`}
+                  >
+                    <div className={styles.salesBarTrack}>
+                      <span style={{ height: `${height}%` }} />
+                    </div>
+                    <small>
+                      {String(row.dateKey || "").slice(8, 10)}
+                    </small>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.chartEmpty}>
+              Belum ada sales periode ini.
+            </div>
+          )}
+        </Panel>
       </section>
 
       <Panel title="Piutang Customer">
@@ -1174,7 +1292,7 @@ function Dashboard({ data }: { data: Row }) {
           ]}
         />
       </Panel>
-    </>
+    </div>
   );
 }
 
@@ -3316,103 +3434,558 @@ function Receivables({
 }
 
 function Opname({
-  rows,
+  data,
   products,
   canManage,
   busy,
   run,
 }: {
-  rows: Row[];
+  data: Row;
   products: Row[];
   canManage: boolean;
   busy: boolean;
   run: any;
 }) {
-  const [variantId, setVariantId] = useState("");
-  const [physicalQty, setPhysicalQty] = useState("");
-  const [reason, setReason] = useState("");
+  /* RKN_PLASTIC_SO_WORKFLOW_UI_V2P */
+  const active = data.active || null;
+  const lines = Array.isArray(data.activeLines)
+    ? data.activeLines
+    : [];
+  const sessions = Array.isArray(data.sessions)
+    ? data.sessions
+    : [];
+  const history = Array.isArray(data.rows) ? data.rows : [];
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    run(
-      "POST_OPNAME",
+  const defaultDate = `${String(
+    data.periodKey || today().slice(0, 7)
+  )}-28`;
+
+  const [soDate, setSoDate] = useState(defaultDate);
+  const [startReason, setStartReason] =
+    useState("Stock Opname Bulanan");
+  const [postReason, setPostReason] = useState("");
+  const [physical, setPhysical] = useState<
+    Record<
+      string,
       {
-        dateKey: today(),
-        reason,
-        lines: [
-          {
-            variantId,
-            physicalQtyBase: Number(physicalQty || 0),
-          },
-        ],
+        pack: string;
+        mid: string;
+        base: string;
+        note: string;
+        entered: boolean;
+      }
+    >
+  >({});
+
+  const decompose = (row: Row, total: number) => {
+    const packFactor = Math.max(
+      1,
+      Number(row.unitsPerPack || 1)
+    );
+    const midFactor = Math.max(
+      1,
+      Number(row.unitsPerMid || 1)
+    );
+    const hasPack = Boolean(row.packUnit);
+    const hasMid = Boolean(row.midUnit);
+
+    let rest = Math.max(0, Number(total || 0));
+    let pack = 0;
+    let mid = 0;
+
+    if (hasPack) {
+      pack = Math.floor(rest / packFactor);
+      rest -= pack * packFactor;
+    }
+
+    if (hasMid) {
+      mid = Math.floor(rest / midFactor);
+      rest -= mid * midFactor;
+    }
+
+    return {
+      pack: pack ? String(pack) : "",
+      mid: mid ? String(mid) : "",
+      base: rest ? String(rest) : "",
+    };
+  };
+
+  useEffect(() => {
+    const next: Record<
+      string,
+      {
+        pack: string;
+        mid: string;
+        base: string;
+        note: string;
+        entered: boolean;
+      }
+    > = {};
+
+    for (const row of lines) {
+      const entered = Number(row.physicalEntered || 0) === 1;
+      const parts = entered
+        ? decompose(row, Number(row.physicalQtyBase || 0))
+        : { pack: "", mid: "", base: "" };
+
+      next[String(row.variantId)] = {
+        ...parts,
+        note: String(row.note || ""),
+        entered,
+      };
+    }
+
+    setPhysical(next);
+  }, [active?.soId, lines.length]);
+
+  const composePhysical = (row: Row) => {
+    const state = physical[String(row.variantId)] || {
+      pack: "",
+      mid: "",
+      base: "",
+      note: "",
+      entered: false,
+    };
+
+    return (
+      Number(state.pack || 0) *
+        Math.max(1, Number(row.unitsPerPack || 1)) +
+      Number(state.mid || 0) *
+        Math.max(1, Number(row.unitsPerMid || 1)) +
+      Number(state.base || 0)
+    );
+  };
+
+  const systemText = (row: Row) => {
+    const parts = decompose(
+      row,
+      Number(row.systemQtyBase || 0)
+    );
+
+    return [
+      row.packUnit
+        ? `${parts.pack || "0"} ${row.packUnit}`
+        : "",
+      row.midUnit
+        ? `${parts.mid || "0"} ${row.midUnit}`
+        : "",
+      `${parts.base || "0"} ${row.baseUnit || ""}`,
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  };
+
+  const statusOf = (row: Row) => {
+    const state = physical[String(row.variantId)];
+    if (!state?.entered) return "BELUM DIHITUNG";
+
+    const diff =
+      composePhysical(row) - Number(row.systemQtyBase || 0);
+
+    if (Math.abs(diff) < 0.000001) return "BALANCE";
+    return diff > 0 ? "LEBIH" : "KURANG";
+  };
+
+  const updatePart = (
+    variantId: string,
+    key: "pack" | "mid" | "base" | "note",
+    value: string
+  ) => {
+    setPhysical((current) => ({
+      ...current,
+      [variantId]: {
+        pack: current[variantId]?.pack || "",
+        mid: current[variantId]?.mid || "",
+        base: current[variantId]?.base || "",
+        note: current[variantId]?.note || "",
+        entered:
+          key === "note"
+            ? current[variantId]?.entered || false
+            : true,
+        [key]: value,
+      },
+    }));
+  };
+
+  const payloadLines = () =>
+    lines
+      .filter(
+        (row: Row) =>
+          physical[String(row.variantId)]?.entered
+      )
+      .map((row: Row) => ({
+        variantId: row.variantId,
+        physicalQtyBase: composePhysical(row),
+        note:
+          physical[String(row.variantId)]?.note || "",
+      }));
+
+  const allEntered =
+    lines.length > 0 &&
+    lines.every(
+      (row: Row) =>
+        physical[String(row.variantId)]?.entered
+    );
+
+  const startSo = async () => {
+    await run(
+      "START_SO_SESSION",
+      {
+        dateKey: soDate,
+        reason: startReason.trim() || "Stock Opname",
       },
       "OPNAME"
     );
   };
 
+  const saveDraft = async () => {
+    const payload = payloadLines();
+
+    if (!payload.length) {
+      window.alert("Isi minimal satu hasil fisik.");
+      return;
+    }
+
+    await run(
+      "SAVE_SO_DRAFT",
+      { soId: active.soId, lines: payload },
+      "OPNAME"
+    );
+  };
+
+  const reviewSo = async () => {
+    if (!allEntered) {
+      window.alert("Semua SKU harus dihitung sebelum Review.");
+      return;
+    }
+
+    await run(
+      "REVIEW_SO_SESSION",
+      { soId: active.soId, lines: payloadLines() },
+      "OPNAME"
+    );
+  };
+
+  const postSo = async () => {
+    if (!postReason.trim()) {
+      window.alert("Alasan posting adjustment wajib diisi.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Post hasil SO? Selisih akan menjadi adjustment stok."
+      )
+    ) {
+      return;
+    }
+
+    await run(
+      "POST_SO_ADJUSTMENT",
+      {
+        soId: active.soId,
+        reason: postReason.trim(),
+      },
+      "OPNAME"
+    );
+
+    setPostReason("");
+  };
+
+  const physicalInput = (row: Row) => {
+    const id = String(row.variantId);
+    const state = physical[id] || {
+      pack: "",
+      mid: "",
+      base: "",
+      note: "",
+      entered: false,
+    };
+
+    return (
+      <div className={styles.soQtyInputs}>
+        {row.packUnit ? (
+          <label>
+            <span>{row.packUnit}</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={state.pack}
+              disabled={!canManage || active?.status === "POSTED"}
+              onChange={(event) =>
+                updatePart(id, "pack", event.target.value)
+              }
+            />
+          </label>
+        ) : null}
+
+        {row.midUnit ? (
+          <label>
+            <span>{row.midUnit}</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={state.mid}
+              disabled={!canManage || active?.status === "POSTED"}
+              onChange={(event) =>
+                updatePart(id, "mid", event.target.value)
+              }
+            />
+          </label>
+        ) : null}
+
+        <label>
+          <span>{row.baseUnit || "BASE"}</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={state.base}
+            disabled={!canManage || active?.status === "POSTED"}
+            onChange={(event) =>
+              updatePart(id, "base", event.target.value)
+            }
+          />
+        </label>
+      </div>
+    );
+  };
+
   return (
     <>
-      {canManage ? (
+      {!active ? (
         <Panel
-          title="Stock Opname"
-          subtitle="Input stok fisik dalam base unit dan sistem akan membuat adjustment."
+          title="Mulai Stock Opname"
+          subtitle="Snapshot stok sistem dibuat saat SO dimulai."
         >
-          <form onSubmit={submit} className={styles.formStack}>
-            <div className={styles.formGrid3}>
-              <VariantPicker
-                products={products}
-                value={variantId}
-                onChange={(nextVariantId) =>
-                  setVariantId(nextVariantId)
+          <div className={styles.soStartGrid}>
+            <Field label="Tanggal SO">
+              <input
+                type="date"
+                value={soDate}
+                onChange={(event) =>
+                  setSoDate(event.target.value)
                 }
               />
-              <Field label="Stok Fisik / Base Unit">
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={physicalQty}
-                  onChange={(event) =>
-                    setPhysicalQty(event.target.value)
-                  }
-                />
-              </Field>
-              <Field label="Alasan">
-                <input
-                  required
-                  value={reason}
-                  onChange={(event) =>
-                    setReason(event.target.value)
-                  }
-                />
-              </Field>
-            </div>
-            <div className={styles.actions}>
-              <button className={styles.primaryButton} disabled={busy}>
-                Posting Opname
+            </Field>
+
+            <Field label="Catatan">
+              <input
+                value={startReason}
+                onChange={(event) =>
+                  setStartReason(event.target.value)
+                }
+              />
+            </Field>
+
+            <div className={styles.soStartAction}>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                disabled={busy || !canManage}
+                onClick={startSo}
+              >
+                Mulai SO
               </button>
             </div>
-          </form>
+          </div>
         </Panel>
-      ) : null}
+      ) : (
+        <>
+          <div className={styles.soSessionHead}>
+            <div>
+              <span>{active.status}</span>
+              <strong>{active.soNo}</strong>
+              <small>{active.dateKey}</small>
+            </div>
 
-      <Panel
-        title="Riwayat Stock Opname"
-        subtitle="Selisih stok fisik dan stok sistem."
-      >
+            <div>
+              <span>Progress</span>
+              <strong>
+                {
+                  lines.filter(
+                    (row: Row) =>
+                      physical[String(row.variantId)]?.entered
+                  ).length
+                }{" "}
+                / {lines.length} SKU
+              </strong>
+            </div>
+          </div>
+
+          <Panel
+            title="Input Fisik"
+            subtitle="Isi hasil hitung fisik. Selisih dihitung otomatis."
+          >
+            <DataTable
+              rows={lines}
+              columns={[
+                ["productName", "Produk"],
+                ["color", "Warna"],
+                [
+                  "size",
+                  "Ukuran / Varian",
+                  (row) => row.size || row.productName || "-",
+                ],
+                [
+                  "system",
+                  "System",
+                  (row) => systemText(row),
+                ],
+                [
+                  "physical",
+                  "Fisik",
+                  (row) => physicalInput(row),
+                ],
+                [
+                  "physicalTotal",
+                  "Total Fisik",
+                  (row) =>
+                    physical[String(row.variantId)]?.entered
+                      ? `${qtyFmt.format(
+                          composePhysical(row)
+                        )} ${row.baseUnit || ""}`
+                      : "-",
+                ],
+                [
+                  "variance",
+                  "Selisih",
+                  (row) =>
+                    physical[String(row.variantId)]?.entered
+                      ? `${qtyFmt.format(
+                          composePhysical(row) -
+                            Number(row.systemQtyBase || 0)
+                        )} ${row.baseUnit || ""}`
+                      : "-",
+                ],
+                [
+                  "status",
+                  "Status",
+                  (row) => statusOf(row),
+                ],
+                [
+                  "note",
+                  "Catatan",
+                  (row) => {
+                    const id = String(row.variantId);
+                    return (
+                      <input
+                        className={styles.soNoteInput}
+                        value={physical[id]?.note || ""}
+                        disabled={!canManage}
+                        onChange={(event) =>
+                          updatePart(
+                            id,
+                            "note",
+                            event.target.value
+                          )
+                        }
+                      />
+                    );
+                  },
+                ],
+              ]}
+            />
+
+            {canManage ? (
+              <div className={styles.soActionBar}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={busy}
+                  onClick={saveDraft}
+                >
+                  Simpan Draft
+                </button>
+
+                {active.status === "DRAFT" ? (
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    disabled={busy || !allEntered}
+                    onClick={reviewSo}
+                  >
+                    Review
+                  </button>
+                ) : null}
+
+                {active.status === "REVIEW" ? (
+                  <>
+                    <input
+                      className={styles.soPostReason}
+                      placeholder="Alasan adjustment"
+                      value={postReason}
+                      onChange={(event) =>
+                        setPostReason(event.target.value)
+                      }
+                    />
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={busy || !postReason.trim()}
+                      onClick={postSo}
+                    >
+                      Post Adjustment
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </Panel>
+        </>
+      )}
+
+      <Panel title="Riwayat SO">
         <DataTable
-          rows={rows}
+          rows={sessions}
           columns={[
-            ["opnameNo", "SO"],
             ["dateKey", "Tanggal"],
+            ["soNo", "No. SO"],
+            ["status", "Status"],
+            ["totalSku", "SKU"],
+            ["countedSku", "Dihitung"],
+            ["balanceSku", "Balance"],
+            ["lessSku", "Kurang"],
+            ["moreSku", "Lebih"],
+          ]}
+        />
+      </Panel>
+
+      <Panel title="Hasil Posting">
+        <DataTable
+          rows={history}
+          columns={[
+            ["dateKey", "Tanggal"],
+            ["opnameNo", "No. SO"],
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
-            ["systemQtyBase", "System"],
-            ["physicalQtyBase", "Fisik"],
-            ["varianceQtyBase", "Selisih"],
-            ["reason", "Alasan"],
+            [
+              "systemQtyBase",
+              "System",
+              (row) =>
+                `${qtyFmt.format(
+                  Number(row.systemQtyBase || 0)
+                )} ${row.baseUnit || ""}`,
+            ],
+            [
+              "physicalQtyBase",
+              "Fisik",
+              (row) =>
+                `${qtyFmt.format(
+                  Number(row.physicalQtyBase || 0)
+                )} ${row.baseUnit || ""}`,
+            ],
+            [
+              "varianceQtyBase",
+              "Selisih",
+              (row) =>
+                `${qtyFmt.format(
+                  Number(row.varianceQtyBase || 0)
+                )} ${row.baseUnit || ""}`,
+            ],
           ]}
         />
       </Panel>
