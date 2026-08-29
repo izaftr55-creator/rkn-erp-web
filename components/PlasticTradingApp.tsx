@@ -312,6 +312,15 @@ const stockText = (row: Row) => {
   return parts.join(" + ");
 };
 
+/* RKN_PLASTIC_HUMANIZE_DISPLAY_V2O3 */
+function humanizeDisplay(value: unknown) {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value)
+    .replace(/_+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function Field({
   label,
   hint,
@@ -399,7 +408,7 @@ function DataTable({
                 <td key={key}>
                   {render
                     ? render(row)
-                    : String(row[key] ?? "-")}
+                    : humanizeDisplay(row[key])}
                 </td>
               ))}
             </tr>
@@ -600,8 +609,8 @@ export default function PlasticTradingApp({
         <div className={styles.sidebarBottom}>
           <div className={styles.accessCard}>
             <span>AKSES</span>
-            <strong>{actor.accessLevel || "-"}</strong>
-            <small>{actor.roleCode || "-"}</small>
+            <strong>{humanizeDisplay(actor.accessLevel)}</strong>
+            <small>{humanizeDisplay(actor.roleCode)}</small>
           </div>
 
           <div className={styles.userCard}>
@@ -682,7 +691,7 @@ export default function PlasticTradingApp({
                 : styles.noticeError
             }
           >
-            {message}
+            {humanizeDisplay(message)}
           </div>
         ) : null}
 
@@ -2237,12 +2246,23 @@ function Outbound({
         const price =
           Number(line.unitPriceRp || 0) ||
           defaultPrice(product, line.unit);
+        if (!line.variantId) return total;
         return total + Number(line.qty || 0) * price;
       }, 0),
     [lines, products]
   );
 
   const grand = Math.max(0, subtotal - Number(discountRp || 0));
+
+  const saleReady =
+    lines.length > 0 &&
+    lines.every(
+      (line) =>
+        Boolean(line.variantId) &&
+        Number(line.qty || 0) > 0 &&
+        Boolean(line.unit) &&
+        Number(line.unitPriceRp || 0) >= 0
+    );
 
   const resetForm = () => {
     setDateKey(today());
@@ -2534,6 +2554,7 @@ function Outbound({
                     <Field label="UOM">
                       <select
                         required
+                        disabled={!selected}
                         value={line.unit}
                         onChange={(event) => {
                           const next = [...lines];
@@ -2550,7 +2571,7 @@ function Outbound({
                           setLines(next);
                         }}
                       >
-                        <option value="">Unit</option>
+                        <option value="">Pilih UOM</option>
                         {units.map((unit) => (
                           <option key={unit}>{unit}</option>
                         ))}
@@ -2560,6 +2581,7 @@ function Outbound({
                     <Field label="Harga">
                       <input
                         required
+                        disabled={!selected}
                         type="number"
                         min="0"
                         value={line.unitPriceRp}
@@ -2627,7 +2649,10 @@ function Outbound({
                   Batal
                 </button>
               ) : null}
-              <button className={styles.primaryButton} disabled={busy}>
+              <button
+                className={styles.primaryButton}
+                disabled={busy || !saleReady}
+              >
                 {editInvoiceId ? "Simpan Edit" : "Simpan"}
               </button>
             </div>

@@ -1819,3 +1819,103 @@
     width: 100%;
   }
 }
+
+
+
+/* RKN_PLASTIC_GLOBAL_CLEAN_UX_V2O3 */
+
+/* Sidebar remains scrollable, native scrollbar hidden */
+.sidebar,
+.nav {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  scrollbar-gutter: auto !important;
+}
+
+.sidebar::-webkit-scrollbar,
+.nav::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-thumb,
+.nav::-webkit-scrollbar-track,
+.nav::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* Cleaner sales summary */
+.saleSummary {
+  min-height: 0 !important;
+  height: auto !important;
+  margin-top: 14px !important;
+  padding: 13px 14px !important;
+  display: grid !important;
+  grid-template-columns:
+    minmax(140px, 1fr)
+    minmax(180px, 240px)
+    minmax(150px, 1fr) !important;
+  align-items: end !important;
+  gap: 14px !important;
+  border-radius: 11px !important;
+}
+
+.saleSummary > div {
+  min-height: 44px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 4px !important;
+}
+
+.saleSummary span {
+  display: block !important;
+  margin: 0 !important;
+  font-size: 8px !important;
+  line-height: 1.2 !important;
+}
+
+.saleSummary strong {
+  display: block !important;
+  margin: 0 !important;
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+}
+
+.saleGrand {
+  align-items: flex-end !important;
+  text-align: right !important;
+}
+
+/* Product must be chosen first */
+.field select:disabled,
+.field input:disabled {
+  cursor: not-allowed !important;
+  opacity: .48 !important;
+  background: rgba(7, 18, 31, .72) !important;
+}
+
+.saleSummary + .actions {
+  margin-top: 10px !important;
+}
+
+/* Cleaner access card */
+.accessCard strong,
+.accessCard small {
+  overflow-wrap: anywhere !important;
+}
+
+@media (max-width: 820px) {
+  .saleSummary {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .saleGrand {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+}
