@@ -1623,3 +1623,170 @@
     height: 18px !important;
   }
 }
+
+
+/* RKN_PLASTIC_V2N3_CLEAN_SPACING
+   Global clean spacing + aligned primary/danger actions.
+*/
+
+/* Page breathing room */
+.main {
+  padding-top: 22px !important;
+  padding-right: 18px !important;
+  padding-bottom: 30px !important;
+  padding-left: 18px !important;
+}
+
+.topbar {
+  margin-bottom: 16px !important;
+  border-radius: 14px !important;
+}
+
+.content {
+  display: grid !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+}
+
+/* Avoid stacked panels touching each other */
+.content > section,
+.content > div,
+.content > article {
+  min-width: 0 !important;
+}
+
+.panel {
+  margin: 0 !important;
+  border-radius: 14px !important;
+}
+
+.panel + .panel {
+  margin-top: 0 !important;
+}
+
+/* Cleaner internal rhythm */
+.formStack {
+  gap: 16px !important;
+}
+
+.lineSection {
+  margin-top: 2px !important;
+}
+
+.lineSectionHead {
+  margin-bottom: 12px !important;
+}
+
+/* All action rows aligned consistently */
+.actions {
+  margin-top: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Same physical height for Reset / Post / Save / Edit buttons */
+.actions .primaryButton,
+.actions .secondaryButton,
+.actions .inlineDangerButton,
+.actions .inlineEditButton,
+.actions .iconDanger {
+  min-height: 40px !important;
+  height: 40px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1 !important;
+  border-radius: 9px !important;
+  white-space: nowrap !important;
+}
+
+/* Opening Reset + Tambah Opening sit on one clean baseline */
+.actions .inlineDangerButton + .primaryButton,
+.actions .secondaryButton + .primaryButton {
+  margin-left: 0 !important;
+}
+
+/* Keep form footer visually separated from fields */
+.formStack > .actions {
+  padding-top: 2px !important;
+}
+
+/* Tablet */
+@media (min-width: 821px) and (max-width: 1100px) {
+  .main {
+    padding-top: 18px !important;
+    padding-right: 14px !important;
+    padding-bottom: 26px !important;
+    padding-left: 14px !important;
+  }
+
+  .topbar {
+    margin-bottom: 14px !important;
+  }
+
+  .content {
+    gap: 14px !important;
+  }
+}
+
+/* Mobile / HP */
+@media (max-width: 820px) {
+  .main {
+    padding-top: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: 22px !important;
+    padding-left: 10px !important;
+  }
+
+  .topbar {
+    margin-bottom: 10px !important;
+  }
+
+  .content {
+    gap: 10px !important;
+  }
+
+  .panel {
+    border-radius: 12px !important;
+  }
+
+  .actions {
+    margin-top: 14px !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .actions .primaryButton,
+  .actions .secondaryButton,
+  .actions .inlineDangerButton,
+  .actions .inlineEditButton,
+  .actions .iconDanger {
+    width: 100% !important;
+    min-height: 44px !important;
+    height: 44px !important;
+  }
+}
+
+/* Small HP */
+@media (max-width: 520px) {
+  .main {
+    padding-top: 8px !important;
+    padding-right: 8px !important;
+    padding-bottom: 18px !important;
+    padding-left: 8px !important;
+  }
+
+  .topbar {
+    margin-bottom: 8px !important;
+  }
+
+  .content {
+    gap: 8px !important;
+  }
+}
