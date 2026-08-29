@@ -3843,3 +3843,434 @@
     width: 100% !important;
   }
 }
+
+
+
+/* =========================================================
+   RKN_PLASTIC_ROW_FLATTEN_ALIGNMENT_V2Q4
+   Exact field-by-field transaction alignment.
+   Opening / Masuk / Keluar / edit rows.
+   ========================================================= */
+
+/*
+  Root cause:
+  VariantPicker is a nested 3-column grid inside one .lineItem cell,
+  while Qty/UOM/HPP are sibling cells. That makes label/input baselines
+  visually drift even when overall widths are correct.
+
+  Fix:
+  On desktop/tablet, flatten VariantPicker into the parent CSS grid so
+  Produk / Warna / Ukuran / Qty / UOM / Harga-HPP are all direct cells.
+*/
+
+@media (min-width: 1280px) {
+  .lineItem {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns:
+      32px
+      minmax(220px, 1.48fr)
+      minmax(130px, .80fr)
+      minmax(130px, .80fr)
+      minmax(88px, .48fr)
+      minmax(112px, .58fr)
+      minmax(145px, .72fr)
+      64px !important;
+    column-gap: 9px !important;
+    row-gap: 0 !important;
+    align-items: start !important;
+    align-content: start !important;
+    padding: 10px !important;
+  }
+
+  .lineItem > .variantPicker {
+    display: contents !important;
+  }
+
+  .lineItem > .variantPicker > .field,
+  .lineItem > .field {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    align-self: start !important;
+    justify-self: stretch !important;
+  }
+
+  .lineItem > .variantPicker > .field .fieldLabel,
+  .lineItem > .field .fieldLabel {
+    min-height: 13px !important;
+    margin: 0 0 5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .lineItem > .variantPicker > .field input,
+  .lineItem > .variantPicker > .field select,
+  .lineItem > .field input,
+  .lineItem > .field select {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .lineItem .moneyField,
+  .lineItem .moneyField input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .lineNo {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 42px !important;
+    margin: 18px 0 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    align-self: start !important;
+  }
+
+  .itemAction {
+    width: 64px !important;
+    min-width: 64px !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    margin-top: 18px !important;
+    align-self: start !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+
+  .itemAction:empty {
+    visibility: hidden !important;
+  }
+}
+
+/* Opening header: exact 1/3 + 2/3 geometry. */
+.formGrid3 {
+  width: 100% !important;
+}
+
+@media (min-width: 1280px) {
+  .formGrid3 {
+    grid-template-columns:
+      minmax(260px, .50fr)
+      minmax(0, 1.50fr) !important;
+    gap: 10px !important;
+    align-items: start !important;
+  }
+
+  .formGrid3 > .customerField {
+    grid-column: auto !important;
+  }
+}
+
+/* Barang Masuk header: date compact, note takes the remaining row. */
+@media (min-width: 1280px) {
+  .inboundHeaderGrid {
+    grid-template-columns:
+      minmax(230px, .34fr)
+      minmax(0, 1.66fr) !important;
+    gap: 10px !important;
+    align-items: start !important;
+  }
+}
+
+/* Barang Keluar metadata: four equal cells + note full row. */
+@media (min-width: 1280px) {
+  .outboundHeaderGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    align-items: start !important;
+  }
+
+  .outboundWideField {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Line-section heading and footer share the same horizontal edges. */
+.lineSection,
+.lineSectionHead,
+.actions {
+  box-sizing: border-box !important;
+}
+
+.lineSectionHead {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+.actions {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+/* Tablet: still field-by-field, but use two visual rows when needed. */
+@media (min-width: 821px) and (max-width: 1279px) {
+  .lineItem {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns:
+      32px
+      minmax(180px, 1.35fr)
+      minmax(115px, .76fr)
+      minmax(115px, .76fr)
+      minmax(86px, .48fr)
+      minmax(105px, .56fr)
+      minmax(135px, .68fr)
+      60px !important;
+    column-gap: 8px !important;
+    row-gap: 0 !important;
+    align-items: start !important;
+  }
+
+  .lineItem > .variantPicker {
+    display: contents !important;
+  }
+
+  .lineItem > .variantPicker > .field,
+  .lineItem > .field {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .lineItem .moneyField,
+  .lineItem .moneyField input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .lineNo,
+  .itemAction {
+    margin-top: 18px !important;
+    align-self: start !important;
+  }
+
+  .formGrid3,
+  .inboundHeaderGrid {
+    grid-template-columns: minmax(190px, .45fr) minmax(0, 1.55fr) !important;
+  }
+
+  .outboundHeaderGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .outboundWideField {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Mobile: stacked, no flatten trick needed. */
+@media (max-width: 820px) {
+  .lineItem {
+    grid-template-columns: 1fr !important;
+    row-gap: 8px !important;
+  }
+
+  .lineItem > .variantPicker {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .lineNo {
+    display: none !important;
+  }
+
+  .itemAction {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin-top: 0 !important;
+    justify-content: stretch !important;
+  }
+
+  .itemAction > button {
+    width: 100% !important;
+  }
+
+  .formGrid3,
+  .inboundHeaderGrid,
+  .outboundHeaderGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .outboundWideField {
+    grid-column: auto !important;
+  }
+}
+
+
+
+/* =========================================================
+   RKN_PLASTIC_GLOBAL_SELECT_LEDGER_POLISH_V2Q5
+   Global select normalization + compact Ledger Customer filter.
+   CSS ONLY. No transaction / payment logic changes.
+   ========================================================= */
+
+/* Every select in Plastic Trading must visually match the dark workspace. */
+.shell select {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  height: 42px !important;
+  padding: 0 34px 0 11px !important;
+
+  border: 1px solid #25466d !important;
+  border-radius: 9px !important;
+
+  background-color: #071522 !important;
+  color: #f4f8ff !important;
+  color-scheme: dark !important;
+
+  font: inherit !important;
+  font-weight: 700 !important;
+  line-height: 40px !important;
+
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.shell select:hover {
+  border-color: #376a9f !important;
+  background-color: #0a1a2b !important;
+}
+
+.shell select:focus {
+  border-color: #4b8bd1 !important;
+  background-color: #071522 !important;
+  box-shadow: 0 0 0 2px rgba(75, 139, 209, .14) !important;
+}
+
+.shell select:disabled {
+  border-color: #1a314e !important;
+  background-color: #091624 !important;
+  color: #52657e !important;
+  opacity: 1 !important;
+}
+
+/* Native dropdown options. */
+.shell select option {
+  background-color: #071522 !important;
+  color: #f4f8ff !important;
+}
+
+/* Browser painting guards. */
+.shell select:-webkit-autofill,
+.shell select:-webkit-autofill:hover,
+.shell select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4f8ff !important;
+  -webkit-box-shadow: 0 0 0 1000px #071522 inset !important;
+  transition: background-color 99999s ease-out 0s !important;
+}
+
+/* =========================================================
+   Ledger Customer
+   ========================================================= */
+
+.ledgerFilter {
+  width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.ledgerFilter select {
+  width: 280px !important;
+  max-width: 100% !important;
+
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 32px 0 11px !important;
+
+  border: 1px solid #27486f !important;
+  border-radius: 9px !important;
+
+  background-color: #071522 !important;
+  color: #f4f8ff !important;
+
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 38px !important;
+}
+
+/* Avoid giant empty Ledger Customer panel. */
+.ledgerFilter + .emptyState,
+.ledgerFilter ~ .emptyState {
+  width: 100% !important;
+  min-height: 86px !important;
+  height: auto !important;
+  padding: 14px !important;
+}
+
+/* Payment history action buttons stay neat. */
+.tableActions {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+}
+
+.tableActions .inlineEditButton,
+.tableActions .inlineDangerButton {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 0 10px !important;
+  white-space: nowrap !important;
+}
+
+/* =========================================================
+   Other standalone filters
+   ========================================================= */
+
+.panel > select,
+.panelHead + select {
+  width: min(100%, 320px) !important;
+}
+
+/* =========================================================
+   Mobile
+   ========================================================= */
+
+@media (max-width: 820px) {
+  .ledgerFilter {
+    width: 100% !important;
+  }
+
+  .ledgerFilter select,
+  .panel > select,
+  .panelHead + select {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .tableActions {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .tableActions .inlineEditButton,
+  .tableActions .inlineDangerButton {
+    width: 100% !important;
+    min-height: 40px !important;
+    height: 40px !important;
+  }
+}
