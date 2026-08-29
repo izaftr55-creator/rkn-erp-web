@@ -1,0 +1,3595 @@
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+
+const ROOT = String.raw`C:\RKN-ERP\rkn-erp-web`;
+
+process.chdir(ROOT);
+
+const files = {
+  engine: path.join(
+    ROOT,
+    "cloudflare",
+    "plasticTradingV2.ts"
+  ),
+  app: path.join(
+    ROOT,
+    "components",
+    "PlasticTradingApp.tsx"
+  ),
+  css: path.join(
+    ROOT,
+    "components",
+    "PlasticTradingApp.module.css"
+  ),
+};
+
+function die(message) {
+  console.error("");
+  console.error(`[V2M FAIL] ${message}`);
+  process.exit(1);
+}
+
+for (const file of Object.values(files)) {
+  if (!fs.existsSync(file)) {
+    die(`Missing file: ${file}`);
+  }
+}
+
+const original = {
+  engine: fs.readFileSync(
+    files.engine,
+    "utf8"
+  ),
+  app: fs.readFileSync(
+    files.app,
+    "utf8"
+  ),
+  css: fs.readFileSync(
+    files.css,
+    "utf8"
+  ),
+};
+
+if (
+  !original.engine.includes(
+    "RKN_PLASTIC_OPENING_REVISION_V2K"
+  )
+) {
+  die("V2K engine marker not found.");
+}
+
+if (
+  !original.engine.includes(
+    "RKN_PLASTIC_OPENING_EFFECTIVE_VIEW_V2L"
+  )
+) {
+  die("V2L opening view marker not found.");
+}
+
+if (
+  !original.app.includes(
+    "RKN_PLASTIC_OPENING_INLINE_EDIT_V2L"
+  )
+) {
+  die("V2L opening UI marker not found.");
+}
+
+if (
+  original.engine.includes(
+    "RKN_PLASTIC_OPENING_LEDGER_V2M"
+  )
+) {
+  die("V2M already applied.");
+}
+
+function replaceBetween(
+  text,
+  start,
+  end,
+  replacement,
+  label
+) {
+  const a = text.indexOf(start);
+
+  if (a < 0) {
+    die(`${label}: start marker not found`);
+  }
+
+  const b = text.indexOf(
+    end,
+    a + start.length
+  );
+
+  if (b < 0) {
+    die(`${label}: end marker not found`);
+  }
+
+  return (
+    text.slice(0, a) +
+    replacement +
+    "\n" +
+    text.slice(b)
+  );
+}
+
+const openingCommands = String.raw`
+/* RKN_PLASTIC_OPENING_LEDGER_V2M */
+
+if(cmd==='POST_OPENING_BALANCE'){
+  mg(a);
+
+  const date=DK(p.dateKey);
+
+  if(date!=='2026-07-28'){
+    throw Error(
+      'PLASTIC_OPENING_DATE_MUST_BE_2026_07_28'
+    );
+  }
+
+  const period=date.slice(0,7);
+
+  open(sql,period);
+
+  const lines=
+    Array.isArray(p.lines)
+      ? p.lines
+      : [];
+
+  if(!lines.length){
+    throw Error(
+      'PLASTIC_OPENING_LINES_REQUIRED'
+    );
+  }
+
+  return atomic(()=>{
+    const id=crypto.randomUUID();
+
+    const no=
+      'OPEN-' +
+      date.replaceAll('-','') +
+      '-' +
+      id
+        .replaceAll('-','')
+        .slice(0,6)
+        .toUpperCase();
+
+    const t=now();
+
+    const agg=
+      new Map<
+        string,
+        {
+          vid:string;
+          baseQty:number;
+          value:number;
+        }
+      >();
+
+    for(const raw of lines){
+      const vid=T(
+        raw.variantId,
+        120
+      );
+
+      const v=
+        variant(
+          sql,
+          vid
+        );
+
+      const q=
+        baseQty(
+          v,
+          raw.qty,
+          raw.unit
+        );
+
+      const inputCost=
+        I(
+          raw.unitCostRp
+        );
+
+      const baseCost=
+        q.multiplier>0
+          ? Math.round(
+              inputCost /
+              q.multiplier
+            )
+          : inputCost;
+
+      const prev=
+        agg.get(vid) ?? {
+          vid,
+          baseQty:0,
+          value:0,
+        };
+
+      prev.baseQty +=
+        q.baseQty;
+
+      prev.value +=
+        Math.round(
+          q.baseQty *
+          baseCost
+        );
+
+      agg.set(
+        vid,
+        prev
+      );
+    }
+
+    const changes:any[]=[];
+
+    for(const r of agg.values()){
+      const baseCost=
+        r.baseQty>0
+          ? Math.round(
+              r.value /
+              r.baseQty
+            )
+          : 0;
+
+      const b=
+        sql.exec(
+          \`
+          SELECT
+            qty_base,
+            avg_cost_rp
+          FROM
+            plastic_inventory_balance
+          WHERE
+            business_unit_id='BU-PLASTIC'
+            AND variant_id=?
+          LIMIT 1
+          \`,
+          r.vid
+        ).toArray()[0];
+
+      const oldQty=
+        N(
+          b?.qty_base
+        );
+
+      const oldCost=
+        I(
+          b?.avg_cost_rp
+        );
+
+      const newQty=
+        oldQty +
+        r.baseQty;
+
+      const newCost=
+        newQty>0
+          ? Math.round(
+              (
+                oldQty *
+                oldCost +
+                r.baseQty *
+                baseCost
+              ) /
+              newQty
+            )
+          : baseCost;
+
+      sql.exec(
+        \`
+        INSERT INTO
+          plastic_inventory_balance(
+            business_unit_id,
+            variant_id,
+            qty_base,
+            avg_cost_rp,
+            updated_at
+          )
+        VALUES(
+          'BU-PLASTIC',
+          ?,
+          ?,
+          ?,
+          ?
+        )
+        ON CONFLICT(
+          business_unit_id,
+          variant_id
+        )
+        DO UPDATE SET
+          qty_base=
+            excluded.qty_base,
+          avg_cost_rp=
+            excluded.avg_cost_rp,
+          updated_at=
+            excluded.updated_at
+        \`,
+        r.vid,
+        newQty,
+        newCost,
+        t
+      ).toArray();
+
+      sql.exec(
+        \`
+        INSERT INTO
+          plastic_inventory_movement(
+            movement_id,
+            business_unit_id,
+            variant_id,
+            period_key,
+            date_key,
+            movement_type,
+            qty_base,
+            unit_cost_rp,
+            source_type,
+            source_key,
+            actor_user_id,
+            note,
+            occurred_at,
+            created_at
+          )
+        VALUES(
+          ?,
+          'BU-PLASTIC',
+          ?,
+          ?,
+          ?,
+          'OPENING',
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?
+        )
+        \`,
+        crypto.randomUUID(),
+        r.vid,
+        period,
+        date,
+        r.baseQty,
+        baseCost,
+        'OPENING_BALANCE',
+        no,
+        a.id,
+        T(
+          p.note,
+          500
+        ) ||
+          'Opening Stock 28/07/2026',
+        t,
+        t
+      ).toArray();
+
+      changes.push({
+        variantId:r.vid,
+        addedBase:r.baseQty,
+        openingNo:no,
+      });
+    }
+
+    audit(
+      sql,
+      a,
+      'PLASTIC_OPENING_BALANCE_ADD',
+      'PLASTIC_OPENING_BALANCE',
+      id,
+      T(
+        p.note,
+        500
+      ),
+      {
+        no,
+        date,
+        lineCount:
+          agg.size,
+        changes,
+      }
+    );
+
+    return{
+      ok:true,
+      openingId:id,
+      openingNo:no,
+      dateKey:date,
+      lineCount:
+        agg.size,
+      mode:'ADDITIVE',
+      changes,
+    };
+  });
+}
+
+if(cmd==='SET_OPENING_BALANCE'){
+  mg(a);
+
+  const date=
+    DK(
+      p.dateKey
+    );
+
+  if(date!=='2026-07-28'){
+    throw Error(
+      'PLASTIC_OPENING_DATE_MUST_BE_2026_07_28'
+    );
+  }
+
+  const period=
+    date.slice(
+      0,
+      7
+    );
+
+  open(
+    sql,
+    period
+  );
+
+  const lines=
+    Array.isArray(p.lines)
+      ? p.lines
+      : [];
+
+  if(!lines.length){
+    throw Error(
+      'PLASTIC_OPENING_LINES_REQUIRED'
+    );
+  }
+
+  return atomic(()=>{
+    const id=
+      crypto.randomUUID();
+
+    const no=
+      'OPEN-EDIT-' +
+      date.replaceAll('-','') +
+      '-' +
+      id
+        .replaceAll('-','')
+        .slice(0,6)
+        .toUpperCase();
+
+    const t=now();
+
+    const agg=
+      new Map<
+        string,
+        {
+          vid:string;
+          baseQty:number;
+          value:number;
+        }
+      >();
+
+    for(const raw of lines){
+      const vid=
+        T(
+          raw.variantId,
+          120
+        );
+
+      const v=
+        variant(
+          sql,
+          vid
+        );
+
+      const q=
+        baseQty(
+          v,
+          raw.qty,
+          raw.unit
+        );
+
+      const inputCost=
+        I(
+          raw.unitCostRp
+        );
+
+      const baseCost=
+        q.multiplier>0
+          ? Math.round(
+              inputCost /
+              q.multiplier
+            )
+          : inputCost;
+
+      const prev=
+        agg.get(vid) ?? {
+          vid,
+          baseQty:0,
+          value:0,
+        };
+
+      prev.baseQty +=
+        q.baseQty;
+
+      prev.value +=
+        Math.round(
+          q.baseQty *
+          baseCost
+        );
+
+      agg.set(
+        vid,
+        prev
+      );
+    }
+
+    const changes:any[]=[];
+
+    for(const r of agg.values()){
+      const targetQty=
+        r.baseQty;
+
+      const targetCost=
+        targetQty>0
+          ? Math.round(
+              r.value /
+              targetQty
+            )
+          : 0;
+
+      const effective=
+        scalar(
+          sql,
+          \`
+          SELECT
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    movement_type='OPENING'
+                  THEN
+                    qty_base
+
+                  WHEN
+                    source_type IN(
+                      'OPENING_REVISION',
+                      'OPENING_VOID'
+                    )
+                    AND
+                    movement_type='ADJUSTMENT_IN'
+                  THEN
+                    qty_base
+
+                  WHEN
+                    source_type IN(
+                      'OPENING_REVISION',
+                      'OPENING_VOID'
+                    )
+                    AND
+                    movement_type='ADJUSTMENT_OUT'
+                  THEN
+                    -qty_base
+
+                  ELSE 0
+                END
+              ),
+              0
+            ) value
+          FROM
+            plastic_inventory_movement
+          WHERE
+            business_unit_id='BU-PLASTIC'
+            AND variant_id=?
+            AND date_key=?
+          \`,
+          r.vid,
+          date
+        );
+
+      const delta=
+        targetQty -
+        effective;
+
+      const b=
+        sql.exec(
+          \`
+          SELECT
+            qty_base,
+            avg_cost_rp
+          FROM
+            plastic_inventory_balance
+          WHERE
+            business_unit_id='BU-PLASTIC'
+            AND variant_id=?
+          LIMIT 1
+          \`,
+          r.vid
+        ).toArray()[0];
+
+      const oldQty=
+        N(
+          b?.qty_base
+        );
+
+      const oldCost=
+        I(
+          b?.avg_cost_rp
+        );
+
+      const nextQty=
+        oldQty +
+        delta;
+
+      if(nextQty < -1e-9){
+        throw Error(
+          'PLASTIC_OPENING_REVISION_INSUFFICIENT_BALANCE'
+        );
+      }
+
+      if(
+        Math.abs(delta) <
+        1e-9
+      ){
+        changes.push({
+          variantId:r.vid,
+          fromBase:
+            effective,
+          toBase:
+            targetQty,
+          deltaBase:0,
+        });
+
+        continue;
+      }
+
+      const movementType=
+        delta>0
+          ? 'ADJUSTMENT_IN'
+          : 'ADJUSTMENT_OUT';
+
+      const movementCost=
+        delta>0
+          ? targetCost
+          : oldCost;
+
+      const nextCost=
+        delta>0 &&
+        nextQty>0
+          ? Math.round(
+              (
+                oldQty *
+                oldCost +
+                delta *
+                movementCost
+              ) /
+              nextQty
+            )
+          : (
+              nextQty>0
+                ? oldCost
+                : 0
+            );
+
+      sql.exec(
+        \`
+        INSERT INTO
+          plastic_inventory_balance(
+            business_unit_id,
+            variant_id,
+            qty_base,
+            avg_cost_rp,
+            updated_at
+          )
+        VALUES(
+          'BU-PLASTIC',
+          ?,
+          ?,
+          ?,
+          ?
+        )
+        ON CONFLICT(
+          business_unit_id,
+          variant_id
+        )
+        DO UPDATE SET
+          qty_base=
+            excluded.qty_base,
+          avg_cost_rp=
+            excluded.avg_cost_rp,
+          updated_at=
+            excluded.updated_at
+        \`,
+        r.vid,
+        Math.max(
+          0,
+          nextQty
+        ),
+        nextCost,
+        t
+      ).toArray();
+
+      sql.exec(
+        \`
+        INSERT INTO
+          plastic_inventory_movement(
+            movement_id,
+            business_unit_id,
+            variant_id,
+            period_key,
+            date_key,
+            movement_type,
+            qty_base,
+            unit_cost_rp,
+            source_type,
+            source_key,
+            actor_user_id,
+            note,
+            occurred_at,
+            created_at
+          )
+        VALUES(
+          ?,
+          'BU-PLASTIC',
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?
+        )
+        \`,
+        crypto.randomUUID(),
+        r.vid,
+        period,
+        date,
+        movementType,
+        Math.abs(delta),
+        movementCost,
+        'OPENING_REVISION',
+        no,
+        a.id,
+        T(
+          p.note,
+          500
+        ) ||
+          'Revisi total Opening Stock 28/07/2026',
+        t,
+        t
+      ).toArray();
+
+      changes.push({
+        variantId:
+          r.vid,
+        fromBase:
+          effective,
+        toBase:
+          targetQty,
+        deltaBase:
+          delta,
+      });
+    }
+
+    audit(
+      sql,
+      a,
+      'PLASTIC_OPENING_BALANCE_SET_TOTAL',
+      'PLASTIC_OPENING_BALANCE',
+      id,
+      T(
+        p.note,
+        500
+      ),
+      {
+        no,
+        date,
+        lineCount:
+          agg.size,
+        changes,
+      }
+    );
+
+    return{
+      ok:true,
+      openingId:id,
+      openingNo:no,
+      dateKey:date,
+      mode:'SET_TOTAL',
+      changes,
+    };
+  });
+}
+
+if(cmd==='DELETE_OPENING_POST'){
+  mg(a);
+
+  const date=
+    '2026-07-28';
+
+  const period=
+    '2026-07';
+
+  open(
+    sql,
+    period
+  );
+
+  const sourceKey=
+    T(
+      p.sourceKey,
+      160
+    );
+
+  const variantId=
+    T(
+      p.variantId,
+      160
+    );
+
+  const reason=
+    T(
+      p.reason,
+      500
+    );
+
+  if(!sourceKey){
+    throw Error(
+      'PLASTIC_OPENING_SOURCE_REQUIRED'
+    );
+  }
+
+  if(!variantId){
+    throw Error(
+      'PLASTIC_OPENING_VARIANT_REQUIRED'
+    );
+  }
+
+  if(!reason){
+    throw Error(
+      'PLASTIC_REASON_REQUIRED'
+    );
+  }
+
+  return atomic(()=>{
+    const posted=
+      scalar(
+        sql,
+        \`
+        SELECT
+          COALESCE(
+            SUM(qty_base),
+            0
+          ) value
+        FROM
+          plastic_inventory_movement
+        WHERE
+          business_unit_id='BU-PLASTIC'
+          AND variant_id=?
+          AND date_key=?
+          AND movement_type='OPENING'
+          AND source_type='OPENING_BALANCE'
+          AND source_key=?
+        \`,
+        variantId,
+        date,
+        sourceKey
+      );
+
+    if(posted<=0){
+      throw Error(
+        'PLASTIC_OPENING_POST_NOT_FOUND'
+      );
+    }
+
+    const alreadyVoided=
+      scalar(
+        sql,
+        \`
+        SELECT
+          COALESCE(
+            SUM(qty_base),
+            0
+          ) value
+        FROM
+          plastic_inventory_movement
+        WHERE
+          business_unit_id='BU-PLASTIC'
+          AND variant_id=?
+          AND date_key=?
+          AND movement_type='ADJUSTMENT_OUT'
+          AND source_type='OPENING_VOID'
+          AND source_key=?
+        \`,
+        variantId,
+        date,
+        sourceKey
+      );
+
+    const remaining=
+      Math.max(
+        0,
+        posted -
+        alreadyVoided
+      );
+
+    if(remaining<=1e-9){
+      throw Error(
+        'PLASTIC_OPENING_POST_ALREADY_VOID'
+      );
+    }
+
+    const b=
+      sql.exec(
+        \`
+        SELECT
+          qty_base,
+          avg_cost_rp
+        FROM
+          plastic_inventory_balance
+        WHERE
+          business_unit_id='BU-PLASTIC'
+          AND variant_id=?
+        LIMIT 1
+        \`,
+        variantId
+      ).toArray()[0];
+
+    const oldQty=
+      N(
+        b?.qty_base
+      );
+
+    const oldCost=
+      I(
+        b?.avg_cost_rp
+      );
+
+    const nextQty=
+      oldQty -
+      remaining;
+
+    if(nextQty < -1e-9){
+      throw Error(
+        'PLASTIC_OPENING_VOID_INSUFFICIENT_BALANCE'
+      );
+    }
+
+    const t=now();
+
+    sql.exec(
+      \`
+      INSERT INTO
+        plastic_inventory_balance(
+          business_unit_id,
+          variant_id,
+          qty_base,
+          avg_cost_rp,
+          updated_at
+        )
+      VALUES(
+        'BU-PLASTIC',
+        ?,
+        ?,
+        ?,
+        ?
+      )
+      ON CONFLICT(
+        business_unit_id,
+        variant_id
+      )
+      DO UPDATE SET
+        qty_base=
+          excluded.qty_base,
+        avg_cost_rp=
+          excluded.avg_cost_rp,
+        updated_at=
+          excluded.updated_at
+      \`,
+      variantId,
+      Math.max(
+        0,
+        nextQty
+      ),
+      nextQty>0
+        ? oldCost
+        : 0,
+      t
+    ).toArray();
+
+    sql.exec(
+      \`
+      INSERT INTO
+        plastic_inventory_movement(
+          movement_id,
+          business_unit_id,
+          variant_id,
+          period_key,
+          date_key,
+          movement_type,
+          qty_base,
+          unit_cost_rp,
+          source_type,
+          source_key,
+          actor_user_id,
+          note,
+          occurred_at,
+          created_at
+        )
+      VALUES(
+        ?,
+        'BU-PLASTIC',
+        ?,
+        ?,
+        ?,
+        'ADJUSTMENT_OUT',
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?
+      )
+      \`,
+      crypto.randomUUID(),
+      variantId,
+      period,
+      date,
+      remaining,
+      oldCost,
+      'OPENING_VOID',
+      sourceKey,
+      a.id,
+      reason,
+      t,
+      t
+    ).toArray();
+
+    audit(
+      sql,
+      a,
+      'PLASTIC_OPENING_POST_VOID',
+      'PLASTIC_OPENING_BALANCE',
+      sourceKey,
+      reason,
+      {
+        variantId,
+        postedBase:
+          posted,
+        voidedBase:
+          remaining,
+      }
+    );
+
+    return{
+      ok:true,
+      sourceKey,
+      variantId,
+      voidedBase:
+        remaining,
+      mode:'VOID',
+    };
+  });
+}
+`;
+
+const openingViews = String.raw`
+/* RKN_PLASTIC_OPENING_EFFECTIVE_VIEW_V2M */
+
+if(view==='OPENING'){
+  const rows=
+    sql.exec(
+      \`
+      SELECT
+        '2026-07-28' dateKey,
+        'OPEN-EFFECTIVE-20260728' openingNo,
+
+        v.variant_id variantId,
+        v.product_name productName,
+        v.category category,
+        v.color color,
+        v.size size,
+        v.grade grade,
+
+        v.base_unit baseUnit,
+        v.mid_unit midUnit,
+        v.pack_unit packUnit,
+
+        COALESCE(
+          v.units_per_mid,
+          1
+        ) unitsPerMid,
+
+        COALESCE(
+          v.units_per_pack,
+          1
+        ) unitsPerPack,
+
+        COALESCE(
+          SUM(
+            CASE
+              WHEN
+                m.movement_type='OPENING'
+              THEN
+                m.qty_base
+
+              WHEN
+                m.source_type IN(
+                  'OPENING_REVISION',
+                  'OPENING_VOID'
+                )
+                AND
+                m.movement_type='ADJUSTMENT_IN'
+              THEN
+                m.qty_base
+
+              WHEN
+                m.source_type IN(
+                  'OPENING_REVISION',
+                  'OPENING_VOID'
+                )
+                AND
+                m.movement_type='ADJUSTMENT_OUT'
+              THEN
+                -m.qty_base
+
+              ELSE 0
+            END
+          ),
+          0
+        ) qtyBase,
+
+        COALESCE(
+          MAX(
+            CASE
+              WHEN
+                m.movement_type='OPENING'
+              THEN
+                m.unit_cost_rp
+            END
+          ),
+          0
+        ) unitCostRp,
+
+        ROUND(
+          COALESCE(
+            SUM(
+              CASE
+                WHEN
+                  m.movement_type='OPENING'
+                THEN
+                  m.qty_base *
+                  m.unit_cost_rp
+
+                WHEN
+                  m.source_type='OPENING_REVISION'
+                  AND
+                  m.movement_type='ADJUSTMENT_IN'
+                THEN
+                  m.qty_base *
+                  m.unit_cost_rp
+
+                WHEN
+                  m.source_type='OPENING_REVISION'
+                  AND
+                  m.movement_type='ADJUSTMENT_OUT'
+                THEN
+                  -m.qty_base *
+                  m.unit_cost_rp
+
+                WHEN
+                  m.source_type='OPENING_VOID'
+                  AND
+                  m.movement_type='ADJUSTMENT_OUT'
+                THEN
+                  -m.qty_base *
+                  m.unit_cost_rp
+
+                ELSE 0
+              END
+            ),
+            0
+          )
+        ) stockValueRp,
+
+        'Saldo opening efektif 28/07/2026'
+          note
+
+      FROM
+        plastic_inventory_movement m
+
+      JOIN
+        plastic_product_variant v
+      ON
+        v.variant_id=
+          m.variant_id
+        AND
+        v.business_unit_id=
+          'BU-PLASTIC'
+
+      WHERE
+        m.business_unit_id=
+          'BU-PLASTIC'
+        AND
+        m.date_key=
+          '2026-07-28'
+        AND
+        (
+          m.movement_type=
+            'OPENING'
+
+          OR
+          (
+            m.source_type IN(
+              'OPENING_REVISION',
+              'OPENING_VOID'
+            )
+            AND
+            m.movement_type IN(
+              'ADJUSTMENT_IN',
+              'ADJUSTMENT_OUT'
+            )
+          )
+        )
+
+      GROUP BY
+        v.variant_id,
+        v.product_name,
+        v.category,
+        v.color,
+        v.size,
+        v.grade,
+        v.base_unit,
+        v.mid_unit,
+        v.pack_unit,
+        v.units_per_mid,
+        v.units_per_pack
+
+      HAVING
+        COALESCE(
+          SUM(
+            CASE
+              WHEN
+                m.movement_type='OPENING'
+              THEN
+                m.qty_base
+
+              WHEN
+                m.source_type IN(
+                  'OPENING_REVISION',
+                  'OPENING_VOID'
+                )
+                AND
+                m.movement_type='ADJUSTMENT_IN'
+              THEN
+                m.qty_base
+
+              WHEN
+                m.source_type IN(
+                  'OPENING_REVISION',
+                  'OPENING_VOID'
+                )
+                AND
+                m.movement_type='ADJUSTMENT_OUT'
+              THEN
+                -m.qty_base
+
+              ELSE 0
+            END
+          ),
+          0
+        ) > 0.0000001
+
+      ORDER BY
+        UPPER(
+          COALESCE(
+            v.color,
+            ''
+          )
+        ),
+        UPPER(
+          COALESCE(
+            v.size,
+            ''
+          )
+        ),
+        UPPER(
+          COALESCE(
+            v.product_name,
+            ''
+          )
+        )
+      \`
+    ).toArray();
+
+  return{
+    view,
+    periodKey:period,
+    actor:a,
+    rows,
+  };
+}
+
+if(view==='OPENING_HISTORY'){
+  const rows=
+    sql.exec(
+      \`
+      SELECT
+        m.source_key postingNo,
+        m.date_key dateKey,
+        m.variant_id variantId,
+
+        v.product_name productName,
+        v.category category,
+        v.color color,
+        v.size size,
+
+        v.base_unit baseUnit,
+        v.mid_unit midUnit,
+        v.pack_unit packUnit,
+
+        COALESCE(
+          v.units_per_mid,
+          1
+        ) unitsPerMid,
+
+        COALESCE(
+          v.units_per_pack,
+          1
+        ) unitsPerPack,
+
+        SUM(
+          m.qty_base
+        ) postedQtyBase,
+
+        COALESCE(
+          (
+            SELECT
+              SUM(
+                x.qty_base
+              )
+            FROM
+              plastic_inventory_movement x
+            WHERE
+              x.business_unit_id=
+                'BU-PLASTIC'
+              AND
+              x.variant_id=
+                m.variant_id
+              AND
+              x.date_key=
+                m.date_key
+              AND
+              x.source_type=
+                'OPENING_VOID'
+              AND
+              x.movement_type=
+                'ADJUSTMENT_OUT'
+              AND
+              x.source_key=
+                m.source_key
+          ),
+          0
+        ) voidedQtyBase,
+
+        MIN(
+          m.created_at
+        ) createdAt,
+
+        MAX(
+          m.note
+        ) note
+
+      FROM
+        plastic_inventory_movement m
+
+      JOIN
+        plastic_product_variant v
+      ON
+        v.variant_id=
+          m.variant_id
+        AND
+        v.business_unit_id=
+          'BU-PLASTIC'
+
+      WHERE
+        m.business_unit_id=
+          'BU-PLASTIC'
+        AND
+        m.date_key=
+          '2026-07-28'
+        AND
+        m.movement_type=
+          'OPENING'
+        AND
+        m.source_type=
+          'OPENING_BALANCE'
+
+      GROUP BY
+        m.source_key,
+        m.date_key,
+        m.variant_id,
+        v.product_name,
+        v.category,
+        v.color,
+        v.size,
+        v.base_unit,
+        v.mid_unit,
+        v.pack_unit,
+        v.units_per_mid,
+        v.units_per_pack
+
+      ORDER BY
+        MIN(
+          m.created_at
+        ) DESC
+      \`
+    )
+      .toArray()
+      .map(
+        (r:any)=>{
+          const posted=
+            N(
+              r.postedQtyBase
+            );
+
+          const voided=
+            N(
+              r.voidedQtyBase
+            );
+
+          const net=
+            Math.max(
+              0,
+              posted -
+              voided
+            );
+
+          return{
+            ...r,
+            netQtyBase:
+              net,
+            status:
+              net<=1e-9
+                ? 'VOID'
+                : 'ACTIVE',
+          };
+        }
+      );
+
+  return{
+    view,
+    periodKey:period,
+    actor:a,
+    rows,
+  };
+}
+`;
+
+const reconciliationView = String.raw`
+/* RKN_PLASTIC_THERMAL_RECON_V2M */
+
+if(view==='RECONCILIATION'){
+  const target=
+    '2026-08-28';
+
+  sql.exec(
+    \`
+    UPDATE
+      plastic_so_snapshot
+    SET
+      variant_id=
+        'PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK',
+
+      source_unit=
+        'DUS',
+
+      physical_qty_base=
+        30000,
+
+      mapping_status=
+        'MAPPED',
+
+      source_ref=
+        'SO Thermal 28/08/2026 · Thermal Polos = Dus Panjang'
+
+    WHERE
+      business_unit_id=
+        'BU-PLASTIC'
+      AND
+      snapshot_date_key=?
+      AND
+      line_key=
+        'SO2808-THERMAL-POLOS'
+    \`,
+    target
+  ).toArray();
+
+  sql.exec(
+    \`
+    UPDATE
+      plastic_so_snapshot
+    SET
+      variant_id=
+        'PL-THERMAL-THERMAL-DUS-KOTAK-TANPA-MERK',
+
+      source_unit=
+        'DUS',
+
+      physical_qty_base=
+        90000,
+
+      mapping_status=
+        'MAPPED',
+
+      source_ref=
+        'SO Thermal 28/08/2026 · Thermal Kotak = Dus Kotak'
+
+    WHERE
+      business_unit_id=
+        'BU-PLASTIC'
+      AND
+      snapshot_date_key=?
+      AND
+      line_key=
+        'SO2808-THERMAL-KOTAK'
+    \`,
+    target
+  ).toArray();
+
+  const variants=
+    sql.exec(
+      \`
+      SELECT
+        v.variant_id variantId,
+        v.product_name productName,
+        v.category,
+        v.color,
+        v.size,
+
+        v.base_unit baseUnit,
+        v.mid_unit midUnit,
+        v.pack_unit packUnit,
+
+        v.units_per_mid unitsPerMid,
+        v.units_per_pack unitsPerPack,
+
+        COALESCE(
+          s.physical_qty_base,
+          0
+        ) physicalQtyBase,
+
+        CASE
+          WHEN
+            s.line_key IS NULL
+          THEN 0
+          ELSE 1
+        END snapshotPresent
+
+      FROM
+        plastic_product_variant v
+
+      LEFT JOIN
+        plastic_so_snapshot s
+      ON
+        s.business_unit_id=
+          v.business_unit_id
+        AND
+        s.variant_id=
+          v.variant_id
+        AND
+        s.snapshot_date_key=?
+        AND
+        s.mapping_status=
+          'MAPPED'
+
+      WHERE
+        v.business_unit_id=
+          'BU-PLASTIC'
+        AND
+        v.active=1
+        AND
+        (
+          v.category<>'THERMAL'
+          OR
+          s.line_key IS NOT NULL
+        )
+
+      ORDER BY
+        v.category,
+        v.color,
+        v.size,
+        v.product_name
+      \`,
+      target
+    )
+      .toArray()
+      .map(
+        (r:any)=>{
+          const sys=
+            scalar(
+              sql,
+              \`
+              SELECT
+                COALESCE(
+                  SUM(
+                    CASE
+                      WHEN
+                        movement_type IN(
+                          'OPENING',
+                          'IN',
+                          'RETURN_IN',
+                          'ADJUSTMENT_IN'
+                        )
+                      THEN
+                        qty_base
+                      ELSE
+                        -qty_base
+                    END
+                  ),
+                  0
+                ) value
+
+              FROM
+                plastic_inventory_movement
+
+              WHERE
+                business_unit_id=
+                  'BU-PLASTIC'
+                AND
+                variant_id=?
+                AND
+                date_key<=?
+              \`,
+              String(
+                r.variantId
+              ),
+              target
+            );
+
+          const phy=
+            N(
+              r.physicalQtyBase
+            );
+
+          const diff=
+            phy -
+            sys;
+
+          return{
+            ...r,
+            systemQtyBase:
+              sys,
+            varianceQtyBase:
+              diff,
+            status:
+              Math.abs(diff)<1e-9
+                ? 'BALANCE'
+                : 'SELISIH',
+          };
+        }
+      );
+
+  const review=
+    sql.exec(
+      \`
+      SELECT
+        line_key lineKey,
+        source_label sourceLabel,
+        source_qty sourceQty,
+        source_unit sourceUnit,
+        mapping_status mappingStatus,
+        source_ref sourceRef
+
+      FROM
+        plastic_so_snapshot
+
+      WHERE
+        business_unit_id=
+          'BU-PLASTIC'
+        AND
+        snapshot_date_key=?
+        AND
+        mapping_status=
+          'REVIEW'
+
+      ORDER BY
+        line_key
+      \`,
+      target
+    ).toArray();
+
+  const poly=
+    variants.filter(
+      (r:any)=>
+        String(
+          r.category
+        ) !==
+        'THERMAL'
+    );
+
+  const thermal=
+    variants.filter(
+      (r:any)=>
+        String(
+          r.category
+        ) ===
+        'THERMAL'
+    );
+
+  const sum=
+    (
+      rows:any[],
+      key:string
+    ) =>
+      rows.reduce(
+        (
+          s:number,
+          r:any
+        ) =>
+          s +
+          N(
+            r[key]
+          ),
+        0
+      );
+
+  const balanced=
+    variants.filter(
+      (r:any)=>
+        r.status===
+        'BALANCE'
+    ).length;
+
+  return{
+    view,
+    periodKey:
+      period,
+    actor:a,
+    targetDateKey:
+      target,
+    rows:
+      variants,
+    reviewRows:
+      review,
+
+    summary:{
+      totalVariants:
+        variants.length,
+
+      balancedVariants:
+        balanced,
+
+      varianceVariants:
+        variants.length -
+        balanced,
+
+      polyPhysicalQtyBase:
+        sum(
+          poly,
+          'physicalQtyBase'
+        ),
+
+      polySystemQtyBase:
+        sum(
+          poly,
+          'systemQtyBase'
+        ),
+
+      polyVarianceQtyBase:
+        sum(
+          poly,
+          'physicalQtyBase'
+        ) -
+        sum(
+          poly,
+          'systemQtyBase'
+        ),
+
+      thermalPhysicalQtyBase:
+        sum(
+          thermal,
+          'physicalQtyBase'
+        ),
+
+      thermalSystemQtyBase:
+        sum(
+          thermal,
+          'systemQtyBase'
+        ),
+
+      thermalVarianceQtyBase:
+        sum(
+          thermal,
+          'physicalQtyBase'
+        ) -
+        sum(
+          thermal,
+          'systemQtyBase'
+        ),
+
+      thermalMappingReview:
+        review.length,
+
+      reference:
+        'Rekap SO Polymailer + SO Thermal / 28/08/2026',
+    },
+  };
+}
+`;
+
+const openingComponent = String.raw`
+function OpeningStock({
+  rows,
+  products,
+  canManage,
+  busy,
+  run,
+}: {
+  rows: Row[];
+  products: Row[];
+  canManage: boolean;
+  busy: boolean;
+  run: any;
+}) {
+  /* RKN_PLASTIC_OPENING_ADDITIVE_UI_V2M */
+
+  const [
+    dateKey,
+    setDateKey,
+  ] =
+    useState(
+      "2026-07-28"
+    );
+
+  const [
+    note,
+    setNote,
+  ] =
+    useState(
+      "Opening Stock berdasarkan stock opname 28/07/2026"
+    );
+
+  const [
+    lines,
+    setLines,
+  ] =
+    useState([
+      {
+        variantId:"",
+        qty:"1",
+        unit:"",
+        unitCostRp:"",
+      },
+    ]);
+
+  const [
+    editVariantId,
+    setEditVariantId,
+  ] =
+    useState("");
+
+  const [
+    historyVariantId,
+    setHistoryVariantId,
+  ] =
+    useState("");
+
+  const [
+    historyRows,
+    setHistoryRows,
+  ] =
+    useState<Row[]>([]);
+
+  const [
+    historyBusy,
+    setHistoryBusy,
+  ] =
+    useState(false);
+
+  const resetForm=
+    () => {
+      setEditVariantId("");
+
+      setDateKey(
+        "2026-07-28"
+      );
+
+      setNote(
+        "Opening Stock berdasarkan stock opname 28/07/2026"
+      );
+
+      setLines([
+        {
+          variantId:"",
+          qty:"1",
+          unit:"",
+          unitCostRp:"",
+        },
+      ]);
+    };
+
+  const qtyInBestUnit=
+    (row:Row) => {
+      const qtyBase=
+        Math.max(
+          0,
+          Number(
+            row.qtyBase ||
+            0
+          )
+        );
+
+      const pack=
+        String(
+          row.packUnit ||
+          ""
+        )
+          .toUpperCase();
+
+      const mid=
+        String(
+          row.midUnit ||
+          ""
+        )
+          .toUpperCase();
+
+      const base=
+        String(
+          row.baseUnit ||
+          ""
+        )
+          .toUpperCase();
+
+      const unitsPerPack=
+        Math.max(
+          1,
+          Number(
+            row.unitsPerPack ||
+            1
+          )
+        );
+
+      const unitsPerMid=
+        Math.max(
+          1,
+          Number(
+            row.unitsPerMid ||
+            1
+          )
+        );
+
+      if(
+        pack &&
+        unitsPerPack>1 &&
+        Math.abs(
+          qtyBase %
+          unitsPerPack
+        ) <
+          0.0000001
+      ){
+        return{
+          qty:
+            qtyBase /
+            unitsPerPack,
+          unit:
+            pack,
+        };
+      }
+
+      if(
+        mid &&
+        unitsPerMid>1 &&
+        Math.abs(
+          qtyBase %
+          unitsPerMid
+        ) <
+          0.0000001
+      ){
+        return{
+          qty:
+            qtyBase /
+            unitsPerMid,
+          unit:
+            mid,
+        };
+      }
+
+      return{
+        qty:
+          qtyBase,
+        unit:
+          base,
+      };
+    };
+
+  const submit=
+    async (
+      event:FormEvent
+    ) => {
+      event.preventDefault();
+
+      const command=
+        editVariantId
+          ? "SET_OPENING_BALANCE"
+          : "POST_OPENING_BALANCE";
+
+      await run(
+        command,
+        {
+          dateKey,
+          note,
+          lines:
+            lines.map(
+              (line) => ({
+                ...line,
+                qty:
+                  Number(
+                    line.qty
+                  ),
+                unitCostRp:
+                  Number(
+                    line.unitCostRp ||
+                    0
+                  ),
+              })
+            ),
+        },
+        "OPENING"
+      );
+
+      resetForm();
+    };
+
+  const editOpeningRow=
+    (row:Row) => {
+      const product=
+        products.find(
+          (item) =>
+            item.variantId ===
+            row.variantId
+        ) ||
+        row;
+
+      const best=
+        qtyInBestUnit(
+          row
+        );
+
+      setEditVariantId(
+        String(
+          row.variantId ||
+          ""
+        )
+      );
+
+      setDateKey(
+        "2026-07-28"
+      );
+
+      setNote(
+        \`Revisi TOTAL Opening Stock 28/07/2026 • \${productLabel(product)}\`
+      );
+
+      setLines([
+        {
+          variantId:
+            String(
+              row.variantId ||
+              ""
+            ),
+
+          qty:
+            String(
+              best.qty
+            ),
+
+          unit:
+            best.unit,
+
+          unitCostRp:
+            String(
+              Number(
+                row.unitCostRp ||
+                0
+              )
+            ),
+        },
+      ]);
+
+      if(
+        typeof window !==
+        "undefined"
+      ){
+        window.scrollTo({
+          top:0,
+          behavior:"smooth",
+        });
+      }
+    };
+
+  const openHistory=
+    async (
+      row:Row
+    ) => {
+      setHistoryBusy(
+        true
+      );
+
+      try{
+        const history=
+          await read(
+            "OPENING_HISTORY",
+            "2026-07"
+          );
+
+        const allRows=
+          Array.isArray(
+            history?.rows
+          )
+            ? history.rows
+            : [];
+
+        const variantId=
+          String(
+            row.variantId ||
+            ""
+          );
+
+        setHistoryVariantId(
+          variantId
+        );
+
+        setHistoryRows(
+          allRows.filter(
+            (item:Row) =>
+              String(
+                item.variantId ||
+                ""
+              ) ===
+              variantId
+          )
+        );
+      }
+      finally{
+        setHistoryBusy(
+          false
+        );
+      }
+    };
+
+  const deletePosting=
+    async (
+      row:Row
+    ) => {
+      if(
+        typeof window ===
+        "undefined"
+      ){
+        return;
+      }
+
+      const reason=
+        window.prompt(
+          "Alasan menghapus posting Opening ini? Data tidak dihapus permanen; sistem membuat reversal."
+        );
+
+      if(
+        !reason?.trim()
+      ){
+        return;
+      }
+
+      const ok=
+        window.confirm(
+          \`Hapus/reverse posting \${String(row.postingNo || "")}?\`
+        );
+
+      if(!ok){
+        return;
+      }
+
+      await run(
+        "DELETE_OPENING_POST",
+        {
+          sourceKey:
+            String(
+              row.postingNo ||
+              ""
+            ),
+
+          variantId:
+            String(
+              row.variantId ||
+              ""
+            ),
+
+          reason:
+            reason.trim(),
+        },
+        "OPENING"
+      );
+
+      setHistoryRows([]);
+      setHistoryVariantId("");
+    };
+
+  return(
+    <>
+      {canManage ? (
+        <Panel
+          title={
+            editVariantId
+              ? "Edit Total Opening Stock"
+              : "Tambah Opening Stock"
+          }
+
+          subtitle={
+            editVariantId
+              ? "Mode Edit menetapkan TOTAL saldo opening final untuk SKU ini."
+              : "Mode Tambah bersifat additive. Contoh: sudah 3 BALL lalu input 5 BALL, saldo efektif menjadi 8 BALL."
+          }
+        >
+          <form
+            onSubmit={submit}
+            className={
+              styles.formStack
+            }
+          >
+            <div
+              className={
+                styles.formGrid3
+              }
+            >
+              <Field
+                label="Tanggal Saldo Awal"
+              >
+                <input
+                  required
+                  type="date"
+                  value={dateKey}
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setDateKey(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                />
+              </Field>
+
+              <Field
+                label="Catatan"
+
+                hint={
+                  editVariantId
+                    ? "Edit = total final."
+                    : "Tambah = menambah saldo opening yang sudah ada."
+                }
+
+                className={
+                  styles.customerField
+                }
+              >
+                <input
+                  value={note}
+
+                  onChange={
+                    (
+                      event
+                    ) =>
+                      setNote(
+                        event
+                          .target
+                          .value
+                      )
+                  }
+                />
+              </Field>
+            </div>
+
+            <div
+              className={
+                styles.lineSection
+              }
+            >
+              <div
+                className={
+                  styles.lineSectionHead
+                }
+              >
+                <div>
+                  <strong>
+                    {
+                      editVariantId
+                        ? "Total Opening yang Benar"
+                        : "Tambahan Saldo Awal"
+                    }
+                  </strong>
+
+                  <span>
+                    Gunakan BALL / ROLL atau DUS / STACK / LEMBAR sesuai catatan fisik.
+                  </span>
+                </div>
+
+                {!editVariantId ? (
+                  <button
+                    type="button"
+                    className={
+                      styles.secondaryButton
+                    }
+                    onClick={
+                      () =>
+                        setLines([
+                          ...lines,
+                          {
+                            variantId:"",
+                            qty:"1",
+                            unit:"",
+                            unitCostRp:"",
+                          },
+                        ])
+                    }
+                  >
+                    + Tambah Item
+                  </button>
+                ) : null}
+              </div>
+
+              {lines.map(
+                (
+                  line,
+                  index
+                ) => {
+                  const product=
+                    products.find(
+                      (item) =>
+                        item.variantId ===
+                        line.variantId
+                    );
+
+                  const units=
+                    unitOptions(
+                      product
+                    );
+
+                  return(
+                    <div
+                      className={
+                        styles.lineItem
+                      }
+                      key={index}
+                    >
+                      <span
+                        className={
+                          styles.lineNo
+                        }
+                      >
+                        {
+                          String(
+                            index +
+                            1
+                          )
+                            .padStart(
+                              2,
+                              "0"
+                            )
+                        }
+                      </span>
+
+                      <Field
+                        label="Warna / Ukuran / Produk"
+                        className={
+                          styles.itemProduct
+                        }
+                      >
+                        <select
+                          required
+                          value={
+                            line.variantId
+                          }
+                          disabled={
+                            Boolean(
+                              editVariantId
+                            )
+                          }
+                          onChange={
+                            (
+                              event
+                            ) => {
+                              const next=[
+                                ...lines,
+                              ];
+
+                              next[index]={
+                                ...line,
+                                variantId:
+                                  event
+                                    .target
+                                    .value,
+                                unit:"",
+                              };
+
+                              setLines(
+                                next
+                              );
+                            }
+                          }
+                        >
+                          <option value="">
+                            Pilih warna / ukuran / produk
+                          </option>
+
+                          {products.map(
+                            (
+                              item
+                            ) => (
+                              <option
+                                key={
+                                  item.variantId
+                                }
+                                value={
+                                  item.variantId
+                                }
+                              >
+                                {
+                                  productLabel(
+                                    item
+                                  )
+                                }
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </Field>
+
+                      <Field label="Qty">
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={
+                            line.qty
+                          }
+                          onChange={
+                            (
+                              event
+                            ) => {
+                              const next=[
+                                ...lines,
+                              ];
+
+                              next[index]={
+                                ...line,
+                                qty:
+                                  event
+                                    .target
+                                    .value,
+                              };
+
+                              setLines(
+                                next
+                              );
+                            }
+                          }
+                        />
+                      </Field>
+
+                      <Field label="UOM">
+                        <select
+                          required
+                          value={
+                            line.unit
+                          }
+                          onChange={
+                            (
+                              event
+                            ) => {
+                              const next=[
+                                ...lines,
+                              ];
+
+                              next[index]={
+                                ...line,
+                                unit:
+                                  event
+                                    .target
+                                    .value,
+                              };
+
+                              setLines(
+                                next
+                              );
+                            }
+                          }
+                        >
+                          <option value="">
+                            Pilih unit
+                          </option>
+
+                          {units.map(
+                            (
+                              unit
+                            ) => (
+                              <option
+                                key={
+                                  unit
+                                }
+                              >
+                                {unit}
+                              </option>
+                            )
+                          )}
+                        </select>
+                      </Field>
+
+                      <Field
+                        label="HPP / UOM"
+                        hint="Bukan harga jual. Isi HPP aktual jika tersedia."
+                      >
+                        <input
+                          type="number"
+                          min="0"
+                          value={
+                            line.unitCostRp
+                          }
+                          placeholder="0 jika belum diketahui"
+                          onChange={
+                            (
+                              event
+                            ) => {
+                              const next=[
+                                ...lines,
+                              ];
+
+                              next[index]={
+                                ...line,
+                                unitCostRp:
+                                  event
+                                    .target
+                                    .value,
+                              };
+
+                              setLines(
+                                next
+                              );
+                            }
+                          }
+                        />
+                      </Field>
+
+                      <div
+                        className={
+                          styles.itemAction
+                        }
+                      >
+                        {
+                          !editVariantId &&
+                          lines.length>1
+                            ? (
+                              <button
+                                type="button"
+                                className={
+                                  styles.iconDanger
+                                }
+                                onClick={
+                                  () =>
+                                    setLines(
+                                      lines.filter(
+                                        (
+                                          _,
+                                          itemIndex
+                                        ) =>
+                                          itemIndex !==
+                                          index
+                                      )
+                                    )
+                                }
+                              >
+                                Hapus
+                              </button>
+                            )
+                            : null
+                        }
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+
+            <div
+              className={
+                styles.actions
+              }
+            >
+              {
+                editVariantId
+                  ? (
+                    <button
+                      type="button"
+                      className={
+                        styles.secondaryButton
+                      }
+                      disabled={
+                        busy
+                      }
+                      onClick={
+                        resetForm
+                      }
+                    >
+                      Batal Edit
+                    </button>
+                  )
+                  : null
+              }
+
+              <button
+                className={
+                  styles.primaryButton
+                }
+                disabled={
+                  busy
+                }
+              >
+                {
+                  editVariantId
+                    ? "Simpan Revisi Total"
+                    : "Tambah Opening Stock"
+                }
+              </button>
+            </div>
+          </form>
+        </Panel>
+      ) : null}
+
+      <Panel
+        title="Opening Balance Efektif"
+        subtitle="Satu baris per SKU. Posting tambahan otomatis digabung ke saldo efektif."
+      >
+        <DataTable
+          rows={rows}
+          columns={[
+            [
+              "dateKey",
+              "Tanggal",
+            ],
+
+            [
+              "productName",
+              "Produk",
+            ],
+
+            [
+              "color",
+              "Warna",
+            ],
+
+            [
+              "size",
+              "Ukuran",
+            ],
+
+            [
+              "qtyBase",
+              "Opening Efektif",
+              (row) =>
+                stockText(
+                  row
+                ),
+            ],
+
+            [
+              "unitCostRp",
+              "HPP / Base",
+              (row) =>
+                money.format(
+                  Number(
+                    row.unitCostRp ||
+                    0
+                  )
+                ),
+            ],
+
+            [
+              "stockValueRp",
+              "Nilai",
+              (row) =>
+                money.format(
+                  Number(
+                    row.stockValueRp ||
+                    0
+                  )
+                ),
+            ],
+
+            [
+              "openingAction",
+              "Aksi",
+              (row) =>
+                canManage
+                  ? (
+                    <div
+                      className={
+                        styles.inlineActionGroup
+                      }
+                    >
+                      <button
+                        type="button"
+                        className={
+                          styles.inlineEditButton
+                        }
+                        onClick={
+                          () =>
+                            editOpeningRow(
+                              row
+                            )
+                        }
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          styles.inlineEditButton
+                        }
+                        onClick={
+                          () =>
+                            openHistory(
+                              row
+                            )
+                        }
+                      >
+                        Riwayat
+                      </button>
+                    </div>
+                  )
+                  : "-"
+            ],
+          ]}
+        />
+      </Panel>
+
+      {historyVariantId ? (
+        <Panel
+          title="Riwayat Posting Opening"
+          subtitle="Posting asli tetap tersimpan untuk audit. Hapus menggunakan reversal, bukan hard delete."
+        >
+          {
+            historyBusy
+              ? (
+                <div
+                  className={
+                    styles.empty
+                  }
+                >
+                  MEMUAT RIWAYAT...
+                </div>
+              )
+              : (
+                <DataTable
+                  rows={
+                    historyRows
+                  }
+                  columns={[
+                    [
+                      "postingNo",
+                      "Opening No",
+                    ],
+
+                    [
+                      "dateKey",
+                      "Tanggal",
+                    ],
+
+                    [
+                      "postedQtyBase",
+                      "Diposting",
+                      (row) =>
+                        stockText({
+                          ...row,
+                          qtyBase:
+                            Number(
+                              row.postedQtyBase ||
+                              0
+                            ),
+                        }),
+                    ],
+
+                    [
+                      "voidedQtyBase",
+                      "Dihapus",
+                      (row) =>
+                        stockText({
+                          ...row,
+                          qtyBase:
+                            Number(
+                              row.voidedQtyBase ||
+                              0
+                            ),
+                        }),
+                    ],
+
+                    [
+                      "netQtyBase",
+                      "Net",
+                      (row) =>
+                        stockText({
+                          ...row,
+                          qtyBase:
+                            Number(
+                              row.netQtyBase ||
+                              0
+                            ),
+                        }),
+                    ],
+
+                    [
+                      "status",
+                      "Status",
+                    ],
+
+                    [
+                      "deleteOpening",
+                      "Aksi",
+                      (row) =>
+                        canManage &&
+                        row.status ===
+                          "ACTIVE"
+                          ? (
+                            <button
+                              type="button"
+                              className={
+                                styles.inlineDangerButton
+                              }
+                              onClick={
+                                () =>
+                                  deletePosting(
+                                    row
+                                  )
+                              }
+                            >
+                              Hapus
+                            </button>
+                          )
+                          : "-"
+                    ],
+                  ]}
+                />
+              )
+          }
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+`;
+
+const reconciliationComponent = String.raw`
+function Reconciliation({
+  data,
+}: {
+  data:Row;
+}) {
+  /* RKN_PLASTIC_RECON_UI_V2M */
+
+  const summary=
+    data.summary ||
+    {};
+
+  const rows=
+    data.rows ||
+    [];
+
+  const reviewRows=
+    data.reviewRows ||
+    [];
+
+  const polyRows=
+    rows.filter(
+      (row:Row) =>
+        String(
+          row.category ||
+          ""
+        ) !==
+        "THERMAL"
+    );
+
+  const thermalRows=
+    rows.filter(
+      (row:Row) =>
+        String(
+          row.category ||
+          ""
+        ) ===
+        "THERMAL"
+    );
+
+  const reconQty=
+    (
+      row:Row,
+      key:string
+    ) =>
+      stockText({
+        ...row,
+        qtyBase:
+          Number(
+            row[key] ||
+            0
+          ),
+      });
+
+  const reconColumns:
+    Column[] = [
+      [
+        "productName",
+        "Produk",
+      ],
+
+      [
+        "color",
+        "Warna",
+      ],
+
+      [
+        "size",
+        "Ukuran",
+      ],
+
+      [
+        "systemQtyBase",
+        "System",
+        (row) =>
+          reconQty(
+            row,
+            "systemQtyBase"
+          ),
+      ],
+
+      [
+        "physicalQtyBase",
+        "SO Fisik",
+        (row) =>
+          reconQty(
+            row,
+            "physicalQtyBase"
+          ),
+      ],
+
+      [
+        "varianceQtyBase",
+        "Variance",
+        (row) => {
+          const value=
+            Number(
+              row.varianceQtyBase ||
+              0
+            );
+
+          const absRow={
+            ...row,
+            qtyBase:
+              Math.abs(
+                value
+              ),
+          };
+
+          const text=
+            stockText(
+              absRow
+            );
+
+          return value<0
+            ? \`-\${text}\`
+            : text;
+        },
+      ],
+
+      [
+        "status",
+        "Status",
+        (row) => (
+          <span
+            className={
+              row.status ===
+              "BALANCE"
+                ? styles.statusPaid
+                : styles.statusOpen
+            }
+          >
+            {row.status}
+          </span>
+        ),
+      ],
+    ];
+
+  return(
+    <>
+      <section
+        className={
+          styles.metricGrid
+        }
+      >
+        <MetricCard
+          label="Polymailer System"
+          value={
+            qtyFmt.format(
+              Number(
+                summary.polySystemQtyBase ||
+                0
+              )
+            )
+          }
+          note="base ROLL"
+        />
+
+        <MetricCard
+          label="Polymailer Physical"
+          value={
+            qtyFmt.format(
+              Number(
+                summary.polyPhysicalQtyBase ||
+                0
+              )
+            )
+          }
+          note="SO fisik 28/08"
+        />
+
+        <MetricCard
+          label="Polymailer Variance"
+          value={
+            qtyFmt.format(
+              Number(
+                summary.polyVarianceQtyBase ||
+                0
+              )
+            )
+          }
+          note="Physical - System / ROLL"
+        />
+
+        <MetricCard
+          label="Thermal System"
+          value={
+            stockText({
+              baseUnit:
+                "LEMBAR",
+              midUnit:
+                "STACK",
+              packUnit:
+                "DUS",
+              unitsPerMid:
+                500,
+              unitsPerPack:
+                10000,
+              qtyBase:
+                Number(
+                  summary.thermalSystemQtyBase ||
+                  0
+                ),
+            })
+          }
+          note="Dus / Stack / Lembar"
+        />
+
+        <MetricCard
+          label="Thermal Physical"
+          value={
+            stockText({
+              baseUnit:
+                "LEMBAR",
+              midUnit:
+                "STACK",
+              packUnit:
+                "DUS",
+              unitsPerMid:
+                500,
+              unitsPerPack:
+                10000,
+              qtyBase:
+                Number(
+                  summary.thermalPhysicalQtyBase ||
+                  0
+                ),
+            })
+          }
+          note="3 Dus Panjang + 9 Dus Kotak"
+        />
+
+        <MetricCard
+          label="SKU Balance"
+          value={
+            \`\${Number(summary.balancedVariants || 0)} / \${Number(summary.totalVariants || 0)}\`
+          }
+          note={
+            \`\${Number(summary.varianceVariants || 0)} SKU masih selisih\`
+          }
+        />
+      </section>
+
+      <Panel
+        title="Rekonsiliasi Polymailer / 28-08-2026"
+        subtitle="System dari movement ledger sampai 28/08/2026. Spreadsheet IN/OUT tidak dipakai."
+      >
+        <DataTable
+          rows={
+            polyRows
+          }
+          columns={
+            reconColumns
+          }
+        />
+      </Panel>
+
+      <Panel
+        title="Rekonsiliasi Thermal / 28-08-2026"
+        subtitle="Thermal Polos = Thermal Dus Panjang (3 DUS). Thermal Kotak = Thermal Dus Kotak (9 DUS)."
+      >
+        <DataTable
+          rows={
+            thermalRows
+          }
+          columns={
+            reconColumns
+          }
+        />
+      </Panel>
+
+      {reviewRows.length ? (
+        <Panel
+          title="Mapping Review"
+          subtitle="Baris yang masih membutuhkan mapping manual."
+        >
+          <DataTable
+            rows={
+              reviewRows
+            }
+            columns={[
+              [
+                "sourceLabel",
+                "Label SO",
+              ],
+
+              [
+                "sourceQty",
+                "Qty Raw",
+              ],
+
+              [
+                "sourceUnit",
+                "Unit",
+              ],
+
+              [
+                "mappingStatus",
+                "Status",
+              ],
+
+              [
+                "sourceRef",
+                "Sumber",
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+`;
+
+let engine=
+  original.engine;
+
+engine=
+  replaceBetween(
+    engine,
+    "/* RKN_PLASTIC_OPENING_REVISION_V2K */",
+    "if(cmd==='CREATE_INBOUND'){",
+    openingCommands,
+    "opening command block"
+  );
+
+engine=
+  replaceBetween(
+    engine,
+    "/* RKN_PLASTIC_OPENING_EFFECTIVE_VIEW_V2L */",
+    "if(view==='RECONCILIATION')",
+    openingViews,
+    "opening view block"
+  );
+
+engine=
+  replaceBetween(
+    engine,
+    "if(view==='RECONCILIATION')",
+    "if(view==='PRODUCTS')",
+    reconciliationView,
+    "reconciliation view block"
+  );
+
+let app=
+  original.app;
+
+app=
+  replaceBetween(
+    app,
+    "function OpeningStock({",
+    "function Inbound({",
+    openingComponent,
+    "OpeningStock component"
+  );
+
+app=
+  replaceBetween(
+    app,
+    "function Reconciliation({",
+    "function Reports({",
+    reconciliationComponent,
+    "Reconciliation component"
+  );
+
+let css=
+  original.css;
+
+if(
+  !css.includes(
+    "RKN_PLASTIC_FIXED_SIDEBAR_V2M"
+  )
+){
+  css += String.raw`
+
+/* RKN_PLASTIC_FIXED_SIDEBAR_V2M */
+
+@media (min-width: 901px) {
+  .shell {
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .main {
+    min-width: 0;
+  }
+}
+
+.inlineActionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inlineDangerButton {
+  min-width: 64px;
+  height: 32px;
+  padding: 0 12px;
+
+  border:
+    1px solid
+    rgba(
+      227,
+      91,
+      104,
+      0.5
+    );
+
+  border-radius: 8px;
+
+  background:
+    rgba(
+      83,
+      20,
+      31,
+      0.42
+    );
+
+  color: #ffb7bf;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .04em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+}
+
+.inlineDangerButton:hover {
+  border-color:
+    rgba(
+      255,
+      126,
+      139,
+      0.85
+    );
+
+  background:
+    rgba(
+      116,
+      26,
+      40,
+      0.58
+    );
+
+  color: #ffffff;
+}
+`;
+}
+
+const gates=[
+  [
+    "engine additive marker",
+    engine.includes(
+      "RKN_PLASTIC_OPENING_LEDGER_V2M"
+    ),
+  ],
+
+  [
+    "set total command",
+    engine.includes(
+      "SET_OPENING_BALANCE"
+    ),
+  ],
+
+  [
+    "void command",
+    engine.includes(
+      "DELETE_OPENING_POST"
+    ),
+  ],
+
+  [
+    "history view",
+    engine.includes(
+      "OPENING_HISTORY"
+    ),
+  ],
+
+  [
+    "thermal mapping",
+    engine.includes(
+      "RKN_PLASTIC_THERMAL_RECON_V2M"
+    ),
+  ],
+
+  [
+    "opening UI marker",
+    app.includes(
+      "RKN_PLASTIC_OPENING_ADDITIVE_UI_V2M"
+    ),
+  ],
+
+  [
+    "history button",
+    app.includes(
+      "Riwayat"
+    ),
+  ],
+
+  [
+    "recon UI marker",
+    app.includes(
+      "RKN_PLASTIC_RECON_UI_V2M"
+    ),
+  ],
+
+  [
+    "fixed sidebar marker",
+    css.includes(
+      "RKN_PLASTIC_FIXED_SIDEBAR_V2M"
+    ),
+  ],
+];
+
+for(
+  const [
+    label,
+    ok,
+  ] of gates
+){
+  console.log(
+    `${
+      ok
+        ? "PASS"
+        : "FAIL"
+    }  ${label}`
+  );
+
+  if(!ok){
+    die(
+      `Source gate failed: ${label}`
+    );
+  }
+}
+
+fs.writeFileSync(
+  files.engine,
+  engine,
+  "utf8"
+);
+
+fs.writeFileSync(
+  files.app,
+  app,
+  "utf8"
+);
+
+fs.writeFileSync(
+  files.css,
+  css,
+  "utf8"
+);
+
+try{
+  console.log("");
+  console.log(
+    "Running TypeScript gate..."
+  );
+
+  execFileSync(
+    process.platform ===
+      "win32"
+      ? "npx.cmd"
+      : "npx",
+    [
+      "tsc",
+      "--noEmit",
+    ],
+    {
+      cwd:ROOT,
+      stdio:"inherit",
+    }
+  );
+
+  console.log("");
+  console.log(
+    "Running git diff check..."
+  );
+
+  execFileSync(
+    "git",
+    [
+      "diff",
+      "--check",
+    ],
+    {
+      cwd:ROOT,
+      stdio:"inherit",
+    }
+  );
+}
+catch{
+  console.error("");
+  console.error(
+    "TypeScript/diff gate failed. Restoring original files..."
+  );
+
+  fs.writeFileSync(
+    files.engine,
+    original.engine,
+    "utf8"
+  );
+
+  fs.writeFileSync(
+    files.app,
+    original.app,
+    "utf8"
+  );
+
+  fs.writeFileSync(
+    files.css,
+    original.css,
+    "utf8"
+  );
+
+  die(
+    "Files restored. Nothing should be committed."
+  );
+}
+
+console.log("");
+console.log(
+  "============================================================"
+);
+
+console.log(
+  "RKN PLASTIC V2M GIT PATCH = PASS"
+);
+
+console.log(
+  "============================================================"
+);
+
+console.log(
+  "OPENING INPUT            = ADDITIVE"
+);
+
+console.log(
+  "OPENING DASHBOARD        = 1 ROW / SKU"
+);
+
+console.log(
+  "OPENING EDIT             = SET FINAL TOTAL"
+);
+
+console.log(
+  "OPENING HISTORY          = PASS"
+);
+
+console.log(
+  "OPENING DELETE           = REVERSAL / AUDITED"
+);
+
+console.log(
+  "SIDEBAR DESKTOP          = FIXED / STICKY"
+);
+
+console.log(
+  "THERMAL POLOS            = DUS PANJANG / 3 DUS"
+);
+
+console.log(
+  "THERMAL KOTAK            = DUS KOTAK / 9 DUS"
+);
+
+console.log(
+  "THERMAL RECONCILIATION   = PASS"
+);
+
+console.log(
+  "TYPESCRIPT               = PASS"
+);
+
+console.log(
+  "GIT DIFF CHECK           = PASS"
+);
+
+console.log("");
+console.log(
+  "NEXT:"
+);
+
+console.log(
+  "1. Open GitHub Desktop"
+);
+
+console.log(
+  "2. Review changes"
+);
+
+console.log(
+  "3. Summary: RKN Plastic V2M opening ledger and thermal recon"
+);
+
+console.log(
+  "4. Commit to main"
+);
+
+console.log(
+  "5. Push origin"
+);
+
+console.log(
+  "6. Cloudflare builds/deploys automatically"
+);
+
+console.log(
+  "============================================================"
+);

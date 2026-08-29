@@ -1042,3 +1042,53 @@
   border-color: #7fb0f1;
   box-shadow: 0 0 0 3px rgba(91, 140, 255, .16);
 }
+
+/* RKN_PLASTIC_FIXED_SIDEBAR_V2M */
+@media (min-width: 901px) {
+  .shell {
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .main {
+    min-width: 0;
+  }
+}
+
+.inlineActionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inlineDangerButton {
+  min-width: 64px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(227, 91, 104, 0.5);
+  border-radius: 8px;
+  background: rgba(83, 20, 31, 0.42);
+  color: #ffb7bf;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.inlineDangerButton:hover {
+  border-color: rgba(255, 126, 139, 0.85);
+  background: rgba(116, 26, 40, 0.58);
+  color: #ffffff;
+}

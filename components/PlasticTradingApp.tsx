@@ -1060,6 +1060,7 @@ function OpeningStock({
   busy: boolean;
   run: any;
 }) {
+  /* RKN_PLASTIC_OPENING_ADDITIVE_UI_V2M */
   const [dateKey, setDateKey] = useState("2026-07-28");
   const [note, setNote] = useState(
     "Opening Stock berdasarkan stock opname 28/07/2026"
@@ -1072,11 +1073,61 @@ function OpeningStock({
       unitCostRp: "",
     },
   ]);
+  const [editVariantId, setEditVariantId] = useState("");
+  const [historyVariantId, setHistoryVariantId] = useState("");
+  const [historyRows, setHistoryRows] = useState<Row[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
 
-  const submit = (event: FormEvent) => {
+  const resetForm = () => {
+    setEditVariantId("");
+    setDateKey("2026-07-28");
+    setNote("Opening Stock berdasarkan stock opname 28/07/2026");
+    setLines([
+      {
+        variantId: "",
+        qty: "1",
+        unit: "",
+        unitCostRp: "",
+      },
+    ]);
+  };
+
+  const qtyInBestUnit = (row: Row) => {
+    const qtyBase = Math.max(0, Number(row.qtyBase || 0));
+    const pack = String(row.packUnit || "").toUpperCase();
+    const mid = String(row.midUnit || "").toUpperCase();
+    const base = String(row.baseUnit || "").toUpperCase();
+    const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 1));
+    const unitsPerMid = Math.max(1, Number(row.unitsPerMid || 1));
+
+    if (
+      pack &&
+      unitsPerPack > 1 &&
+      Math.abs(qtyBase % unitsPerPack) < 0.0000001
+    ) {
+      return { qty: qtyBase / unitsPerPack, unit: pack };
+    }
+
+    if (
+      mid &&
+      unitsPerMid > 1 &&
+      Math.abs(qtyBase % unitsPerMid) < 0.0000001
+    ) {
+      return { qty: qtyBase / unitsPerMid, unit: mid };
+    }
+
+    return { qty: qtyBase, unit: base };
+  };
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    run(
-      "POST_OPENING_BALANCE",
+
+    const command = editVariantId
+      ? "SET_OPENING_BALANCE"
+      : "POST_OPENING_BALANCE";
+
+    await run(
+      command,
       {
         dateKey,
         note,
@@ -1088,67 +1139,94 @@ function OpeningStock({
       },
       "OPENING"
     );
+
+    resetForm();
   };
-  /* RKN_PLASTIC_OPENING_INLINE_EDIT_V2L */
+
   const editOpeningRow = (row: Row) => {
-    const product = products.find(
-      (item) => item.variantId === row.variantId
-    ) || row;
+    const product =
+      products.find((item) => item.variantId === row.variantId) || row;
+    const best = qtyInBestUnit(row);
 
-    const qtyBase = Math.max(0, Number(row.qtyBase || 0));
-    const packUnit = String(product.packUnit || "").toUpperCase();
-    const midUnit = String(product.midUnit || "").toUpperCase();
-    const baseUnit = String(product.baseUnit || "").toUpperCase();
-    const unitsPerPack = Math.max(1, Number(product.unitsPerPack || 1));
-    const unitsPerMid = Math.max(1, Number(product.unitsPerMid || 1));
-
-    let unit = baseUnit;
-    let qty = qtyBase;
-
-    if (
-      packUnit &&
-      unitsPerPack > 1 &&
-      Math.abs(qtyBase % unitsPerPack) < 0.0000001
-    ) {
-      unit = packUnit;
-      qty = qtyBase / unitsPerPack;
-    }
-    else if (
-      midUnit &&
-      unitsPerMid > 1 &&
-      Math.abs(qtyBase % unitsPerMid) < 0.0000001
-    ) {
-      unit = midUnit;
-      qty = qtyBase / unitsPerMid;
-    }
-
+    setEditVariantId(String(row.variantId || ""));
     setDateKey("2026-07-28");
     setNote(
-      `Revisi Opening Stock 28/07/2026 â€¢ ${productLabel(product)}`
+      `Revisi TOTAL Opening Stock 28/07/2026 • ${productLabel(product)}`
     );
     setLines([
       {
         variantId: String(row.variantId || ""),
-        qty: String(qty),
-        unit,
+        qty: String(best.qty),
+        unit: best.unit,
         unitCostRp: String(Number(row.unitCostRp || 0)),
       },
     ]);
 
     if (typeof window !== "undefined") {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  };
+
+  const openHistory = async (row: Row) => {
+    setHistoryBusy(true);
+    try {
+      const history = await read("OPENING_HISTORY", "2026-07");
+      const allRows = Array.isArray(history?.rows) ? history.rows : [];
+      const variantId = String(row.variantId || "");
+      setHistoryVariantId(variantId);
+      setHistoryRows(
+        allRows.filter(
+          (item: Row) => String(item.variantId || "") === variantId
+        )
+      );
+    } finally {
+      setHistoryBusy(false);
+    }
+  };
+
+  const deletePosting = async (row: Row) => {
+    if (typeof window === "undefined") return;
+
+    const reason = window.prompt(
+      "Alasan menghapus posting Opening ini? Data tidak dihapus permanen; sistem membuat reversal."
+    );
+
+    if (!reason?.trim()) return;
+
+    const ok = window.confirm(
+      `Hapus/reverse posting ${String(row.postingNo || "")}?`
+    );
+
+    if (!ok) return;
+
+    await run(
+      "DELETE_OPENING_POST",
+      {
+        sourceKey: String(row.postingNo || ""),
+        variantId: String(row.variantId || ""),
+        reason: reason.trim(),
+      },
+      "OPENING"
+    );
+
+    setHistoryRows([]);
+    setHistoryVariantId("");
   };
 
   return (
     <>
       {canManage ? (
         <Panel
-          title="Opening Stock"
-          subtitle="Saldo awal 28/07/2026. Bukan Barang Masuk. Jika SKU sudah pernah diposting, isi TOTAL saldo opening yang benar; sistem hanya mencatat selisih revisinya."
+          title={
+            editVariantId
+              ? "Edit Total Opening Stock"
+              : "Tambah Opening Stock"
+          }
+          subtitle={
+            editVariantId
+              ? "Mode Edit menetapkan TOTAL saldo opening final untuk SKU ini."
+              : "Mode Tambah bersifat additive. Contoh: sudah 3 BALL lalu input 5 BALL, saldo efektif menjadi 8 BALL."
+          }
         >
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid3}>
@@ -1157,22 +1235,22 @@ function OpeningStock({
                   required
                   type="date"
                   value={dateKey}
-                  onChange={(event) =>
-                    setDateKey(event.target.value)
-                  }
+                  onChange={(event) => setDateKey(event.target.value)}
                 />
               </Field>
 
               <Field
                 label="Catatan"
-                hint="HPP boleh 0 jika belum diketahui; qty tetap tercatat."
+                hint={
+                  editVariantId
+                    ? "Edit = total final."
+                    : "Tambah = menambah saldo opening yang sudah ada."
+                }
                 className={styles.customerField}
               >
                 <input
                   value={note}
-                  onChange={(event) =>
-                    setNote(event.target.value)
-                  }
+                  onChange={(event) => setNote(event.target.value)}
                 />
               </Field>
             </div>
@@ -1180,72 +1258,77 @@ function OpeningStock({
             <div className={styles.lineSection}>
               <div className={styles.lineSectionHead}>
                 <div>
-                  <strong>Saldo Awal per Produk</strong>
+                  <strong>
+                    {editVariantId
+                      ? "Total Opening yang Benar"
+                      : "Tambahan Saldo Awal"}
+                  </strong>
                   <span>
-                    Isi TOTAL saldo awal yang benar. Contoh: sebelumnya 2 BALL, seharusnya 6 BALL â†’ input 6 BALL. UOM: BALL / ROLL atau DUS / STACK / LEMBAR.
+                    Gunakan BALL / ROLL atau DUS / STACK / LEMBAR sesuai
+                    catatan fisik.
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  onClick={() =>
-                    setLines([
-                      ...lines,
-                      {
-                        variantId: "",
-                        qty: "1",
-                        unit: "",
-                        unitCostRp: "",
-                      },
-                    ])
-                  }
-                >
-                  + Tambah Item
-                </button>
+
+                {!editVariantId ? (
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    onClick={() =>
+                      setLines([
+                        ...lines,
+                        {
+                          variantId: "",
+                          qty: "1",
+                          unit: "",
+                          unitCostRp: "",
+                        },
+                      ])
+                    }
+                  >
+                    + Tambah Item
+                  </button>
+                ) : null}
               </div>
 
               {lines.map((line, index) => {
-                const selected = products.find(
-                  (product) => product.variantId === line.variantId
+                const product = products.find(
+                  (item) => item.variantId === line.variantId
                 );
-                const units = unitOptions(selected);
+                const units = unitOptions(product);
 
                 return (
-                  <div className={styles.itemRow} key={index}>
-                    <div className={styles.itemIndex}>
+                  <div className={styles.lineItem} key={index}>
+                    <span className={styles.lineNo}>
                       {String(index + 1).padStart(2, "0")}
-                    </div>
+                    </span>
 
-                    <Field label="Warna / Ukuran / Produk" className={styles.itemProduct}>
+                    <Field
+                      label="Warna / Ukuran / Produk"
+                      className={styles.itemProduct}
+                    >
                       <select
                         required
                         value={line.variantId}
+                        disabled={Boolean(editVariantId)}
                         onChange={(event) => {
-                          const chosen = products.find(
-                            (product) =>
-                              product.variantId === event.target.value
-                          );
                           const next = [...lines];
                           next[index] = {
                             ...line,
                             variantId: event.target.value,
-                            unit: String(
-                              chosen?.packUnit ||
-                                chosen?.midUnit ||
-                                chosen?.baseUnit ||
-                                ""
-                            ).toUpperCase(),
+                            unit: "",
                           };
                           setLines(next);
                         }}
                       >
-                        <option value="">Pilih warna / ukuran / produk</option>
-                        {products.map((product) => (
+                        <option value="">
+                          Pilih warna / ukuran / produk
+                        </option>
+                        {products.map((item) => (
                           <option
-                            key={product.variantId}
-                            value={product.variantId}
+                            key={item.variantId}
+                            value={item.variantId}
                           >
-                            {productLabel(product)}
+                            {productLabel(item)}
                           </option>
                         ))}
                       </select>
@@ -1255,7 +1338,7 @@ function OpeningStock({
                       <input
                         required
                         type="number"
-                        min="0.01"
+                        min="0"
                         step="0.01"
                         value={line.qty}
                         onChange={(event) => {
@@ -1310,7 +1393,7 @@ function OpeningStock({
                     </Field>
 
                     <div className={styles.itemAction}>
-                      {lines.length > 1 ? (
+                      {!editVariantId && lines.length > 1 ? (
                         <button
                           type="button"
                           className={styles.iconDanger}
@@ -1332,8 +1415,21 @@ function OpeningStock({
             </div>
 
             <div className={styles.actions}>
+              {editVariantId ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  disabled={busy}
+                  onClick={resetForm}
+                >
+                  Batal Edit
+                </button>
+              ) : null}
+
               <button className={styles.primaryButton} disabled={busy}>
-                Posting / Revisi Opening Stock
+                {editVariantId
+                  ? "Simpan Revisi Total"
+                  : "Tambah Opening Stock"}
               </button>
             </div>
           </form>
@@ -1342,23 +1438,19 @@ function OpeningStock({
 
       <Panel
         title="Opening Balance Efektif"
-        subtitle="Saldo opening efektif setelah koreksi. Klik Edit pada baris untuk memuat data ke form, lalu ubah TOTAL saldo opening yang benar."
+        subtitle="Satu baris per SKU. Posting tambahan otomatis digabung ke saldo efektif."
       >
         <DataTable
           rows={rows}
           columns={[
             ["dateKey", "Tanggal"],
-            ["openingNo", "Opening No"],
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
             [
               "qtyBase",
-              "Qty Base",
-              (row) =>
-                `${qtyFmt.format(Number(row.qtyBase || 0))} ${
-                  row.baseUnit || ""
-                }`,
+              "Opening Efektif",
+              (row) => stockText(row),
             ],
             [
               "unitCostRp",
@@ -1369,18 +1461,28 @@ function OpeningStock({
               "stockValueRp",
               "Nilai",
               (row) => money.format(Number(row.stockValueRp || 0)),
-            ],            [
-              "openingEdit",
+            ],
+            [
+              "openingAction",
               "Aksi",
               (row) =>
                 canManage ? (
-                  <button
-                    type="button"
-                    className={styles.inlineEditButton}
-                    onClick={() => editOpeningRow(row)}
-                  >
-                    Edit
-                  </button>
+                  <div className={styles.inlineActionGroup}>
+                    <button
+                      type="button"
+                      className={styles.inlineEditButton}
+                      onClick={() => editOpeningRow(row)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.inlineEditButton}
+                      onClick={() => openHistory(row)}
+                    >
+                      Riwayat
+                    </button>
+                  </div>
                 ) : (
                   "-"
                 ),
@@ -1388,6 +1490,69 @@ function OpeningStock({
           ]}
         />
       </Panel>
+
+      {historyVariantId ? (
+        <Panel
+          title="Riwayat Posting Opening"
+          subtitle="Posting asli tetap tersimpan untuk audit. Hapus menggunakan reversal, bukan hard delete."
+        >
+          {historyBusy ? (
+            <div className={styles.empty}>MEMUAT RIWAYAT...</div>
+          ) : (
+            <DataTable
+              rows={historyRows}
+              columns={[
+                ["postingNo", "Opening No"],
+                ["dateKey", "Tanggal"],
+                [
+                  "postedQtyBase",
+                  "Diposting",
+                  (row) =>
+                    stockText({
+                      ...row,
+                      qtyBase: Number(row.postedQtyBase || 0),
+                    }),
+                ],
+                [
+                  "voidedQtyBase",
+                  "Dihapus",
+                  (row) =>
+                    stockText({
+                      ...row,
+                      qtyBase: Number(row.voidedQtyBase || 0),
+                    }),
+                ],
+                [
+                  "netQtyBase",
+                  "Net",
+                  (row) =>
+                    stockText({
+                      ...row,
+                      qtyBase: Number(row.netQtyBase || 0),
+                    }),
+                ],
+                ["status", "Status"],
+                [
+                  "deleteOpening",
+                  "Aksi",
+                  (row) =>
+                    canManage && row.status === "ACTIVE" ? (
+                      <button
+                        type="button"
+                        className={styles.inlineDangerButton}
+                        onClick={() => deletePosting(row)}
+                      >
+                        Hapus
+                      </button>
+                    ) : (
+                      "-"
+                    ),
+                ],
+              ]}
+            />
+          )}
+        </Panel>
+      ) : null}
     </>
   );
 }
@@ -2414,33 +2579,98 @@ function Opname({
 }
 
 function Reconciliation({ data }: { data: Row }) {
+  /* RKN_PLASTIC_RECON_UI_V2M */
   const summary = data.summary || {};
   const rows = data.rows || [];
   const reviewRows = data.reviewRows || [];
+
+  const polyRows = rows.filter(
+    (row: Row) => String(row.category || "") !== "THERMAL"
+  );
+  const thermalRows = rows.filter(
+    (row: Row) => String(row.category || "") === "THERMAL"
+  );
+
+  const reconQty = (row: Row, key: string) =>
+    stockText({
+      ...row,
+      qtyBase: Number(row[key] || 0),
+    });
+
+  const reconColumns: Column[] = [
+    ["productName", "Produk"],
+    ["color", "Warna"],
+    ["size", "Ukuran"],
+    ["systemQtyBase", "System", (row) => reconQty(row, "systemQtyBase")],
+    ["physicalQtyBase", "SO Fisik", (row) => reconQty(row, "physicalQtyBase")],
+    [
+      "varianceQtyBase",
+      "Variance",
+      (row) => {
+        const value = Number(row.varianceQtyBase || 0);
+        const absRow = { ...row, qtyBase: Math.abs(value) };
+        const text = stockText(absRow);
+        return value < 0 ? `-${text}` : text;
+      },
+    ],
+    [
+      "status",
+      "Status",
+      (row) => (
+        <span
+          className={
+            row.status === "BALANCE"
+              ? styles.statusPaid
+              : styles.statusOpen
+          }
+        >
+          {row.status}
+        </span>
+      ),
+    ],
+  ];
 
   return (
     <>
       <section className={styles.metricGrid}>
         <MetricCard
-          label="System Stock 28/08"
-          value={qtyFmt.format(
-            Number(summary.totalSystemQtyBase || 0)
-          )}
-          note="Polymailer / base ROLL"
+          label="Polymailer System"
+          value={qtyFmt.format(Number(summary.polySystemQtyBase || 0))}
+          note="base ROLL"
         />
         <MetricCard
-          label="Physical SO 28/08"
-          value={qtyFmt.format(
-            Number(summary.totalPhysicalQtyBase || 0)
-          )}
-          note="Snapshot sheet live"
+          label="Polymailer Physical"
+          value={qtyFmt.format(Number(summary.polyPhysicalQtyBase || 0))}
+          note="SO fisik 28/08"
         />
         <MetricCard
-          label="Variance"
-          value={qtyFmt.format(
-            Number(summary.totalVarianceQtyBase || 0)
-          )}
-          note="Physical - System"
+          label="Polymailer Variance"
+          value={qtyFmt.format(Number(summary.polyVarianceQtyBase || 0))}
+          note="Physical - System / ROLL"
+        />
+        <MetricCard
+          label="Thermal System"
+          value={stockText({
+            baseUnit: "LEMBAR",
+            midUnit: "STACK",
+            packUnit: "DUS",
+            unitsPerMid: 500,
+            unitsPerPack: 10000,
+            qtyBase: Number(summary.thermalSystemQtyBase || 0),
+          })}
+          note="Dus / Stack / Lembar"
+        />
+        <MetricCard
+          label="Thermal Physical"
+          value={stockText({
+            baseUnit: "LEMBAR",
+            midUnit: "STACK",
+            packUnit: "DUS",
+            unitsPerMid: 500,
+            unitsPerPack: 10000,
+            qtyBase: Number(summary.thermalPhysicalQtyBase || 0),
+          })}
+          note="3 Dus Panjang + 9 Dus Kotak"
         />
         <MetricCard
           label="SKU Balance"
@@ -2449,62 +2679,24 @@ function Reconciliation({ data }: { data: Row }) {
           )}`}
           note={`${Number(summary.varianceVariants || 0)} SKU masih selisih`}
         />
-        <MetricCard
-          label="Thermal Review"
-          value={String(summary.thermalMappingReview || 0)}
-          note="Label SO Thermal belum dipaksa mapping"
-        />
       </section>
 
       <Panel
         title="Rekonsiliasi Polymailer / 28-08-2026"
-        subtitle="System dihitung dari movement ledger sampai 28/08/2026. Spreadsheet IN/OUT tidak dipakai."
+        subtitle="System dari movement ledger sampai 28/08/2026. Spreadsheet IN/OUT tidak dipakai."
       >
-        <DataTable
-          rows={rows}
-          columns={[
-            ["productName", "Produk"],
-            ["color", "Warna"],
-            ["size", "Ukuran"],
-            [
-              "systemQtyBase",
-              "System",
-              (row) => qtyFmt.format(Number(row.systemQtyBase || 0)),
-            ],
-            [
-              "physicalQtyBase",
-              "SO Fisik",
-              (row) => qtyFmt.format(Number(row.physicalQtyBase || 0)),
-            ],
-            [
-              "varianceQtyBase",
-              "Variance",
-              (row) => qtyFmt.format(Number(row.varianceQtyBase || 0)),
-            ],
-            [
-              "status",
-              "Status",
-              (row) => (
-                <span
-                  className={
-                    row.status === "BALANCE"
-                      ? styles.statusPaid
-                      : styles.statusOpen
-                  }
-                >
-                  {row.status}
-                </span>
-              ),
-            ],
-          ]}
-        />
+        <DataTable rows={polyRows} columns={reconColumns} />
+      </Panel>
+
+      <Panel
+        title="Rekonsiliasi Thermal / 28-08-2026"
+        subtitle="Thermal Polos = Thermal Dus Panjang (3 DUS). Thermal Kotak = Thermal Dus Kotak (9 DUS)."
+      >
+        <DataTable rows={thermalRows} columns={reconColumns} />
       </Panel>
 
       {reviewRows.length ? (
-        <Panel
-          title="Thermal / Mapping Review"
-          subtitle="Dua label SO Thermal dipertahankan sebagai REVIEW karena belum aman dipetakan otomatis ke master."
-        >
+        <Panel title="Mapping Review" subtitle="Baris yang masih membutuhkan mapping manual.">
           <DataTable
             rows={reviewRows}
             columns={[
