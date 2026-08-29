@@ -1,0 +1,22 @@
+﻿{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "rkn-erp-f6c-transaction-harness",
+  "main": "./src/index.mjs",
+  "compatibility_date": "2026-08-14",
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RKN_TX_DO",
+        "class_name": "RknTransactionHarness"
+      }
+    ]
+  },
+
+  "exports": {
+    "RknTransactionHarness": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

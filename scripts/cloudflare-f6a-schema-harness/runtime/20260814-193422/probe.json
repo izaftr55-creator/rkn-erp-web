@@ -1,0 +1,42 @@
+﻿{
+  "harness": "RKN_CLOUDFLARE_F6A",
+  "storage": "SQLITE_DURABLE_OBJECT_LOCAL",
+  "schema": {
+    "triggerCount": 4,
+    "triggerSchemaPass": true,
+    "triggerNames": [
+      "trg_worker_department_same_bu_insert",
+      "trg_worker_department_same_bu_update",
+      "trg_worker_registration_invite_bu_insert",
+      "trg_worker_registration_worker_bu_update"
+    ],
+    "autoincrement": {
+      "firstHistoryId": 1,
+      "secondHistoryId": 2,
+      "passed": true
+    }
+  },
+  "behavior": {
+    "workerDepartmentInsertAbort": {
+      "passed": true,
+      "expectedMessage": "WORKER_DEPARTMENT_BUSINESS_UNIT_MISMATCH",
+      "observedMessage": "WORKER_DEPARTMENT_BUSINESS_UNIT_MISMATCH: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER)"
+    },
+    "workerDepartmentUpdateAbort": {
+      "passed": true,
+      "expectedMessage": "WORKER_DEPARTMENT_BUSINESS_UNIT_MISMATCH",
+      "observedMessage": "WORKER_DEPARTMENT_BUSINESS_UNIT_MISMATCH: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER)"
+    },
+    "registrationInviteAbort": {
+      "passed": true,
+      "expectedMessage": "REGISTRATION_INVITE_BUSINESS_UNIT_MISMATCH",
+      "observedMessage": "REGISTRATION_INVITE_BUSINESS_UNIT_MISMATCH: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER)"
+    },
+    "registrationWorkerAbort": {
+      "passed": true,
+      "expectedMessage": "REGISTRATION_WORKER_BUSINESS_UNIT_MISMATCH",
+      "observedMessage": "REGISTRATION_WORKER_BUSINESS_UNIT_MISMATCH: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER)"
+    }
+  },
+  "pass": true
+}

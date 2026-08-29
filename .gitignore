@@ -1,0 +1,107 @@
+# ==================================================
+# RKN ERP - GITIGNORE
+# ==================================================
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js / OpenNext build output
+.next/
+.next-*/
+**/.next/
+**/.next-*/
+
+.open-next/
+.open-next-*/
+**/.open-next/
+**/.open-next-*/
+
+# Cloudflare local state
+.wrangler/
+**/.wrangler/
+
+# Environment / secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+.dev.vars
+.dev.vars.*
+**/.dev.vars
+**/.dev.vars.*
+
+# IMPORTANT:
+# .env.example is intentionally ignored for now
+# because the current file contains real credentials.
+
+# Credentials / keys
+service-account*.json
+credentials*.json
+decoded-path-*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# RKN ERP private/local data
+.data/
+data/private/
+**/data/private/
+
+# SQLite / local databases
+*.sqlite
+*.sqlite-*
+**/*.sqlite
+**/*.sqlite-*
+
+*.db
+*.db-*
+**/*.db
+**/*.db-*
+
+# Backup / recovery files
+*.bak
+*.bak.*
+*.bak-*
+**/*.bak
+**/*.bak.*
+**/*.bak-*
+
+*.backup
+*.backup.*
+*.backup-*
+**/*.backup
+**/*.backup.*
+**/*.backup-*
+
+*.old
+*.old.*
+**/*.old*
+
+*.orig
+*.rej
+
+**/*-before-*
+**/*-backup-*
+
+# Timestamped development copies
+components/*2026*
+app/*2026*
+lib/*2026*
+cloudflare/*2026*
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated test/runtime artifacts
+scripts/**/runtime/
+*.tsbuildinfo

@@ -1,0 +1,33 @@
+{
+  "name": "rkn-erp-web",
+  "version": "0.5.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "better-auth": "^1.6.26",
+    "better-sqlite3": "^12.11.1",
+    "googleapis": "^144.0.0",
+    "jszip": "^3.10.1",
+    "next": "^15.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@opennextjs/cloudflare": "1.20.2",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.0",
+    "wrangler": "4.123.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "sharp@0.34.5": true
+  }
+}

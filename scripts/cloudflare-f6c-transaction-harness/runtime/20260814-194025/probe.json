@@ -1,0 +1,30 @@
+﻿{
+  "harness": "RKN_CLOUDFLARE_F6C",
+  "storage": "SQLITE_DURABLE_OBJECT_LOCAL",
+  "transactionApi": "transactionSync",
+  "commit": {
+    "balance": 7,
+    "ledgerRows": 1,
+    "alreadyConfirmed": false,
+    "passed": true
+  },
+  "replay": {
+    "balance": 7,
+    "ledgerRows": 1,
+    "alreadyConfirmed": true,
+    "passed": true
+  },
+  "rollback": {
+    "error": "F6C_FORCED_ROLLBACK",
+    "balance": 10,
+    "ledgerRows": 0,
+    "passed": true
+  },
+  "insufficientStock": {
+    "error": "INSUFFICIENT_STOCK",
+    "balance": 2,
+    "ledgerRows": 0,
+    "passed": true
+  },
+  "pass": true
+}

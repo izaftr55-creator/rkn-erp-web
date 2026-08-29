@@ -1,0 +1,20 @@
+﻿{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+
+  "name": "rkn-erp-f7b-auth-d1-harness",
+  "main": "./src/index.mjs",
+
+  "compatibility_date": "2026-08-14",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "AUTH_DB",
+      "database_name": "rkn-f7b-local-auth",
+      "database_id": "00000000-0000-0000-0000-0000000007b0",
+      "preview_database_id": "rkn-f7b-local-auth"
+    }
+  ]
+}

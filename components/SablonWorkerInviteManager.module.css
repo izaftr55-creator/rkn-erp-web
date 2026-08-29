@@ -1,0 +1,1247 @@
+﻿.panel {
+  overflow: hidden;
+  border: 1px solid #dce4e8;
+  border-radius: 12px;
+  background: white;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 15px;
+  border-bottom: 1px solid #e8edef;
+}
+
+.head span,
+.createForm label > span {
+  color: #71808a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.head h3 {
+  margin: 4px 0 0;
+  color: #203b49;
+  font-size: 13px;
+}
+
+.head small {
+  color: #598476;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.createForm {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border-bottom: 1px solid #e8edef;
+}
+
+.createForm label {
+  display: grid;
+  gap: 5px;
+}
+
+.createForm input,
+.latest input {
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid #d8e0e5;
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: #253f4d;
+  font: inherit;
+  font-size: 9px;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+
+.createButton {
+  min-height: 37px;
+  border: 0;
+  border-radius: 8px;
+  background: #18566b;
+  color: white;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.createButton:disabled {
+  opacity: .55;
+}
+
+.latest {
+  margin: 15px;
+  padding: 12px;
+  border: 1px solid #cbe5da;
+  border-radius: 10px;
+  background: #f2faf5;
+}
+
+.latestLabel {
+  margin-bottom: 7px;
+  color: #40735a;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.linkRow {
+  display: flex;
+  gap: 7px;
+}
+
+.linkRow button,
+.actions button {
+  border: 1px solid #cfdade;
+  border-radius: 8px;
+  background: white;
+  color: #385866;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.linkRow button {
+  min-width: 70px;
+}
+
+.latest p {
+  margin: 8px 0 0;
+  color: #668077;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.listHead {
+  display: flex;
+  justify-content: space-between;
+  padding: 11px 15px;
+  border-top: 1px solid #eef2f3;
+  border-bottom: 1px solid #eef2f3;
+  color: #71808a;
+  font-size: 8px;
+}
+
+.list {
+  display: grid;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #eef1f3;
+}
+
+.info strong,
+.info span {
+  display: block;
+}
+
+.info strong {
+  color: #263f4b;
+  font-size: 9px;
+}
+
+.info span {
+  margin-top: 3px;
+  color: #87939b;
+  font-size: 8px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.status {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: #eef5f4;
+  color: #49766d;
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.actions button {
+  padding: 6px 8px;
+}
+
+.empty {
+  padding: 26px 15px;
+  color: #84919a;
+  font-size: 9px;
+  text-align: center;
+}
+
+.error {
+  margin: 12px 15px 0;
+  padding: 9px 10px;
+  border: 1px solid #efcccc;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #a54b4b;
+  font-size: 8px;
+}
+
+@media (max-width: 620px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
+  .row,
+  .linkRow {
+    flex-direction: column;
+  }
+
+  .actions {
+    justify-content: space-between;
+  }
+}
+
+/* RKN INVITE DARK V1 START */
+.panel {
+  overflow: hidden;
+
+  border:
+    1px solid rgba(105, 130, 255, .2);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 22, 47, .95),
+      rgba(6, 13, 30, .97)
+    );
+
+  color-scheme: dark;
+
+  box-shadow:
+    0 20px 50px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.head {
+  padding: 17px 18px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .14);
+
+  background:
+    rgba(15, 24, 49, .66);
+}
+
+.head span,
+.createForm label > span {
+  color: #8091bc;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.head h3 {
+  margin-top: 5px;
+  color: #eef2ff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.head small {
+  color: #8199ff;
+  font-size: 10px;
+}
+
+.createForm {
+  gap: 13px;
+  padding: 18px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .14);
+}
+
+.createForm label {
+  gap: 7px;
+}
+
+.createForm input,
+.latest input {
+  min-height: 43px;
+  padding: 0 13px;
+
+  border:
+    1px solid rgba(105, 127, 184, .24);
+
+  border-radius: 10px;
+
+  background:
+    rgba(3, 9, 23, .72);
+
+  color: #e9eeff;
+
+  font-size: 13px;
+
+  outline: none;
+}
+
+.createForm input::placeholder,
+.latest input::placeholder {
+  color: #5d6b87;
+}
+
+.createForm input:focus,
+.latest input:focus {
+  border-color: #7089ff;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(87, 113, 255, .11);
+}
+
+.createButton {
+  min-height: 44px;
+
+  border:
+    1px solid rgba(132, 151, 255, .3);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      100deg,
+      #5671ed,
+      #667fff 52%,
+      #5365dd
+    );
+
+  color: #fff;
+
+  font-size: 11.5px;
+
+  box-shadow:
+    0 10px 24px
+    rgba(66, 87, 219, .2);
+}
+
+.latest {
+  margin: 17px;
+  padding: 14px;
+
+  border:
+    1px solid rgba(80, 171, 126, .2);
+
+  border-radius: 12px;
+
+  background:
+    rgba(31, 107, 76, .09);
+}
+
+.latestLabel {
+  color: #8fd2b0;
+  font-size: 10px;
+}
+
+.latest p {
+  color: #85a495;
+  font-size: 11.5px;
+}
+
+.linkRow button,
+.actions button {
+  border:
+    1px solid rgba(112, 134, 197, .22);
+
+  border-radius: 9px;
+
+  background:
+    rgba(24, 35, 67, .72);
+
+  color: #cbd5ff;
+
+  font-size: 10.5px;
+}
+
+.listHead {
+  padding: 13px 17px;
+
+  border-top:
+    1px solid rgba(105, 127, 184, .12);
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .12);
+
+  color: #7d8cac;
+
+  font-size: 10px;
+}
+
+.row {
+  padding: 15px 17px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .1);
+
+  background:
+    rgba(6, 13, 29, .2);
+}
+
+.row:hover {
+  background:
+    rgba(89, 112, 255, .045);
+}
+
+.info strong {
+  color: #e7ecff;
+  font-size: 12.5px;
+}
+
+.info span {
+  margin-top: 4px;
+  color: #7f8da9;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.status {
+  padding: 6px 9px;
+
+  border:
+    1px solid rgba(75, 164, 124, .18);
+
+  background:
+    rgba(38, 118, 85, .11);
+
+  color: #8fd0af;
+
+  font-size: 9px;
+}
+
+.empty {
+  color: #7c89a6;
+  font-size: 11.5px;
+}
+
+.error {
+  border-color: rgba(213, 90, 101, .22);
+  background: rgba(122, 36, 46, .12);
+  color: #efa3ac;
+  font-size: 11px;
+}
+/* RKN INVITE DARK V1 END */
+
+
+/* RKN INVITE TYPOGRAPHY V2 START */
+.panel {
+  font-family:
+    Inter,
+    "Segoe UI Variable",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.head span,
+.createForm label > span {
+  letter-spacing: .075em;
+}
+
+.head h3 {
+  letter-spacing: .012em;
+  line-height: 1.35;
+}
+
+.head small {
+  letter-spacing: .055em;
+}
+
+.createForm input,
+.latest input {
+  letter-spacing: .012em;
+}
+
+.createButton {
+  letter-spacing: .045em;
+}
+
+.latestLabel {
+  letter-spacing: .065em;
+}
+
+.latest p {
+  letter-spacing: .012em;
+}
+
+.listHead {
+  letter-spacing: .065em;
+}
+
+.info strong {
+  letter-spacing: .012em;
+}
+
+.info span {
+  letter-spacing: .012em;
+}
+
+.status {
+  letter-spacing: .05em;
+}
+
+.linkRow button,
+.actions button {
+  letter-spacing: .025em;
+}
+
+.error,
+.empty {
+  letter-spacing: .012em;
+  line-height: 1.5;
+}
+/* RKN INVITE TYPOGRAPHY V2 END */
+
+
+
+
+/* RKN INVITE CONTROL PANEL V2 START */
+/* ============================================================
+   PANEL
+   ============================================================ */
+
+.panel {
+  position: relative;
+  overflow: hidden;
+
+  border:
+    1px solid rgba(105, 130, 255, .20);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 22, 47, .96),
+      rgba(6, 13, 30, .98)
+    );
+
+  box-shadow:
+    0 22px 55px rgba(0, 0, 0, .22),
+    inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+.panel::before {
+  content: "";
+
+  position: absolute;
+
+  width: 240px;
+  height: 180px;
+
+  top: -110px;
+  right: -80px;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  background:
+    rgba(78, 102, 255, .09);
+
+  filter: blur(60px);
+}
+
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.head {
+  position: relative;
+  z-index: 1;
+
+  min-height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 17px 19px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .14);
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(17, 28, 57, .72),
+      rgba(10, 18, 39, .42)
+    );
+}
+
+.head span {
+  color: #8191ba;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .075em;
+}
+
+.head h3 {
+  margin: 6px 0 0;
+
+  color: #f1f4ff;
+
+  font-size: 16px;
+  font-weight: 800;
+
+  line-height: 1.3;
+
+  letter-spacing: .015em;
+}
+
+.head small {
+  color: #8ca0ff;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .045em;
+}
+
+
+/* ============================================================
+   CREATE FORM
+   ============================================================ */
+
+.createForm {
+  position: relative;
+  z-index: 1;
+
+  display: grid;
+
+  gap: 14px;
+
+  padding: 19px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .13);
+
+  background:
+    rgba(5, 12, 28, .22);
+}
+
+.createForm label {
+  display: grid;
+
+  gap: 7px;
+}
+
+.createForm label > span {
+  color: #8291b4;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .065em;
+}
+
+.twoCol {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr);
+
+  gap: 12px;
+}
+
+.createForm input,
+.latest input {
+  width: 100%;
+  min-height: 44px;
+
+  box-sizing: border-box;
+
+  padding: 0 13px;
+
+  border:
+    1px solid rgba(108, 130, 188, .24);
+
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(4, 10, 25, .83),
+      rgba(6, 13, 30, .76)
+    );
+
+  color: #e9eeff;
+
+  font-size: 12.5px;
+  font-weight: 500;
+
+  letter-spacing: .012em;
+
+  outline: none;
+
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.createForm input:hover,
+.latest input:hover {
+  border-color:
+    rgba(118, 142, 210, .34);
+}
+
+.createForm input:focus,
+.latest input:focus {
+  border-color: #7089ff;
+
+  background:
+    rgba(7, 14, 33, .96);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(87, 113, 255, .10);
+}
+
+.createForm input::placeholder,
+.latest input::placeholder {
+  color: #5e6c88;
+
+  opacity: 1;
+}
+
+
+/* ============================================================
+   CREATE BUTTON
+   ============================================================ */
+
+.createButton {
+  position: relative;
+
+  min-height: 45px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(132, 153, 255, .32);
+
+  border-radius: 11px;
+
+  background:
+    linear-gradient(
+      100deg,
+      #526deb 0%,
+      #6680ff 52%,
+      #5364df 100%
+    );
+
+  color: #ffffff;
+
+  cursor: pointer;
+
+  font-size: 11px;
+  font-weight: 850;
+
+  letter-spacing: .05em;
+
+  box-shadow:
+    0 11px 26px
+    rgba(62, 84, 220, .20);
+
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    opacity 140ms ease;
+}
+
+.createButton:hover:not(:disabled) {
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 15px 32px
+    rgba(62, 84, 220, .28);
+}
+
+.createButton:active:not(:disabled) {
+  transform:
+    translateY(0);
+}
+
+.createButton:disabled {
+  opacity: .45;
+
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   LATEST GENERATED LINK
+   ============================================================ */
+
+.latest {
+  position: relative;
+
+  margin: 17px 19px;
+
+  padding: 15px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(74, 169, 121, .22);
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(30, 104, 75, .12),
+      rgba(8, 18, 34, .78)
+    );
+}
+
+.latest::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  bottom: 0;
+  left: 0;
+
+  width: 3px;
+
+  background: #58a77f;
+}
+
+.latestLabel {
+  color: #93d3b2;
+
+  font-size: 10px;
+  font-weight: 850;
+
+  letter-spacing: .07em;
+}
+
+.linkRow {
+  display: flex;
+
+  gap: 8px;
+
+  margin-top: 9px;
+}
+
+.linkRow input {
+  flex: 1 1 auto;
+
+  min-width: 0;
+}
+
+.linkRow button {
+  flex: 0 0 auto;
+
+  min-width: 82px;
+
+  padding: 0 12px;
+}
+
+.latest p {
+  margin: 9px 0 0;
+
+  color: #839c91;
+
+  font-size: 11.5px;
+
+  line-height: 1.55;
+
+  letter-spacing: .012em;
+}
+
+
+/* ============================================================
+   SECONDARY BUTTONS
+   ============================================================ */
+
+.linkRow button,
+.actions button {
+  min-height: 36px;
+
+  border:
+    1px solid rgba(112, 135, 198, .22);
+
+  border-radius: 9px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(28, 41, 77, .80),
+      rgba(16, 26, 52, .84)
+    );
+
+  color: #cbd5ff;
+
+  cursor: pointer;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: .03em;
+
+  transition:
+    border-color 130ms ease,
+    background 130ms ease,
+    color 130ms ease;
+}
+
+.linkRow button:hover,
+.actions button:hover {
+  border-color:
+    rgba(117, 142, 255, .38);
+
+  background:
+    rgba(39, 53, 96, .86);
+
+  color: #eef2ff;
+}
+
+
+/* ============================================================
+   HISTORY HEADER
+   ============================================================ */
+
+.listHead {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 45px;
+
+  padding: 0 19px;
+
+  border-top:
+    1px solid rgba(105, 127, 184, .11);
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .11);
+
+  background:
+    rgba(13, 22, 44, .55);
+
+  color: #8290ad;
+
+  font-size: 9.5px;
+  font-weight: 800;
+
+  letter-spacing: .07em;
+}
+
+
+/* ============================================================
+   HISTORY LIST
+   ============================================================ */
+
+.list {
+  display: grid;
+
+  background:
+    rgba(5, 11, 27, .30);
+}
+
+.row {
+  min-height: 70px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 18px;
+
+  padding: 14px 19px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .10);
+
+  transition:
+    background 130ms ease;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover {
+  background:
+    rgba(88, 111, 255, .045);
+}
+
+.info {
+  min-width: 0;
+}
+
+.info strong,
+.info span {
+  display: block;
+}
+
+.info strong {
+  overflow: hidden;
+
+  color: #e8edff;
+
+  font-size: 12px;
+  font-weight: 750;
+
+  line-height: 1.4;
+
+  letter-spacing: .015em;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.info span {
+  margin-top: 5px;
+
+  color: #7e8ba8;
+
+  font-size: 10.5px;
+
+  line-height: 1.45;
+
+  letter-spacing: .012em;
+}
+
+
+/* ============================================================
+   HISTORY ACTIONS
+   ============================================================ */
+
+.actions {
+  flex: 0 0 auto;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+.status {
+  min-height: 25px;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 9px;
+
+  border:
+    1px solid rgba(76, 161, 119, .20);
+
+  border-radius: 999px;
+
+  background:
+    rgba(37, 116, 82, .11);
+
+  color: #8fd0ae;
+
+  font-size: 8.5px;
+  font-weight: 850;
+
+  line-height: 1;
+
+  letter-spacing: .055em;
+}
+
+
+/* ============================================================
+   EMPTY / ERROR
+   ============================================================ */
+
+.empty {
+  padding: 30px 18px;
+
+  background:
+    rgba(4, 10, 24, .25);
+
+  color: #7d8aa6;
+
+  font-size: 11.5px;
+
+  line-height: 1.5;
+
+  text-align: center;
+}
+
+.error {
+  margin: 14px 18px 0;
+
+  padding: 11px 13px;
+
+  border:
+    1px solid rgba(210, 89, 101, .22);
+
+  border-radius: 9px;
+
+  background:
+    rgba(121, 35, 45, .12);
+
+  color: #efa4ad;
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 720px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
+  .head {
+    align-items: flex-start;
+  }
+
+  .row {
+    align-items: stretch;
+    flex-direction: column;
+
+    gap: 11px;
+  }
+
+  .actions {
+    justify-content: space-between;
+  }
+
+  .info strong {
+    white-space: normal;
+  }
+}
+
+@media (max-width: 520px) {
+  .head,
+  .createForm {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .latest {
+    margin-left: 15px;
+    margin-right: 15px;
+  }
+
+  .listHead,
+  .row {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .linkRow {
+    flex-direction: column;
+  }
+
+  .linkRow button {
+    width: 100%;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .actions button {
+    flex: 1 1 auto;
+  }
+}
+/* RKN INVITE CONTROL PANEL V2 END */
+
+/* RKN_UI_V2_INVITE_MANAGER START */
+.panel,
+.wrap {
+  color: #dce5ff;
+}
+
+.head,
+.createForm,
+.listHead {
+  border-color:
+    rgba(105,127,184,.13);
+}
+
+.createForm {
+  background:
+    rgba(9,17,37,.48);
+}
+
+.createButton {
+  border:
+    1px solid rgba(127,150,255,.32);
+
+  background:
+    linear-gradient(
+      100deg,
+      #5873ef,
+      #657dff 52%,
+      #5364de
+    );
+}
+
+.latest {
+  border-color:
+    rgba(74,169,121,.22);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(30,104,75,.11),
+      rgba(8,18,34,.76)
+    );
+}
+
+.row {
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.row:hover {
+  transform:
+    translateX(2px);
+
+  background:
+    rgba(88,111,255,.05);
+}
+/* RKN_UI_V2_INVITE_MANAGER END */
+

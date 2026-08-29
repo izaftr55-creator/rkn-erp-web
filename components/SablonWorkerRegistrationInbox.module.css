@@ -1,0 +1,2552 @@
+﻿.panel {
+  overflow: hidden;
+  border: 1px solid #d8e2e6;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(25, 65, 82, 0.04);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e6ecef;
+  background: #ffffff;
+}
+
+.header span,
+.identity span,
+.detail span,
+.review label > span {
+  color: #71818a;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+}
+
+.header h3 {
+  margin: 5px 0 0;
+  color: #183d4c;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 27px;
+  padding: 0 11px;
+  border: 1px solid #f0dfad;
+  border-radius: 999px;
+  background: #fff7df;
+  color: #8d6d20;
+  font-size: 8px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 0;
+  border-bottom: 1px solid #e6ecef;
+  background: #fafcfd;
+}
+
+.summary div {
+  min-height: 61px;
+  padding: 12px 18px;
+  border-right: 1px solid #e7edef;
+}
+
+.summary div:last-child {
+  border-right: 0;
+}
+
+.summary span,
+.summary strong {
+  display: block;
+}
+
+.summary span {
+  color: #819099;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.summary strong {
+  margin-top: 5px;
+  color: #173b4a;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.list {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: #f7fafb;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid #dce5e8;
+  border-radius: 13px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(28, 68, 84, 0.035);
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1.15fr 1.1fr;
+  gap: 0;
+  border-bottom: 1px solid #e8edef;
+  background: #ffffff;
+}
+
+.identity > div {
+  min-width: 0;
+  padding: 14px 15px;
+  border-right: 1px solid #edf1f3;
+}
+
+.identity > div:last-child {
+  border-right: 0;
+}
+
+.identity strong {
+  display: block;
+  margin-top: 6px;
+  color: #213f4c;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid #e8edef;
+  background: #fbfcfd;
+}
+
+.detail > div {
+  min-height: 70px;
+  padding: 14px 15px;
+  border-right: 1px solid #edf1f3;
+}
+
+.detail > div:last-child {
+  border-right: 0;
+}
+
+.detail p {
+  margin: 6px 0 0;
+  color: #506872;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.review {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: 14px;
+  padding: 14px;
+  background: #f6f9fa;
+}
+
+.approveBox,
+.rejectBox {
+  display: grid;
+  grid-template-rows: auto minmax(94px, 1fr) auto;
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 15px;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.approveBox {
+  border: 1px solid #c9dfd7;
+  border-left: 3px solid #669b8b;
+  background: #fbfdfc;
+}
+
+.rejectBox {
+  border: 1px solid #e5cece;
+  border-left: 3px solid #b77b7b;
+  background: #fefcfc;
+}
+
+.boxTitle {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  margin-bottom: 12px;
+  color: #314e5a;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.approveBox .boxTitle {
+  color: #376d5e;
+}
+
+.rejectBox .boxTitle {
+  color: #865a5a;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-self: start;
+  gap: 10px;
+}
+
+.review label {
+  display: grid;
+  gap: 6px;
+}
+
+.rejectBox > label {
+  align-self: start;
+}
+
+.approveBox .twoCol,
+.rejectBox > label {
+  width: 100%;
+}
+
+.review select,
+.review textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d4dfe3;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #294652;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  outline: none;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.review select {
+  min-height: 39px;
+  padding: 0 10px;
+}
+
+.review textarea {
+  min-height: 78px;
+  resize: vertical;
+  padding: 10px;
+  line-height: 1.45;
+}
+
+.review select:focus,
+.review textarea:focus {
+  border-color: #73a69a;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(68, 132, 117, 0.08);
+}
+
+.approveButton,
+.rejectButton {
+  align-self: end;
+  width: 100%;
+  min-height: 41px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.approveButton {
+  background: #286b5a;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(40, 107, 90, 0.12);
+}
+
+.rejectButton {
+  background: #915858;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(145, 88, 88, 0.12);
+}
+
+.approveButton:not(:disabled):hover,
+.rejectButton:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.approveButton:disabled,
+.rejectButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.32;
+}
+
+.empty {
+  padding: 34px 18px;
+  color: #84939b;
+  font-size: 10px;
+  font-weight: 650;
+  text-align: center;
+  background: #ffffff;
+}
+
+.error,
+.success {
+  margin: 14px 16px 0;
+  padding: 11px 12px;
+  border-radius: 9px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.error {
+  border: 1px solid #efcccc;
+  background: #fff5f5;
+  color: #a34d4d;
+}
+
+.success {
+  border: 1px solid #c9e2d3;
+  background: #f2faf5;
+  color: #41725a;
+}
+
+@media (max-width: 1000px) {
+  .identity {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .identity > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .identity > div:nth-child(-n + 2) {
+    border-bottom: 1px solid #edf1f3;
+  }
+}
+
+@media (max-width: 760px) {
+  .review,
+  .detail {
+    grid-template-columns: 1fr;
+  }
+
+  .detail > div {
+    border-right: 0;
+  }
+
+  .detail > div:first-child {
+    border-bottom: 1px solid #edf1f3;
+  }
+}
+
+@media (max-width: 560px) {
+  .header {
+    align-items: flex-start;
+  }
+
+  .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .summary div {
+    min-height: 52px;
+    border-right: 0;
+    border-bottom: 1px solid #e7edef;
+  }
+
+  .summary div:last-child {
+    border-bottom: 0;
+  }
+
+  .identity,
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
+  .identity > div {
+    border-right: 0;
+    border-bottom: 1px solid #edf1f3;
+  }
+
+  .identity > div:last-child {
+    border-bottom: 0;
+  }
+
+  .review {
+    padding: 10px;
+  }
+}
+
+/* STATUS CARDS V4 START */
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e3eaed;
+  background: #f6f9fa;
+}
+
+.summary > div {
+  position: relative;
+  min-width: 0;
+  min-height: 88px;
+  box-sizing: border-box;
+  padding: 15px 16px 14px 18px;
+  border-radius: 13px;
+  overflow: hidden;
+}
+
+.summary > div::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.summary > div:nth-child(1) {
+  border: 1px solid #eadba9;
+  background: linear-gradient(
+    135deg,
+    #fffaf0 0%,
+    #fffdf8 44%,
+    #ffffff 100%
+  );
+  box-shadow: 0 5px 14px rgba(151, 112, 25, 0.05);
+}
+
+.summary > div:nth-child(1)::before {
+  background: #c89b32;
+}
+
+.summary > div:nth-child(2) {
+  border: 1px solid #c9ded5;
+  background: linear-gradient(
+    135deg,
+    #f3faf6 0%,
+    #f9fcfa 44%,
+    #ffffff 100%
+  );
+  box-shadow: 0 5px 14px rgba(49, 112, 87, 0.05);
+}
+
+.summary > div:nth-child(2)::before {
+  background: #4d9177;
+}
+
+.summary > div:nth-child(3) {
+  border: 1px solid #e5cccc;
+  background: linear-gradient(
+    135deg,
+    #fff5f5 0%,
+    #fffafa 44%,
+    #ffffff 100%
+  );
+  box-shadow: 0 5px 14px rgba(139, 78, 78, 0.05);
+}
+
+.summary > div:nth-child(3)::before {
+  background: #ad6b6b;
+}
+
+.summary span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #74838b;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.summary span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.summary > div:nth-child(1) span::before {
+  background: #c89b32;
+  box-shadow: 0 0 0 4px rgba(200, 155, 50, 0.11);
+}
+
+.summary > div:nth-child(2) span::before {
+  background: #4d9177;
+  box-shadow: 0 0 0 4px rgba(77, 145, 119, 0.11);
+}
+
+.summary > div:nth-child(3) span::before {
+  background: #ad6b6b;
+  box-shadow: 0 0 0 4px rgba(173, 107, 107, 0.11);
+}
+
+.summary strong {
+  display: block;
+  margin-top: 13px;
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.summary > div:nth-child(1) strong {
+  color: #8a681c;
+}
+
+.summary > div:nth-child(2) strong {
+  color: #356e59;
+}
+
+.summary > div:nth-child(3) strong {
+  color: #8d5252;
+}
+
+.counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid #ead89d;
+  border-radius: 999px;
+  background: #fff8e4;
+  color: #846316;
+  box-shadow: 0 3px 9px rgba(145, 110, 27, 0.06);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .summary > div {
+    min-height: 72px;
+  }
+
+  .summary strong {
+    margin-top: 9px;
+    font-size: 22px;
+  }
+}
+
+/* STATUS CARDS V4 END */
+
+/* REGISTRATION PRECISION UI V8 START */
+
+/* =========================================================
+   REGISTRATION CARD
+   ========================================================= */
+
+.card {
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d9e3e7;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(24, 61, 76, 0.035);
+}
+
+/* =========================================================
+   PRIMARY INFORMATION
+   ========================================================= */
+
+.identity {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1.25fr)
+    minmax(160px, .85fr)
+    minmax(190px, .95fr)
+    minmax(190px, .95fr);
+
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid #e5ebee;
+  background: #ffffff;
+}
+
+.identity > div {
+  position: relative;
+  min-width: 0;
+  min-height: 78px;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  padding: 13px 17px;
+
+  border-right: 1px solid #e8edef;
+  background: #ffffff;
+}
+
+.identity > div:last-child {
+  border-right: 0;
+}
+
+/* Nama utama: accent kiri, bukan garis atas */
+.identity > div:first-child {
+  padding-left: 20px;
+}
+
+.identity > div:first-child::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  bottom: 13px;
+  left: 0;
+
+  width: 3px;
+
+  border-radius: 0 3px 3px 0;
+  background: #4d8190;
+}
+
+.identity span {
+  display: block;
+  margin: 0 0 7px;
+  padding: 0;
+
+  color: #74868f;
+
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .075em;
+}
+
+.identity strong {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+
+  color: #1b3e4c;
+
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.35;
+
+  overflow-wrap: anywhere;
+}
+
+.identity > div:first-child strong {
+  color: #123947;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.identity > div:nth-child(3) {
+  background: #fbfdfc;
+}
+
+.identity > div:nth-child(3) strong {
+  color: #30695a;
+}
+
+.identity > div:nth-child(4) {
+  background: #fbfcfd;
+}
+
+.identity > div:nth-child(4) strong {
+  color: #526873;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+/* =========================================================
+   SECONDARY INFORMATION
+   ========================================================= */
+
+.detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+
+  padding: 0;
+  border-bottom: 0;
+
+  background: #fafcfd;
+}
+
+.detail > div {
+  min-width: 0;
+  min-height: 70px;
+  box-sizing: border-box;
+
+  padding: 13px 17px;
+
+  border-right: 1px solid #e8edef;
+  background: #fafcfd;
+}
+
+.detail > div:last-child {
+  border-right: 0;
+  background: #f9fbfa;
+}
+
+.detail span {
+  display: block;
+  margin: 0 0 7px;
+  padding: 0;
+
+  color: #74868f;
+
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .075em;
+}
+
+.detail p {
+  margin: 0;
+  padding: 0;
+
+  color: #405c68;
+
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.45;
+
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   DECISION AREA
+   ========================================================= */
+
+.review {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+
+  gap: 12px;
+
+  margin: 0;
+  padding: 12px;
+
+  border-top: 1px solid #dfe7ea;
+  background: #f6f9fa;
+}
+
+.approveBox,
+.rejectBox {
+  display: grid;
+  grid-template-rows:
+    auto
+    74px
+    38px;
+
+  min-width: 0;
+  min-height: 160px;
+  height: 160px;
+  box-sizing: border-box;
+
+  padding: 13px;
+
+  border-radius: 11px;
+  background: #ffffff;
+}
+
+.approveBox {
+  border: 1px solid #cadfd7;
+  border-left: 3px solid #55907d;
+  background: #fbfdfc;
+}
+
+.rejectBox {
+  border: 1px solid #e5cece;
+  border-left: 3px solid #ad7171;
+  background: #fefcfc;
+}
+
+.boxTitle {
+  display: flex;
+  align-items: flex-start;
+
+  min-height: 17px;
+
+  margin: 0 0 8px;
+  padding: 0;
+
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: .035em;
+}
+
+.approveBox .boxTitle {
+  color: #376d5e;
+}
+
+.rejectBox .boxTitle {
+  color: #865858;
+}
+
+/* =========================================================
+   APPROVE INPUT AREA
+   ========================================================= */
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-self: start;
+
+  gap: 10px;
+
+  width: 100%;
+}
+
+.review label {
+  display: grid;
+  align-self: start;
+  gap: 5px;
+}
+
+.review label > span {
+  color: #70828b;
+
+  font-size: 8px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: .04em;
+}
+
+.review select,
+.review textarea {
+  width: 100%;
+  box-sizing: border-box;
+
+  border: 1px solid #d4dfe3;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #294652;
+
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+
+  outline: none;
+}
+
+.review select {
+  height: 37px;
+  min-height: 37px;
+  padding: 0 10px;
+}
+
+.review textarea {
+  height: 57px;
+  min-height: 57px;
+  max-height: 57px;
+
+  resize: none;
+
+  padding: 9px 10px;
+  line-height: 1.4;
+}
+
+.review select:focus,
+.review textarea:focus {
+  border-color: #73a69a;
+  box-shadow: 0 0 0 3px rgba(68, 132, 117, .07);
+}
+
+/* =========================================================
+   DECISION BUTTONS
+   ========================================================= */
+
+.approveButton,
+.rejectButton {
+  align-self: end;
+
+  width: 100%;
+  height: 38px;
+  min-height: 38px;
+
+  margin: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .035em;
+}
+
+.approveButton {
+  background: #286b5a;
+  color: #ffffff;
+}
+
+.rejectButton {
+  background: #915858;
+  color: #ffffff;
+}
+
+.approveButton:disabled,
+.rejectButton:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 980px) {
+  .identity {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .identity > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .identity > div:nth-child(-n + 2) {
+    border-bottom: 1px solid #e8edef;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .review,
+  .detail {
+    grid-template-columns: 1fr;
+  }
+
+  .detail > div {
+    border-right: 0;
+  }
+
+  .detail > div:first-child {
+    border-bottom: 1px solid #e8edef;
+  }
+
+  .approveBox,
+  .rejectBox {
+    height: auto;
+    min-height: 160px;
+  }
+}
+
+@media (max-width: 560px) {
+  .identity {
+    grid-template-columns: 1fr;
+  }
+
+  .identity > div {
+    min-height: 70px;
+    border-right: 0;
+    border-bottom: 1px solid #e8edef;
+  }
+
+  .identity > div:last-child {
+    border-bottom: 0;
+  }
+
+  .review {
+    padding: 9px;
+  }
+
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
+  .approveBox {
+    height: auto;
+    grid-template-rows: auto auto 38px;
+  }
+}
+
+/* REGISTRATION PRECISION UI V8 END */
+
+/* REGISTRATION GRID ALIGNMENT V9 START */
+
+/*
+  DESKTOP GRID:
+  4 x 25% DI ATAS
+  2 x 50% DI BAWAH
+
+  GARIS ANTARA KOLOM 2 DAN 3
+  AKAN PERSIS SEJAJAR DENGAN
+  GARIS ANTARA ALAMAT DAN CATATAN.
+*/
+
+.identity {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.identity > div,
+.detail > div {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Divider atas */
+.identity > div {
+  border-right: 1px solid #e8edef;
+}
+
+.identity > div:last-child {
+  border-right: 0;
+}
+
+/* Divider bawah */
+.detail > div {
+  border-right: 1px solid #e8edef;
+}
+
+.detail > div:last-child {
+  border-right: 0;
+}
+
+/*
+  Jangan ubah proporsi grid desktop
+  sampai breakpoint tablet.
+*/
+
+@media (max-width: 980px) {
+  .identity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .detail {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .identity {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* REGISTRATION GRID ALIGNMENT V9 END */
+
+/* REVIEW DROPDOWN UI V10 START */
+
+/* Kedua decision card tetap tinggi sama */
+.approveBox,
+.rejectBox {
+  grid-template-rows:
+    auto
+    108px
+    38px;
+
+  height: 194px;
+  min-height: 194px;
+}
+
+/* =========================================================
+   SELECT MODERN
+   ========================================================= */
+
+.review select {
+  appearance: none;
+  -webkit-appearance: none;
+
+  height: 38px;
+  min-height: 38px;
+
+  padding:
+    0
+    36px
+    0
+    11px;
+
+  border: 1px solid #d1dce1;
+  border-radius: 9px;
+
+  background-color: #ffffff;
+
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent 50%,
+      #70838c 50%
+    ),
+    linear-gradient(
+      135deg,
+      #70838c 50%,
+      transparent 50%
+    );
+
+  background-position:
+    calc(100% - 15px) 16px,
+    calc(100% - 11px) 16px;
+
+  background-size:
+    4px 4px,
+    4px 4px;
+
+  background-repeat: no-repeat;
+
+  color: #294652;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.review select:hover:not(:disabled) {
+  border-color: #afc1c8;
+  background-color: #fbfcfd;
+}
+
+/* APPROVE = GREEN FOCUS */
+.approveBox select:focus {
+  border-color: #6d9e8d;
+  background-color: #ffffff;
+  box-shadow:
+    0 0 0 3px rgba(66, 130, 108, .09);
+}
+
+/* REJECT = RED FOCUS */
+.rejectBox select:focus,
+.rejectBox textarea:focus {
+  border-color: #b88383;
+  background-color: #ffffff;
+  box-shadow:
+    0 0 0 3px rgba(158, 91, 91, .08);
+}
+
+/* =========================================================
+   APPROVAL DROPDOWNS
+   ========================================================= */
+
+.approveBox .twoCol {
+  align-self: start;
+  width: 100%;
+}
+
+.approveBox select {
+  border-color: #cdded8;
+  background-color: #fcfefd;
+}
+
+.approveBox label > span {
+  color: #607d73;
+}
+
+/* =========================================================
+   REJECTION PRESET + MANUAL REASON
+   ========================================================= */
+
+.rejectFields {
+  display: grid;
+  grid-template-columns:
+    minmax(190px, .8fr)
+    minmax(0, 1.2fr);
+
+  align-self: start;
+
+  gap: 10px;
+
+  width: 100%;
+}
+
+.rejectBox select {
+  border-color: #e1cece;
+  background-color: #fffcfc;
+}
+
+.rejectBox textarea {
+  height: 58px;
+  min-height: 58px;
+  max-height: 58px;
+
+  resize: none;
+
+  border-color: #e1cece;
+  background: #fffcfc;
+}
+
+.rejectBox label > span {
+  color: #866868;
+}
+
+/* =========================================================
+   DISABLED
+   ========================================================= */
+
+.review select:disabled,
+.review textarea:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .rejectFields {
+    grid-template-columns: 1fr;
+  }
+
+  .approveBox,
+  .rejectBox {
+    grid-template-rows:
+      auto
+      auto
+      38px;
+
+    height: auto;
+    min-height: 194px;
+  }
+}
+
+@media (max-width: 560px) {
+  .approveBox .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* REVIEW DROPDOWN UI V10 END */
+
+/* CUSTOM REVIEW DROPDOWN V11 START */
+
+/* Dropdown harus boleh keluar dari card */
+.panel,
+.card,
+.review,
+.approveBox,
+.rejectBox {
+  overflow: visible;
+}
+
+/* =========================================================
+   FIELD
+   ========================================================= */
+
+.customField {
+  display: grid;
+  grid-template-rows:
+    12px
+    44px;
+
+  align-content: start;
+  gap: 7px;
+
+  min-width: 0;
+}
+
+.customFieldLabel {
+  display: flex;
+  align-items: center;
+
+  height: 12px;
+  margin: 0;
+
+  color: #71838c;
+
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 12px;
+  letter-spacing: .055em;
+}
+
+/* =========================================================
+   DROPDOWN
+   ========================================================= */
+
+.customDropdown {
+  position: relative;
+  min-width: 0;
+}
+
+.customDropdownTrigger {
+  width: 100%;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  box-sizing: border-box;
+
+  padding:
+    0
+    11px
+    0
+    13px;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+  text-align: left;
+
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.customApproveTrigger {
+  border: 1px solid #cbded7;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f8fcfa 100%
+    );
+}
+
+.customRejectTrigger {
+  border: 1px solid #e0cccc;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fff9f9 100%
+    );
+}
+
+.customApproveTrigger:hover:not(:disabled) {
+  border-color: #8db5a7;
+  background: #f7fcfa;
+}
+
+.customRejectTrigger:hover:not(:disabled) {
+  border-color: #c99898;
+  background: #fff8f8;
+}
+
+.customTriggerOpen.customApproveTrigger {
+  border-color: #659b88;
+
+  box-shadow:
+    0 0 0 3px rgba(77, 145, 119, .09);
+}
+
+.customTriggerOpen.customRejectTrigger {
+  border-color: #b87c7c;
+
+  box-shadow:
+    0 0 0 3px rgba(173, 107, 107, .08);
+}
+
+.customDropdownTrigger:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+/* =========================================================
+   VALUE + CHEVRON
+   ========================================================= */
+
+.customPlaceholder {
+  color: #8a979d;
+
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.customSelectedText {
+  color: #294652;
+
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.customChevron {
+  width: 20px;
+  height: 20px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 20px;
+
+  border-radius: 6px;
+
+  color: #70838c;
+
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+}
+
+.customTriggerOpen .customChevron {
+  background: rgba(49, 84, 98, .06);
+}
+
+.customChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* =========================================================
+   MENU
+   ========================================================= */
+
+.customDropdownMenu {
+  position: absolute;
+
+  z-index: 100;
+
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+
+  overflow: hidden;
+
+  padding: 6px;
+
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 14px 34px rgba(24, 57, 70, .14);
+}
+
+.customApproveMenu {
+  border: 1px solid #c9ddd6;
+}
+
+.customRejectMenu {
+  border: 1px solid #dfc7c7;
+}
+
+/* =========================================================
+   OPTION
+   ========================================================= */
+
+.customOption {
+  width: 100%;
+  min-height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  padding: 0 11px;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #415b66;
+
+  cursor: pointer;
+
+  font-size: 8px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.customOption:hover {
+  background: #f3f7f8;
+  color: #193f4d;
+}
+
+.customApproveMenu .customOptionSelected {
+  background: #edf7f3;
+  color: #356e5b;
+}
+
+.customRejectMenu .customOptionSelected {
+  background: #fbeaea;
+  color: #8d5353;
+}
+
+.customCheck {
+  font-size: 10px;
+  font-weight: 950;
+}
+
+/* =========================================================
+   APPROVE
+   ========================================================= */
+
+.approveBox .twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+
+  gap: 10px;
+}
+
+/* =========================================================
+   REJECT â€” PERSIS SEPERTI PREVIEW FINAL
+   ========================================================= */
+
+.rejectFields {
+  display: grid;
+
+  grid-template-columns:
+    minmax(220px, .88fr)
+    minmax(0, 1.12fr);
+
+  align-items: start;
+
+  gap: 10px;
+
+  width: 100%;
+}
+
+.rejectFields .customField {
+  grid-template-rows:
+    12px
+    44px;
+}
+
+.rejectFields textarea {
+  width: 100%;
+
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 12px 13px;
+
+  resize: none;
+  overflow: hidden;
+
+  border: 1px solid #e0cccc;
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fffafa 100%
+    );
+
+  color: #5a4343;
+
+  font: inherit;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 18px;
+
+  outline: none;
+}
+
+.rejectFields textarea:hover:not(:disabled) {
+  border-color: #d0adad;
+}
+
+.rejectFields textarea:focus {
+  border-color: #b87878;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 0 3px rgba(173, 107, 107, .08);
+}
+
+/* =========================================================
+   CARD ALIGNMENT
+   ========================================================= */
+
+.approveBox,
+.rejectBox {
+  grid-template-rows:
+    auto
+    74px
+    38px;
+
+  min-height: 160px;
+  height: 160px;
+}
+
+.approveButton,
+.rejectButton {
+  align-self: end;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .approveBox,
+  .rejectBox {
+    height: auto;
+    min-height: 160px;
+  }
+
+  .rejectFields {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .approveBox .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* CUSTOM REVIEW DROPDOWN V11 END */
+
+
+/* RKN REGISTRATION INBOX DARK V1 START */
+.panel {
+  border:
+    1px solid rgba(105, 130, 255, .2);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13, 22, 47, .95),
+      rgba(6, 13, 30, .97)
+    );
+
+  box-shadow:
+    0 20px 50px rgba(0,0,0,.22),
+    inset 0 1px 0 rgba(255,255,255,.035);
+
+  color-scheme: dark;
+}
+
+.header {
+  min-height: 74px;
+  padding: 18px 20px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .14);
+
+  background:
+    rgba(15, 24, 49, .7);
+}
+
+.header span,
+.identity span,
+.detail span,
+.review label > span,
+.customFieldLabel {
+  color: #8190b2;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.header h3 {
+  margin-top: 6px;
+  color: #eef2ff;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.counter {
+  min-height: 32px;
+  padding: 0 13px;
+
+  border:
+    1px solid rgba(211, 162, 57, .28);
+
+  background:
+    rgba(174, 126, 27, .1);
+
+  color: #e8c46a;
+
+  font-size: 10px;
+}
+
+.summary {
+  gap: 12px;
+  padding: 16px 18px;
+
+  border-bottom:
+    1px solid rgba(105, 127, 184, .14);
+
+  background:
+    rgba(5, 12, 28, .52);
+}
+
+.summary > div {
+  min-height: 92px;
+
+  padding: 16px 17px 15px 20px;
+
+  border-radius: 14px;
+}
+
+.summary > div:nth-child(1) {
+  border:
+    1px solid rgba(202, 157, 56, .24);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(129, 94, 24, .15),
+      rgba(20, 22, 32, .75)
+    );
+
+  box-shadow: none;
+}
+
+.summary > div:nth-child(2) {
+  border:
+    1px solid rgba(76, 157, 117, .24);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(36, 105, 77, .15),
+      rgba(19, 24, 32, .75)
+    );
+
+  box-shadow: none;
+}
+
+.summary > div:nth-child(3) {
+  border:
+    1px solid rgba(181, 96, 103, .24);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(121, 48, 55, .15),
+      rgba(23, 20, 29, .75)
+    );
+
+  box-shadow: none;
+}
+
+.summary span {
+  color: #929dbc;
+  font-size: 10px;
+}
+
+.summary strong {
+  margin-top: 12px;
+  font-size: 27px;
+}
+
+.summary > div:nth-child(1) strong {
+  color: #efc968;
+}
+
+.summary > div:nth-child(2) strong {
+  color: #8bd2ae;
+}
+
+.summary > div:nth-child(3) strong {
+  color: #e8a0a6;
+}
+
+.list {
+  gap: 14px;
+  padding: 18px;
+
+  background:
+    rgba(3, 9, 22, .36);
+}
+
+.card {
+  border:
+    1px solid rgba(107, 129, 187, .17);
+
+  border-radius: 15px;
+
+  background:
+    rgba(8, 16, 35, .9);
+
+  box-shadow:
+    0 14px 35px
+    rgba(0,0,0,.18);
+}
+
+.identity,
+.identity > div {
+  background:
+    rgba(11, 20, 42, .84);
+}
+
+.identity {
+  border-bottom:
+    1px solid rgba(105, 127, 184, .13);
+}
+
+.identity > div {
+  min-height: 82px;
+
+  border-right:
+    1px solid rgba(105, 127, 184, .11);
+}
+
+.identity > div:first-child::before {
+  background: #718cff;
+
+  box-shadow:
+    0 0 13px
+    rgba(91, 120, 255, .5);
+}
+
+.identity strong {
+  color: #edf2ff;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.identity > div:first-child strong {
+  color: #f4f6ff;
+}
+
+.identity > div:nth-child(3) strong {
+  color: #b9c9ff;
+}
+
+.identity > div:nth-child(4) strong {
+  color: #c7d0e8;
+}
+
+.detail {
+  border-bottom:
+    1px solid rgba(105, 127, 184, .13);
+
+  background:
+    rgba(5, 12, 28, .62);
+}
+
+.detail > div {
+  min-height: 76px;
+
+  border-right:
+    1px solid rgba(105, 127, 184, .11);
+}
+
+.detail p {
+  color: #bac5df;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.review {
+  gap: 14px;
+  padding: 14px;
+
+  border-top:
+    1px solid rgba(105, 127, 184, .1);
+
+  background:
+    rgba(4, 10, 24, .64);
+}
+
+.approveBox,
+.rejectBox {
+  border-radius: 13px;
+
+  background:
+    rgba(9, 17, 35, .92);
+}
+
+.approveBox {
+  border:
+    1px solid rgba(67, 154, 113, .22);
+
+  border-left:
+    3px solid #4a9c77;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(29, 82, 63, .12),
+      rgba(8, 17, 34, .94)
+    );
+}
+
+.rejectBox {
+  border:
+    1px solid rgba(183, 91, 100, .22);
+
+  border-left:
+    3px solid #b5626d;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(92, 38, 47, .12),
+      rgba(11, 16, 31, .94)
+    );
+}
+
+.boxTitle {
+  font-size: 10.5px;
+}
+
+.approveBox .boxTitle {
+  color: #8bd1ad;
+}
+
+.rejectBox .boxTitle {
+  color: #e2a0a6;
+}
+
+.review select,
+.review textarea,
+.rejectFields textarea {
+  border:
+    1px solid rgba(108, 130, 187, .22);
+
+  background:
+    rgba(3, 9, 23, .74);
+
+  color: #e5ebff;
+
+  font-size: 12px;
+}
+
+.review select {
+  min-height: 42px;
+}
+
+.review textarea,
+.rejectFields textarea {
+  color: #e5ebff;
+}
+
+.review select:focus,
+.review textarea:focus {
+  border-color: #6e87ff;
+
+  background:
+    rgba(6, 13, 30, .94);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(86, 112, 255, .1);
+}
+
+.approveButton,
+.rejectButton {
+  min-height: 42px;
+
+  font-size: 10.5px;
+}
+
+.approveButton {
+  background:
+    linear-gradient(
+      100deg,
+      #2f7b61,
+      #419576
+    );
+
+  color: #f5fffa;
+}
+
+.rejectButton {
+  background:
+    linear-gradient(
+      100deg,
+      #8f4f59,
+      #aa5e68
+    );
+
+  color: #fff7f8;
+}
+
+.empty {
+  color: #7f8ca9;
+  font-size: 12px;
+
+  background:
+    rgba(7, 14, 30, .54);
+}
+
+.error,
+.success {
+  font-size: 11.5px;
+}
+
+.error {
+  border-color: rgba(211, 91, 103, .23);
+  background: rgba(123, 37, 48, .12);
+  color: #efa5ae;
+}
+
+.success {
+  border-color: rgba(71, 168, 120, .23);
+  background: rgba(30, 106, 73, .12);
+  color: #9bd7b7;
+}
+
+/* Custom dropdown */
+
+.customField {
+  grid-template-rows:
+    14px
+    44px;
+
+  gap: 8px;
+}
+
+.customFieldLabel {
+  height: 14px;
+  line-height: 14px;
+}
+
+.customApproveTrigger,
+.customRejectTrigger {
+  border:
+    1px solid rgba(104, 129, 188, .24);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(12, 22, 45, .96),
+      rgba(5, 12, 28, .96)
+    );
+}
+
+.customApproveTrigger:hover:not(:disabled),
+.customRejectTrigger:hover:not(:disabled) {
+  border-color:
+    rgba(112, 139, 255, .42);
+
+  background:
+    rgba(16, 27, 55, .96);
+}
+
+.customPlaceholder {
+  color: #697792;
+  font-size: 11.5px;
+}
+
+.customSelectedText {
+  color: #e4eaff;
+  font-size: 11.5px;
+}
+
+.customChevron {
+  color: #8798c4;
+}
+
+.customTriggerOpen .customChevron {
+  background:
+    rgba(88, 112, 255, .1);
+}
+
+.customDropdownMenu {
+  border:
+    1px solid rgba(105, 130, 191, .22);
+
+  background:
+    #0b142a;
+
+  box-shadow:
+    0 18px 45px
+    rgba(0, 0, 0, .46);
+}
+
+.customApproveMenu,
+.customRejectMenu {
+  border-color:
+    rgba(105, 130, 191, .22);
+}
+
+.customOption {
+  min-height: 40px;
+
+  color: #b9c4e2;
+
+  font-size: 11px;
+}
+
+.customOption:hover {
+  background:
+    rgba(89, 112, 255, .09);
+
+  color: #f1f4ff;
+}
+
+.customApproveMenu .customOptionSelected {
+  background:
+    rgba(57, 143, 105, .16);
+
+  color: #98dab8;
+}
+
+.customRejectMenu .customOptionSelected {
+  background:
+    rgba(165, 75, 85, .16);
+
+  color: #e6a5ab;
+}
+
+.rejectFields textarea {
+  border-color:
+    rgba(183, 91, 100, .24);
+
+  background:
+    rgba(25, 10, 19, .35);
+
+  color: #f0d8db;
+
+  font-size: 11.5px;
+}
+
+.rejectFields textarea:hover:not(:disabled) {
+  border-color:
+    rgba(202, 114, 124, .4);
+}
+
+.rejectFields textarea:focus {
+  border-color: #b96771;
+
+  background:
+    rgba(26, 11, 20, .5);
+
+  box-shadow:
+    0 0 0 3px
+    rgba(174, 87, 97, .1);
+}
+
+@media (max-width: 760px) {
+  .header h3 {
+    font-size: 16px;
+  }
+
+  .summary strong {
+    font-size: 24px;
+  }
+
+  .identity strong {
+    font-size: 12.5px;
+  }
+}
+/* RKN REGISTRATION INBOX DARK V1 END */
+
+
+/* RKN INBOX TYPOGRAPHY V2 START */
+.panel {
+  font-family:
+    Inter,
+    "Segoe UI Variable",
+    "Segoe UI",
+    Arial,
+    sans-serif;
+
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.header span,
+.identity span,
+.detail span,
+.review label > span,
+.customFieldLabel {
+  letter-spacing: .07em;
+}
+
+.header h3 {
+  letter-spacing: .012em;
+  line-height: 1.35;
+}
+
+.counter {
+  letter-spacing: .045em;
+}
+
+.summary span {
+  letter-spacing: .065em;
+}
+
+.summary strong {
+  letter-spacing: .005em;
+}
+
+.identity strong {
+  letter-spacing: .012em;
+}
+
+.detail p {
+  letter-spacing: .012em;
+}
+
+.boxTitle {
+  letter-spacing: .055em;
+}
+
+.review select,
+.review textarea,
+.rejectFields textarea {
+  letter-spacing: .012em;
+}
+
+.approveButton,
+.rejectButton {
+  letter-spacing: .045em;
+}
+
+.customPlaceholder,
+.customSelectedText,
+.customOption {
+  letter-spacing: .012em;
+}
+
+.error,
+.success,
+.empty {
+  letter-spacing: .012em;
+  line-height: 1.55;
+}
+/* RKN INBOX TYPOGRAPHY V2 END */
+
+/* RKN_UI_V2_REGISTRATION_INBOX START */
+.panel {
+  overflow: hidden;
+
+  border:
+    1px solid rgba(111,137,207,.18);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(13,22,47,.95),
+      rgba(6,13,30,.97)
+    );
+
+  color: #dce5ff;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.03),
+    0 20px 50px rgba(0,0,0,.20);
+}
+
+.header {
+  min-height: 72px;
+
+  border-bottom:
+    1px solid rgba(105,127,184,.14);
+
+  background:
+    rgba(14,23,48,.66);
+}
+
+.header span,
+.identity span,
+.detail span,
+.review label > span {
+  color: #8190af;
+}
+
+.header h3 {
+  color: #eef2ff;
+
+  font-size: 16px;
+}
+
+.counter {
+  border-color:
+    rgba(211,171,77,.23);
+
+  background:
+    rgba(154,109,28,.12);
+
+  color: #e6c67d;
+}
+
+.summary {
+  gap: 10px;
+
+  padding: 14px 16px;
+
+  border-bottom:
+    1px solid rgba(105,127,184,.13);
+
+  background:
+    rgba(8,15,32,.42);
+}
+
+.summary > div {
+  min-height: 82px;
+
+  border:
+    1px solid rgba(103,130,255,.17) !important;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(20,30,61,.72),
+      rgba(8,15,34,.79)
+    ) !important;
+}
+
+.summary span {
+  color: #8291b0;
+}
+
+.summary strong {
+  color: #f0f4ff !important;
+}
+
+.list {
+  gap: 14px;
+
+  background:
+    rgba(5,11,27,.28);
+}
+
+.card {
+  border:
+    1px solid rgba(105,130,190,.16);
+
+  border-radius: 16px;
+
+  background:
+    rgba(9,16,34,.72);
+
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.16);
+}
+
+.identity {
+  border-bottom:
+    1px solid rgba(105,127,184,.12);
+
+  background:
+    rgba(11,20,42,.60);
+}
+
+.identity > div {
+  border-right-color:
+    rgba(105,127,184,.10);
+
+  background: transparent;
+}
+
+.identity strong {
+  color: #e7ecff;
+}
+
+.detail {
+  border-bottom:
+    1px solid rgba(105,127,184,.11);
+
+  background:
+    rgba(6,13,29,.40);
+}
+
+.detail > div {
+  border-right-color:
+    rgba(105,127,184,.10);
+
+  background: transparent;
+}
+
+.detail p {
+  color: #9aa7c3;
+}
+
+.review {
+  gap: 12px;
+
+  background:
+    rgba(5,11,27,.48);
+}
+
+.approveBox,
+.rejectBox {
+  border-radius: 14px;
+
+  background:
+    rgba(10,18,38,.76);
+}
+
+.approveBox {
+  border:
+    1px solid rgba(74,164,127,.20);
+
+  border-left:
+    3px solid #58a77f;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(25,79,59,.10),
+      rgba(8,17,34,.76)
+    );
+}
+
+.rejectBox {
+  border:
+    1px solid rgba(201,91,103,.20);
+
+  border-left:
+    3px solid #c66d78;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(101,31,42,.10),
+      rgba(8,17,34,.76)
+    );
+}
+
+.approveBox .boxTitle {
+  color: #8fd0ae;
+}
+
+.rejectBox .boxTitle {
+  color: #eca0aa;
+}
+
+.review select,
+.review textarea {
+  border:
+    1px solid rgba(105,127,184,.24);
+
+  background:
+    rgba(3,9,23,.72);
+
+  color: #e8edff;
+
+  color-scheme: dark;
+}
+
+.review select:focus,
+.review textarea:focus {
+  border-color:
+    #6f88ff;
+
+  background:
+    rgba(7,14,32,.92);
+
+  box-shadow:
+    0 0 0 3px rgba(87,113,255,.11);
+}
+
+.approveButton {
+  background:
+    linear-gradient(
+      100deg,
+      #327a5e,
+      #40906e
+    );
+
+  color: white;
+}
+
+.rejectButton {
+  background:
+    linear-gradient(
+      100deg,
+      #914f5a,
+      #a95e69
+    );
+
+  color: white;
+}
+
+.empty {
+  background:
+    rgba(5,11,27,.30);
+
+  color: #7e8dab;
+}
+
+.error {
+  border-color:
+    rgba(214,91,103,.25);
+
+  background:
+    rgba(124,37,48,.12);
+
+  color: #f0a5ad;
+}
+
+.success {
+  border-color:
+    rgba(77,172,126,.25);
+
+  background:
+    rgba(32,111,75,.12);
+
+  color: #9ed8b9;
+}
+/* RKN_UI_V2_REGISTRATION_INBOX END */
+

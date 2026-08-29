@@ -1,0 +1,863 @@
+.page {
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(
+      circle at 10% 0%,
+      rgba(52,82,205,.14),
+      transparent 30%
+    ),
+    #07101f;
+  color: #eef3ff;
+}
+
+.header {
+  max-width: 1400px;
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.eyebrow,
+.label {
+  margin: 0 0 7px;
+  color: #7187d9;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.header h1,
+.card h2 {
+  margin: 0;
+}
+
+.subtitle {
+  max-width: 760px;
+  margin: 9px 0 0;
+  color: #8d9bbc;
+  line-height: 1.6;
+}
+
+.back {
+  padding: 11px 14px;
+  border: 1px solid #263b6c;
+  border-radius: 11px;
+  background: #0b172a;
+  color: #b9c7ff;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.metrics {
+  max-width: 1400px;
+  margin: 0 auto 16px;
+  display: grid;
+  grid-template-columns:
+    repeat(4,minmax(0,1fr));
+  gap: 12px;
+}
+
+.metrics article,
+.card,
+.success,
+.error {
+  border: 1px solid #1d3159;
+  border-radius: 15px;
+  background: #091426;
+}
+
+.metrics article {
+  padding: 18px;
+}
+
+.metrics span {
+  color: #7587ad;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.metrics strong {
+  display: block;
+  margin-top: 9px;
+  font-size: 27px;
+}
+
+.card {
+  max-width: 1400px;
+  margin: 0 auto 16px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.card p,
+.card li {
+  color: #97a5c4;
+  line-height: 1.55;
+}
+
+.card button {
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #3158a4;
+  border-radius: 10px;
+  background: #102b59;
+  color: #eef3ff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.success,
+.error {
+  max-width: 1400px;
+  margin: 0 auto 16px;
+  padding: 13px 16px;
+}
+
+.success {
+  color: #8de0bc;
+}
+
+.error {
+  color: #ff9db6;
+}
+
+@media (max-width: 800px) {
+  .page {
+    padding: 18px;
+  }
+
+  .header,
+  .card {
+    display: grid;
+  }
+
+  .metrics {
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+}
+/* RKN_SINGLE_SHELL_EMBED_V1 */
+.embed {
+  min-height: auto;
+  padding: 18px 20px 30px;
+  background: transparent;
+}
+
+.embed .header {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .embed {
+    padding: 14px;
+  }
+}
+/* RKN_DARK_FULLWIDTH_WORKSPACE_V1 */
+
+/*
+ * This route can run standalone or embedded in the ERP shell.
+ * Embedded mode must visually merge with the dark ERP workspace.
+ */
+
+.embed {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 14px 16px 24px !important;
+  box-sizing: border-box !important;
+  background: #07101f !important;
+  color: #eef3ff !important;
+}
+
+.embed .header {
+  display: none !important;
+}
+
+/* Remove standalone-page centering / width limits in embedded mode. */
+.embed .controlBar,
+.embed .metrics,
+.embed .limitations,
+.embed .report,
+.embed .section,
+.embed .card,
+.embed .requestGrid,
+.embed .catalog,
+.embed .tableWrap,
+.embed .footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Force every principal embedded surface back to the RKN dark palette. */
+.embed .controlBar,
+.embed .metrics > *,
+.embed .limitations,
+.embed .report,
+.embed .section,
+.embed .card,
+.embed .requestGrid > *,
+.embed .catalog > *,
+.embed .tableWrap {
+  background: #0a1629 !important;
+  border-color: rgba(93, 129, 214, 0.22) !important;
+  color: #eef3ff !important;
+}
+
+.embed table,
+.embed thead,
+.embed tbody,
+.embed tr,
+.embed th,
+.embed td {
+  background-color: transparent !important;
+}
+
+.embed input,
+.embed select,
+.embed textarea {
+  background: #0b1830 !important;
+  color: #eef3ff !important;
+  border-color: rgba(93, 129, 214, 0.28) !important;
+}
+
+.embed option {
+  background: #0b1830 !important;
+  color: #eef3ff !important;
+}
+
+.embed a,
+.embed button {
+  color: inherit;
+}
+
+@media (max-width: 800px) {
+  .embed {
+    padding: 10px !important;
+  }
+}
+
+/* RKN_PRODUCT_MASTER_VISUAL_UNIFIED_V2
+ * Align Canonical Product Master with the shared RKN ERP admin workspace.
+ * Visual-only override. No auth, RPC, seed, or business-data behavior changes.
+ */
+
+.page {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 18px 20px 28px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(37, 99, 235, 0.08),
+      transparent 30%
+    ),
+    #07111f;
+  color: #f8fbff;
+}
+
+.embed {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 14px;
+  padding: 18px 20px;
+  border: 1px solid #1b2d4d;
+  border-radius: 14px;
+  background: #0a1628;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.embed .header {
+  margin-bottom: 14px;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #79a8ff;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.subtitle {
+  max-width: 780px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #8ea5ca;
+}
+
+.back {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border: 1px solid #2b4a7d;
+  border-radius: 10px;
+  background: #0b1930;
+  color: #f4f8ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.back:hover {
+  border-color: #4d79c7;
+  background: #102445;
+  transform: translateY(-1px);
+}
+
+.embed .back {
+  display: none;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 0;
+}
+
+.metrics article {
+  min-width: 0;
+  min-height: 108px;
+  padding: 18px 18px 16px;
+  border: 1px solid #1c3153;
+  border-radius: 14px;
+  background: #0b192c;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.metrics article span {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #7396ca;
+}
+
+.metrics article strong {
+  display: block;
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.page > section:not(.metrics):not(.success):not(.error),
+.embed > section:not(.metrics):not(.success):not(.error) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 116px;
+  margin: 0 0 14px;
+  padding: 18px 20px;
+  border: 1px solid #1c3153;
+  border-radius: 14px;
+  background: #0b192c;
+}
+
+.page > section:not(.metrics):not(.success):not(.error) > div,
+.embed > section:not(.metrics):not(.success):not(.error) > div {
+  min-width: 0;
+}
+
+.page section h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: #ffffff;
+}
+
+.page section p {
+  color: #8fa8ce;
+}
+
+.page section p:first-child {
+  margin-top: 0;
+}
+
+.page section p:last-child {
+  margin-bottom: 0;
+}
+
+.page button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid #3768b6;
+  border-radius: 10px;
+  background: #123467;
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.page button:hover {
+  border-color: #5f92e8;
+  background: #17427e;
+  transform: translateY(-1px);
+}
+
+.page button:focus-visible,
+.back:focus-visible {
+  outline: 2px solid #70a2ff;
+  outline-offset: 2px;
+}
+
+.success,
+.error {
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.success {
+  border: 1px solid rgba(56, 189, 126, 0.35);
+  background: rgba(22, 101, 52, 0.2);
+  color: #a7f3d0;
+}
+
+.error {
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.2);
+  color: #fecaca;
+}
+
+.page ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: #b7c8e6;
+}
+
+.page li {
+  margin: 5px 0;
+}
+
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 12px;
+  }
+
+  .embed {
+    padding: 0;
+  }
+
+  .header {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .back {
+    width: 100%;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics article {
+    min-height: 92px;
+  }
+
+  .page > section:not(.metrics):not(.success):not(.error),
+  .embed > section:not(.metrics):not(.success):not(.error) {
+    align-items: stretch;
+    flex-direction: column;
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .page button {
+    width: 100%;
+  }
+}
+
+/* RKN_PRODUCT_MASTER_TRUE_FULLWIDTH_V1
+ * Standalone Product Master must use the same horizontal workspace span
+ * as the other RKN ERP admin modules. Visual-only override.
+ */
+.page {
+  width: calc(100vw - 40px) !important;
+  max-width: none !important;
+  margin-left: 20px !important;
+  margin-right: 20px !important;
+  box-sizing: border-box !important;
+}
+
+.embed {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.header,
+.metrics,
+.page > section,
+.embed > section {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: calc(100vw - 24px) !important;
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+  }
+
+  .embed {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* RKN_GLOBAL_PATCH_V1
+ * Shared visual contract applied to all current SYSTEM_ADMIN direct pages.
+ * Generated as one global patch so future UI changes are not performed menu-by-menu.
+ */
+
+.page {
+  --rkn-bg: #07111f;
+  --rkn-panel: #0a1628;
+  --rkn-card: #0b192c;
+  --rkn-line: #1c3153;
+  --rkn-line-strong: #2b4a7d;
+  --rkn-text: #f8fbff;
+  --rkn-muted: #8ea5ca;
+  --rkn-blue: #79a8ff;
+  --rkn-action: #123467;
+  --rkn-action-hover: #17427e;
+
+  width: calc(100vw - 40px) !important;
+  max-width: none !important;
+  min-height: 100vh;
+  margin-left: 20px !important;
+  margin-right: 20px !important;
+  padding: 18px 0 28px !important;
+  box-sizing: border-box;
+  background: var(--rkn-bg) !important;
+  color: var(--rkn-text) !important;
+}
+
+.embed {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.header {
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+  border: 1px solid var(--rkn-line) !important;
+  border-radius: 14px !important;
+  background: var(--rkn-panel) !important;
+}
+
+.metrics {
+  width: 100%;
+  max-width: none !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.metrics > *,
+.card,
+.requestCard {
+  box-sizing: border-box;
+  border: 1px solid var(--rkn-line) !important;
+  border-radius: 14px !important;
+  background: var(--rkn-card) !important;
+  color: var(--rkn-text) !important;
+}
+
+.header h1,
+.card h2,
+.requestCard h2,
+.metrics strong {
+  color: #ffffff !important;
+}
+
+.header p,
+.card p,
+.requestCard p,
+.metrics small,
+.metrics span {
+  color: var(--rkn-muted) !important;
+}
+
+.page button,
+.back,
+.page a[class*="button"] {
+  border-radius: 10px !important;
+}
+
+.page button {
+  border-color: #3768b6 !important;
+  background: var(--rkn-action) !important;
+  color: #ffffff !important;
+}
+
+.page button:hover {
+  background: var(--rkn-action-hover) !important;
+}
+
+.page table {
+  width: 100%;
+}
+
+.page th {
+  color: #8ba9d6 !important;
+}
+
+.page td {
+  color: #dce8fb !important;
+}
+
+.page input,
+.page select,
+.page textarea {
+  border-color: var(--rkn-line-strong) !important;
+  background: #081426 !important;
+  color: #f8fbff !important;
+}
+
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: calc(100vw - 24px) !important;
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+    padding-top: 12px !important;
+  }
+
+  .embed {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* RKN_GLOBAL_UI_UX_V2
+ * Modern dark admin treatment:
+ * denser spacing, clearer hierarchy, softer depth, compact copy.
+ */
+
+.page,
+.embed {
+  --rkn-surface-0: #07111f;
+  --rkn-surface-1: #0a1628;
+  --rkn-surface-2: #0d1c31;
+  --rkn-border: rgba(116, 154, 214, 0.18);
+  --rkn-border-strong: rgba(116, 154, 214, 0.32);
+  --rkn-text-main: #f8fbff;
+  --rkn-text-muted: #8fa7ca;
+  --rkn-accent-soft: rgba(95, 140, 255, 0.12);
+}
+
+.page {
+  padding-top: 14px !important;
+  padding-bottom: 24px !important;
+}
+
+.header {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 20px !important;
+  border-color: var(--rkn-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(66, 111, 196, 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(13, 28, 49, 0.98), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.header h1 {
+  margin-bottom: 4px !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.05 !important;
+}
+
+.header p {
+  max-width: 760px;
+  margin-top: 4px !important;
+  line-height: 1.5 !important;
+}
+
+.metrics {
+  gap: 10px !important;
+  margin-top: 12px !important;
+}
+
+.metrics > * {
+  min-height: 104px;
+  padding: 16px 17px !important;
+  border-color: var(--rkn-border) !important;
+  background:
+    linear-gradient(160deg, rgba(13, 28, 49, 0.98), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.metrics > *:hover {
+  transform: translateY(-2px);
+  border-color: var(--rkn-border-strong) !important;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.metrics strong {
+  font-size: clamp(1.55rem, 2.15vw, 2rem) !important;
+  letter-spacing: -0.035em !important;
+}
+
+.card,
+.requestCard,
+.page > section:not(.metrics):not(.success):not(.error),
+.embed > section:not(.metrics):not(.success):not(.error) {
+  border-color: var(--rkn-border) !important;
+  background:
+    linear-gradient(155deg, rgba(13, 28, 49, 0.96), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.page button {
+  min-height: 38px;
+  padding: 9px 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  box-shadow: none !important;
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.page button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.page input,
+.page select,
+.page textarea {
+  min-height: 38px;
+  border-radius: 9px !important;
+}
+
+.page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.page th,
+.page td {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.page th {
+  font-size: 0.72rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .header {
+    padding: 15px 16px !important;
+  }
+
+  .metrics > * {
+    min-height: 92px;
+    padding: 14px 15px !important;
+  }
+
+  .page button {
+    min-height: 40px;
+  }
+}

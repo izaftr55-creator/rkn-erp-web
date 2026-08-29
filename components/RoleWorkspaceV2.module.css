@@ -1,0 +1,414 @@
+/* RKN_ROLE_WORKSPACE_V2 */
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 75% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
+    #050b16;
+  color: #eef3ff;
+}
+
+.sidebar {
+  min-height: 100vh;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid rgba(93, 129, 214, 0.16);
+  background: rgba(5, 11, 22, 0.96);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.brand small {
+  margin-top: 3px;
+  color: #6f7d99;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(96, 165, 250, 0.38);
+  border-radius: 11px;
+  background: linear-gradient(145deg, #0c1a34, #07101f);
+  color: #73a9ff;
+  font-weight: 900;
+}
+
+.roleCard {
+  padding: 13px;
+  border: 1px solid rgba(78, 123, 217, 0.18);
+  border-radius: 13px;
+  background: #091426;
+}
+
+.roleCard span,
+.roleCard strong,
+.roleCard small {
+  display: block;
+}
+
+.roleCard span,
+.roleCard small {
+  color: #7887a3;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.roleCard strong {
+  margin: 6px 0;
+  font-size: 13px;
+}
+
+.nav {
+  display: grid;
+  gap: 7px;
+}
+
+.navButton,
+.navActive {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #aab5ca;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navButton:hover {
+  background: rgba(22, 43, 80, 0.56);
+}
+
+.navActive {
+  border-color: rgba(74, 127, 234, 0.34);
+  background: linear-gradient(135deg, rgba(21, 53, 108, 0.84), rgba(10, 25, 50, 0.94));
+  color: #ffffff;
+}
+
+.navButton span,
+.navActive span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+}
+
+.navButton small,
+.navActive small {
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.user {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.main {
+  min-width: 0;
+  padding: 18px 18px 24px 14px;
+}
+
+.topbar {
+  min-height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border: 1px solid rgba(93, 129, 214, 0.17);
+  border-radius: 15px;
+  background: rgba(8, 18, 35, 0.88);
+}
+
+.kicker {
+  color: #5e82c4;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.topbar h1 {
+  margin: 5px 0 4px;
+  font-size: 23px;
+}
+
+.topbar p {
+  margin: 0;
+  color: #8390a9;
+  font-size: 12px;
+}
+
+.topStatus {
+  min-width: 130px;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.topStatus span {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.topStatus strong {
+  font-size: 12px;
+}
+
+.metricGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(93, 129, 214, 0.14);
+  border-radius: 13px;
+  background: #091426;
+}
+
+.metric span,
+.metric strong,
+.metric small {
+  display: block;
+}
+
+.metric span {
+  color: #71809b;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.metric strong {
+  margin: 10px 0 7px;
+  overflow: hidden;
+  font-size: 18px;
+  text-overflow: ellipsis;
+}
+
+.metric small {
+  color: #56637a;
+  font-size: 9px;
+}
+
+.panelGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(93, 129, 214, 0.16);
+  border-radius: 14px;
+  background: rgba(8, 18, 35, 0.9);
+}
+
+.panel h2 {
+  margin: 0 0 13px;
+  color: #9fb6df;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.panel p {
+  color: #7d8aa2;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.definition {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.definition div,
+.capabilityList div {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(12, 28, 53, 0.64);
+}
+
+.definition dt,
+.capabilityList span {
+  color: #7d8ba6;
+  font-size: 10px;
+}
+
+.definition dd {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.scopeList {
+  display: grid;
+  gap: 8px;
+}
+
+.scopeList > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: rgba(12, 28, 53, 0.64);
+}
+
+.scopeList strong {
+  font-size: 10px;
+}
+
+.scopeList span {
+  color: #8694ad;
+  font-size: 10px;
+}
+
+.scopeList small {
+  color: #5d86d4;
+  font-size: 9px;
+}
+
+.capabilityList {
+  display: grid;
+  gap: 8px;
+}
+
+.capabilityList strong {
+  font-size: 9px;
+}
+
+.bigValue {
+  display: block;
+  margin: 8px 0;
+  font-size: 34px;
+}
+
+.live {
+  color: #5ee6a8;
+}
+
+.partial {
+  color: #f6c85f;
+}
+
+.pending {
+  color: #8d9ab2;
+}
+
+.footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  color: #4f5d75;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 1180px) {
+  .metricGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid rgba(93, 129, 214, 0.16);
+  }
+
+  .nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user {
+    display: none;
+  }
+
+  .main {
+    padding: 10px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topStatus {
+    justify-items: start;
+  }
+
+  .metricGrid,
+  .panelGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scopeList > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* RKN_GLOBAL_UI_UX_V2 */
+.sidebar {
+  border-right-color: rgba(116, 154, 214, 0.16) !important;
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.12);
+}
+
+.topbar {
+  border-bottom-color: rgba(116, 154, 214, 0.14) !important;
+  backdrop-filter: blur(14px);
+}
+
+.roleCard {
+  border-color: rgba(116, 154, 214, 0.2) !important;
+  background:
+    linear-gradient(145deg, rgba(16, 34, 58, 0.96), rgba(9, 22, 39, 0.98)) !important;
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}

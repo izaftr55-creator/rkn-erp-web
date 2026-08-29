@@ -1,0 +1,685 @@
+.page {
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(52, 82, 205, .16), transparent 30%),
+    #07101f;
+  color: #eef3ff;
+}
+
+.header {
+  max-width: 1440px;
+  margin: 0 auto 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.eyebrow,
+.sectionTitle p,
+.limitations p {
+  margin: 0 0 7px;
+  color: #7187d9;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -.03em;
+}
+
+.subtitle {
+  max-width: 720px;
+  margin: 10px 0 0;
+  color: #8998ba;
+  line-height: 1.65;
+}
+
+.back {
+  flex: 0 0 auto;
+  padding: 11px 14px;
+  border: 1px solid #263b6c;
+  border-radius: 11px;
+  background: #0b172a;
+  color: #b9c7ff;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.controlBar,
+.limitations,
+.report {
+  max-width: 1440px;
+  margin: 0 auto 16px;
+  border: 1px solid #1d3159;
+  border-radius: 16px;
+  background: #091426;
+}
+
+.controlBar {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-end;
+}
+
+.engineInfo {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.engineInfo span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.live {
+  border: 1px solid #315d4d;
+  color: #89e3bc;
+  background: #0d2c24;
+}
+
+.partial {
+  border: 1px solid #615829;
+  color: #e8d48a;
+  background: #292510;
+}
+
+.schema {
+  border: 1px solid #683748;
+  color: #ffa5bc;
+  background: #2a1019;
+}
+
+.scopeForm {
+  display: flex;
+  gap: 9px;
+  align-items: flex-end;
+}
+
+.scopeForm label {
+  display: grid;
+  gap: 6px;
+}
+
+.scopeForm label span {
+  color: #7182a7;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.scopeForm select,
+.scopeForm button {
+  min-height: 40px;
+  border: 1px solid #29406f;
+  border-radius: 10px;
+  background: #0b172b;
+  color: #edf2ff;
+  color-scheme: dark;
+}
+
+.scopeForm select {
+  min-width: 270px;
+  padding: 0 12px;
+}
+
+.scopeForm button {
+  padding: 0 15px;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.metrics {
+  max-width: 1440px;
+  margin: 0 auto 16px;
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metrics article {
+  min-height: 110px;
+  padding: 17px;
+  border: 1px solid #1d3159;
+  border-radius: 14px;
+  background: #091426;
+}
+
+.metrics span {
+  color: #7182a7;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.metrics strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 25px;
+}
+
+.metrics small {
+  display: block;
+  margin-top: 7px;
+  color: #697a9d;
+  line-height: 1.45;
+}
+
+.limitations {
+  padding: 19px;
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 22px;
+}
+
+.limitations h2,
+.sectionTitle h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.limitations ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #a5b0cb;
+  line-height: 1.65;
+}
+
+.report {
+  padding: 20px;
+}
+
+.sectionTitle {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.sectionTitle > span {
+  color: #7788ad;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid #182b4c;
+  border-radius: 12px;
+}
+
+.tableWrap table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #081426;
+}
+
+.tableWrap th,
+.tableWrap td {
+  padding: 11px 12px;
+  border-bottom: 1px solid #182a4b;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.tableWrap th {
+  background: #0d1a30;
+  color: #8297c5;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.tableWrap td {
+  color: #dce5ff;
+}
+
+.empty {
+  padding: 30px;
+  border: 1px dashed #263858;
+  border-radius: 12px;
+  color: #71809f;
+  text-align: center;
+}
+
+.footer {
+  max-width: 1440px;
+  margin: 10px auto 0;
+  color: #536487;
+  font-size: 9px;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 18px;
+  }
+
+  .header,
+  .controlBar,
+  .limitations {
+    display: grid;
+  }
+
+  .metrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .scopeForm {
+    display: grid;
+  }
+
+  .scopeForm select {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}
+/* RKN_SINGLE_SHELL_EMBED_V1 */
+.embed {
+  min-height: auto;
+  padding: 18px 20px 30px;
+  background: transparent;
+}
+
+.embed .header {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .embed {
+    padding: 14px;
+  }
+}
+/* RKN_DARK_FULLWIDTH_WORKSPACE_V1 */
+
+/*
+ * This route can run standalone or embedded in the ERP shell.
+ * Embedded mode must visually merge with the dark ERP workspace.
+ */
+
+.embed {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 14px 16px 24px !important;
+  box-sizing: border-box !important;
+  background: #07101f !important;
+  color: #eef3ff !important;
+}
+
+.embed .header {
+  display: none !important;
+}
+
+/* Remove standalone-page centering / width limits in embedded mode. */
+.embed .controlBar,
+.embed .metrics,
+.embed .limitations,
+.embed .report,
+.embed .section,
+.embed .card,
+.embed .requestGrid,
+.embed .catalog,
+.embed .tableWrap,
+.embed .footer {
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Force every principal embedded surface back to the RKN dark palette. */
+.embed .controlBar,
+.embed .metrics > *,
+.embed .limitations,
+.embed .report,
+.embed .section,
+.embed .card,
+.embed .requestGrid > *,
+.embed .catalog > *,
+.embed .tableWrap {
+  background: #0a1629 !important;
+  border-color: rgba(93, 129, 214, 0.22) !important;
+  color: #eef3ff !important;
+}
+
+.embed table,
+.embed thead,
+.embed tbody,
+.embed tr,
+.embed th,
+.embed td {
+  background-color: transparent !important;
+}
+
+.embed input,
+.embed select,
+.embed textarea {
+  background: #0b1830 !important;
+  color: #eef3ff !important;
+  border-color: rgba(93, 129, 214, 0.28) !important;
+}
+
+.embed option {
+  background: #0b1830 !important;
+  color: #eef3ff !important;
+}
+
+.embed a,
+.embed button {
+  color: inherit;
+}
+
+@media (max-width: 800px) {
+  .embed {
+    padding: 10px !important;
+  }
+}
+
+/* RKN_GLOBAL_PATCH_V1
+ * Shared visual contract applied to all current SYSTEM_ADMIN direct pages.
+ * Generated as one global patch so future UI changes are not performed menu-by-menu.
+ */
+
+.page {
+  --rkn-bg: #07111f;
+  --rkn-panel: #0a1628;
+  --rkn-card: #0b192c;
+  --rkn-line: #1c3153;
+  --rkn-line-strong: #2b4a7d;
+  --rkn-text: #f8fbff;
+  --rkn-muted: #8ea5ca;
+  --rkn-blue: #79a8ff;
+  --rkn-action: #123467;
+  --rkn-action-hover: #17427e;
+
+  width: calc(100vw - 40px) !important;
+  max-width: none !important;
+  min-height: 100vh;
+  margin-left: 20px !important;
+  margin-right: 20px !important;
+  padding: 18px 0 28px !important;
+  box-sizing: border-box;
+  background: var(--rkn-bg) !important;
+  color: var(--rkn-text) !important;
+}
+
+.embed {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.header {
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+  border: 1px solid var(--rkn-line) !important;
+  border-radius: 14px !important;
+  background: var(--rkn-panel) !important;
+}
+
+.metrics {
+  width: 100%;
+  max-width: none !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.metrics > *,
+.card,
+.requestCard {
+  box-sizing: border-box;
+  border: 1px solid var(--rkn-line) !important;
+  border-radius: 14px !important;
+  background: var(--rkn-card) !important;
+  color: var(--rkn-text) !important;
+}
+
+.header h1,
+.card h2,
+.requestCard h2,
+.metrics strong {
+  color: #ffffff !important;
+}
+
+.header p,
+.card p,
+.requestCard p,
+.metrics small,
+.metrics span {
+  color: var(--rkn-muted) !important;
+}
+
+.page button,
+.back,
+.page a[class*="button"] {
+  border-radius: 10px !important;
+}
+
+.page button {
+  border-color: #3768b6 !important;
+  background: var(--rkn-action) !important;
+  color: #ffffff !important;
+}
+
+.page button:hover {
+  background: var(--rkn-action-hover) !important;
+}
+
+.page table {
+  width: 100%;
+}
+
+.page th {
+  color: #8ba9d6 !important;
+}
+
+.page td {
+  color: #dce8fb !important;
+}
+
+.page input,
+.page select,
+.page textarea {
+  border-color: var(--rkn-line-strong) !important;
+  background: #081426 !important;
+  color: #f8fbff !important;
+}
+
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    width: calc(100vw - 24px) !important;
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+    padding-top: 12px !important;
+  }
+
+  .embed {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* RKN_GLOBAL_UI_UX_V2
+ * Modern dark admin treatment:
+ * denser spacing, clearer hierarchy, softer depth, compact copy.
+ */
+
+.page,
+.embed {
+  --rkn-surface-0: #07111f;
+  --rkn-surface-1: #0a1628;
+  --rkn-surface-2: #0d1c31;
+  --rkn-border: rgba(116, 154, 214, 0.18);
+  --rkn-border-strong: rgba(116, 154, 214, 0.32);
+  --rkn-text-main: #f8fbff;
+  --rkn-text-muted: #8fa7ca;
+  --rkn-accent-soft: rgba(95, 140, 255, 0.12);
+}
+
+.page {
+  padding-top: 14px !important;
+  padding-bottom: 24px !important;
+}
+
+.header {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 20px !important;
+  border-color: var(--rkn-border) !important;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(66, 111, 196, 0.16), transparent 36%),
+    linear-gradient(145deg, rgba(13, 28, 49, 0.98), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.header h1 {
+  margin-bottom: 4px !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.05 !important;
+}
+
+.header p {
+  max-width: 760px;
+  margin-top: 4px !important;
+  line-height: 1.5 !important;
+}
+
+.metrics {
+  gap: 10px !important;
+  margin-top: 12px !important;
+}
+
+.metrics > * {
+  min-height: 104px;
+  padding: 16px 17px !important;
+  border-color: var(--rkn-border) !important;
+  background:
+    linear-gradient(160deg, rgba(13, 28, 49, 0.98), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.metrics > *:hover {
+  transform: translateY(-2px);
+  border-color: var(--rkn-border-strong) !important;
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.metrics strong {
+  font-size: clamp(1.55rem, 2.15vw, 2rem) !important;
+  letter-spacing: -0.035em !important;
+}
+
+.card,
+.requestCard,
+.page > section:not(.metrics):not(.success):not(.error),
+.embed > section:not(.metrics):not(.success):not(.error) {
+  border-color: var(--rkn-border) !important;
+  background:
+    linear-gradient(155deg, rgba(13, 28, 49, 0.96), rgba(8, 20, 36, 0.98)) !important;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.018);
+}
+
+.page button {
+  min-height: 38px;
+  padding: 9px 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  box-shadow: none !important;
+  transition:
+    transform 150ms ease,
+    background 150ms ease,
+    border-color 150ms ease;
+}
+
+.page button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.page input,
+.page select,
+.page textarea {
+  min-height: 38px;
+  border-radius: 9px !important;
+}
+
+.page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.page th,
+.page td {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.page th {
+  font-size: 0.72rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .header {
+    padding: 15px 16px !important;
+  }
+
+  .metrics > * {
+    min-height: 92px;
+    padding: 14px 15px !important;
+  }
+
+  .page button {
+    min-height: 40px;
+  }
+}

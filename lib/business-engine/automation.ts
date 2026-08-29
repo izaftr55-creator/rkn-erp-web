@@ -1,0 +1,121 @@
+/* RKN_GLOBAL_BUSINESS_ENGINE_V1 */
+
+import type { RknAutomationRuleDefinition } from "./contracts";
+
+export const RKN_GLOBAL_AUTOMATION_RULES: readonly RknAutomationRuleDefinition[] = [
+  {
+    key: "AUTH_USER_APPROVED_EMAIL",
+    triggerEvent: "USER_APPROVED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Queue approval email after provider/outbox activation.",
+  },
+  {
+    key: "AUTH_TEMP_PASSWORD_EMAIL",
+    triggerEvent: "TEMP_PASSWORD_CREATED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Queue temporary-password email; never expose password to unrelated recipients.",
+  },
+  {
+    key: "ORDER_REVIEW_ALERT",
+    triggerEvent: "ORDER_REVIEW_REQUIRED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Alert reviewer without mutating order or inventory.",
+  },
+  {
+    key: "INVENTORY_LOW_ALERT",
+    triggerEvent: "INVENTORY_LOW",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Low-stock notification only.",
+  },
+  {
+    key: "INVENTORY_RECON_FAILURE",
+    triggerEvent: "INVENTORY_RECONCILIATION_FAILED",
+    action: "QUEUE_REVIEW",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Reconciliation failure must stop at review.",
+  },
+  {
+    key: "HPP_MISSING_REVIEW",
+    triggerEvent: "HPP_MISSING",
+    action: "QUEUE_REVIEW",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Missing HPP blocks downstream finance posting.",
+  },
+  {
+    key: "BORROW_DUE_ALERT",
+    triggerEvent: "BORROW_DUE",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Borrow/transfer obligation reminder.",
+  },
+  {
+    key: "PAYROLL_READY_ALERT",
+    triggerEvent: "PAYROLL_READY",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Notify payroll role when calculation is ready.",
+  },
+  {
+    key: "PAYROLL_APPROVAL_ALERT",
+    triggerEvent: "PAYROLL_APPROVAL_REQUIRED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Approval boundary remains human-controlled.",
+  },
+  {
+    key: "SETTLEMENT_MISMATCH_REVIEW",
+    triggerEvent: "SETTLEMENT_MISMATCH",
+    action: "QUEUE_REVIEW",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Finance mismatch must not auto-post.",
+  },
+  {
+    key: "AUTOMATION_FAILURE_ALERT",
+    triggerEvent: "AUTOMATION_FAILED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Notify System Admin after safe retries are exhausted.",
+  },
+  {
+    key: "CONNECTOR_DEGRADED_ALERT",
+    triggerEvent: "CONNECTOR_DEGRADED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "Connector health notification only.",
+  },
+  {
+    key: "SHOPEE_SYNC_FAILURE_ALERT",
+    triggerEvent: "SHOPEE_SYNC_FAILED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "No marketplace mutation is performed by this rule.",
+  },
+  {
+    key: "TIKTOK_SYNC_FAILURE_ALERT",
+    triggerEvent: "TIKTOK_SYNC_FAILED",
+    action: "QUEUE_EMAIL",
+    shadowEnabled: true,
+    liveEnabled: false,
+    notes: "No marketplace mutation is performed by this rule.",
+  },
+];
+
+export const RKN_AUTOMATION_LIVE_RULE_COUNT =
+  RKN_GLOBAL_AUTOMATION_RULES.filter((rule) => rule.liveEnabled).length;

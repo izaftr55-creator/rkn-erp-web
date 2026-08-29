@@ -1,0 +1,50 @@
+{
+  "artifact": "RKN_ERP_SQLITE_DO_SCHEMA",
+  "migrationVersion": 1,
+  "migration": "0001-rkn-erp-do-schema",
+  "architecture": "D1_AUTH_PLUS_SQLITE_DO_ERP",
+  "rpcBoundary": "RKN_RPC_BOUNDARY_V1",
+  "serialization": "EXECUTABLE_SEMICOLON_TERMINATED_V1",
+  "canonicalDdlSha256": "6F0111803A23CB7FA05D383DE1968517DEC2F398509A439C3783B07ED0FEBE28",
+  "canonicalDdlBytes": 23711,
+  "provenance": {
+    "previousF9bStructuralBundleSha256": "E9A3E1F7C122A53352F94AA5C2461E8A88557672DFE79D9A370FC018584A5D53",
+    "previousF9bStructuralBundleExecutable": false,
+    "serializationDiagnosis": "MISSING_FINAL_SEMICOLONS",
+    "executableAnchor": "F9C_R1"
+  },
+  "schema": {
+    "statements": 70,
+    "tables": 27,
+    "explicitIndexes": 39,
+    "triggers": 4,
+    "internalForeignKeys": 18,
+    "crossStorageAuthForeignKeys": 0,
+    "logicalD1UserIdColumns": 8,
+    "autoincrementObjects": 1
+  },
+  "crossStorageIdentity": {
+    "authenticationAuthority": "BETTER_AUTH_D1",
+    "authorizationAuthority": "ERP_SQLITE_DO",
+    "physicalUserForeignKeysRemoved": 6,
+    "logicalUserReferenceType": "TEXT",
+    "transformedTables": [
+      "audit_log",
+      "erp_user_profile",
+      "user_business_scope",
+      "user_role",
+      "worker_registration",
+      "worker_registration_invite"
+    ]
+  },
+  "lazySchemaIncluded": [
+    "transaction_ledger"
+  ],
+  "gates": {
+    "localSqliteExecutionProven": true,
+    "applicationRuntimeModified": false,
+    "productionDatabaseModified": false,
+    "remoteResourcesCreated": false,
+    "deploymentAllowed": false
+  }
+}
