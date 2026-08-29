@@ -743,25 +743,29 @@ export default function PlasticTradingApp({
               products={products}
               customers={customers}
               canWrite={!readOnly}
+              canEdit={canManage}
               busy={busy}
               run={run}
             />
           ) : null}
 
-          {tab === "INVENTORY" ? (
+
+{tab === "INVENTORY" ? (
             <Inventory rows={data.rows || []} />
           ) : null}
 
           {tab === "RECEIVABLES" ? (
             <Receivables
-              rows={data.rows || []}
+              data={data}
               canWrite={!readOnly}
+              canManage={canManage}
               busy={busy}
               run={run}
             />
           ) : null}
 
-          {tab === "OPNAME" ? (
+
+{tab === "OPNAME" ? (
             <Opname
               rows={data.rows || []}
               products={products}
@@ -814,20 +818,22 @@ export default function PlasticTradingApp({
 }
 
 function Dashboard({ data }: { data: Row }) {
+  /* RKN_PLASTIC_DASHBOARD_UI_V2O */
   const metrics = data.metrics || {};
+  const topReceivables = Array.isArray(data.topReceivables)
+    ? data.topReceivables
+    : [];
 
   return (
     <>
       <section className={styles.metricGrid}>
         <MetricCard
-          label="Barang Masuk"
-          value={qtyFmt.format(Number(metrics.inboundQty || 0))}
-          note="Base quantity periode ini"
+          label="Stock Value"
+          value={money.format(Number(metrics.stockValueRp || 0))}
         />
         <MetricCard
-          label="Barang Keluar"
-          value={qtyFmt.format(Number(metrics.outboundQty || 0))}
-          note="Base quantity periode ini"
+          label="Piutang"
+          value={money.format(Number(metrics.receivableRp || 0))}
         />
         <MetricCard
           label="Sales"
@@ -837,66 +843,31 @@ function Dashboard({ data }: { data: Row }) {
           label="Gross Profit"
           value={money.format(Number(metrics.grossProfitRp || 0))}
         />
-        <MetricCard
-          label="Piutang"
-          value={money.format(Number(metrics.receivableRp || 0))}
-        />
-        <MetricCard
-          label="Stock Value"
-          value={money.format(Number(metrics.stockValueRp || 0))}
-          note={`${qtyFmt.format(
-            Number(metrics.stockQty || 0)
-          )} base unit`}
-        />
       </section>
 
-      <div className={styles.twoColumn}>
-        <Panel
-          title="Top Customers"
-          subtitle="Customer dengan nilai transaksi terbesar pada periode aktif."
-        >
-          <DataTable
-            rows={data.topCustomers || []}
-            columns={[
-              ["customerName", "Customer"],
-              [
-                "salesRp",
-                "Sales",
-                (row) => money.format(Number(row.salesRp || 0)),
-              ],
-              [
-                "outstandingRp",
-                "Piutang",
-                (row) => money.format(Number(row.outstandingRp || 0)),
-              ],
-            ]}
-          />
-        </Panel>
-
-        <Panel
-          title="Aktivitas Stok"
-          subtitle="Perbandingan barang masuk dan keluar berdasarkan tanggal."
-        >
-          {(data.movementTrend || []).length ? (
-            <div className={styles.activityList}>
-              {(data.movementTrend || []).map((row: Row) => (
-                <div className={styles.activityRow} key={row.dateKey}>
-                  <span>{row.dateKey}</span>
-                  <div>
-                    <b>IN {qtyFmt.format(Number(row.inboundQty || 0))}</b>
-                    <b>OUT {qtyFmt.format(Number(row.outboundQty || 0))}</b>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className={styles.emptyState}>
-              <strong>Belum ada movement</strong>
-              <span>Barang masuk dan keluar akan tampil di sini.</span>
-            </div>
-          )}
-        </Panel>
-      </div>
+      <Panel title="Piutang Customer">
+        <DataTable
+          rows={topReceivables}
+          columns={[
+            ["customerName", "Customer"],
+            [
+              "salesRp",
+              "Transaksi",
+              (row) => money.format(Number(row.salesRp || 0)),
+            ],
+            [
+              "paidRp",
+              "Dibayar",
+              (row) => money.format(Number(row.paidRp || 0)),
+            ],
+            [
+              "outstandingRp",
+              "Sisa",
+              (row) => money.format(Number(row.outstandingRp || 0)),
+            ],
+          ]}
+        />
+      </Panel>
     </>
   );
 }
@@ -2198,6 +2169,7 @@ function Outbound({
   products,
   customers,
   canWrite,
+  canEdit,
   busy,
   run,
 }: {
@@ -2205,18 +2177,45 @@ function Outbound({
   products: Row[];
   customers: Row[];
   canWrite: boolean;
+  canEdit: boolean;
   busy: boolean;
   run: any;
 }) {
-  /* RKN_PLASTIC_OUTBOUND_SIMPLE_NO_SHIPPING_NO_DUE_V2N2 */
+  /* RKN_PLASTIC_OUTBOUND_EDIT_VOID_UI_V2O */
+  const emptyLine = () => ({
+    variantId: "",
+    qty: "1",
+    unit: "",
+    unitPriceRp: "",
+  });
+
   const [dateKey, setDateKey] = useState(today());
   const [customerName, setCustomerName] = useState("");
   const [discountRp, setDiscountRp] = useState("0");
   const [paymentStatus, setPaymentStatus] = useState("PAID");
   const [paymentMethod, setPaymentMethod] = useState("TRANSFER");
-  const [lines, setLines] = useState([
-    { variantId: "", qty: "1", unit: "", unitPriceRp: "" },
-  ]);
+  const [note, setNote] = useState("");
+  const [lines, setLines] = useState([emptyLine()]);
+  const [editInvoiceId, setEditInvoiceId] = useState("");
+  const [editInvoiceNo, setEditInvoiceNo] = useState("");
+  const [editReason, setEditReason] = useState("");
+
+  const invoices = useMemo(() => {
+    const map = new Map<string, Row>();
+    for (const row of rows) {
+      const id = String(row.invoiceId || "");
+      if (!id) continue;
+      const current = map.get(id);
+      if (!current) {
+        map.set(id, {
+          ...row,
+          grossProfitRp:
+            Number(row.grandTotalRp || 0) - Number(row.cogsRp || 0),
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [rows]);
 
   const exactCustomer = useMemo(() => {
     const normalized = customerName.trim().toLocaleLowerCase("id-ID");
@@ -2229,51 +2228,138 @@ function Outbound({
     );
   }, [customerName, customers]);
 
-  const estimatedSubtotal = useMemo(() => {
-    return lines.reduce((total, line) => {
-      const product = products.find(
-        (item) => item.variantId === line.variantId
-      );
-      const price =
-        Number(line.unitPriceRp || 0) ||
-        defaultPrice(product, line.unit);
-      return total + Number(line.qty || 0) * price;
-    }, 0);
-  }, [lines, products]);
-
-  const estimatedGrand = Math.max(
-    0,
-    estimatedSubtotal - Number(discountRp || 0)
+  const subtotal = useMemo(
+    () =>
+      lines.reduce((total, line) => {
+        const product = products.find(
+          (item) => item.variantId === line.variantId
+        );
+        const price =
+          Number(line.unitPriceRp || 0) ||
+          defaultPrice(product, line.unit);
+        return total + Number(line.qty || 0) * price;
+      }, 0),
+    [lines, products]
   );
 
-  const submit = (event: FormEvent) => {
+  const grand = Math.max(0, subtotal - Number(discountRp || 0));
+
+  const resetForm = () => {
+    setDateKey(today());
+    setCustomerName("");
+    setDiscountRp("0");
+    setPaymentStatus("PAID");
+    setPaymentMethod("TRANSFER");
+    setNote("");
+    setLines([emptyLine()]);
+    setEditInvoiceId("");
+    setEditInvoiceNo("");
+    setEditReason("");
+  };
+
+  const startEdit = (row: Row) => {
+    const invoiceId = String(row.invoiceId || "");
+    const group = rows.filter(
+      (item) => String(item.invoiceId || "") === invoiceId
+    );
+    if (!group.length) return;
+
+    const head = group[0];
+    setEditInvoiceId(invoiceId);
+    setEditInvoiceNo(String(head.invoiceNo || ""));
+    setDateKey(String(head.dateKey || today()));
+    setCustomerName(String(head.customerName || ""));
+    setDiscountRp(String(head.discountRp || 0));
+    setNote(String(head.note || ""));
+    setPaymentStatus(
+      Number(head.outstandingRp || 0) > 0 ? "NOT_PAID" : "PAID"
+    );
+    setLines(
+      group.map((item) => ({
+        variantId: String(item.variantId || ""),
+        qty: String(item.qtyInput || 1),
+        unit: String(item.inputUnit || "").toUpperCase(),
+        unitPriceRp: String(item.unitPriceRp || 0),
+      }))
+    );
+    setEditReason("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const voidSale = async (row: Row) => {
+    if (!canEdit || typeof window === "undefined") return;
+    const reason = window.prompt(
+      `Alasan hapus / void ${row.invoiceNo || "transaksi"}?`
+    );
+    if (!reason?.trim()) return;
+    if (!window.confirm("Void transaksi ini? Stok akan dikembalikan.")) {
+      return;
+    }
+    await run(
+      "VOID_SALE",
+      { invoiceId: row.invoiceId, reason: reason.trim() },
+      "OUTBOUND"
+    );
+    resetForm();
+  };
+
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    run(
+
+    const payload = {
+      dateKey,
+      customerId: exactCustomer?.customerId || "",
+      customerName: customerName.trim(),
+      discountRp: Number(discountRp || 0),
+      note,
+      lines: lines.map((line) => ({
+        ...line,
+        qty: Number(line.qty),
+        unitPriceRp: Number(line.unitPriceRp || 0),
+      })),
+    };
+
+    if (editInvoiceId) {
+      if (!editReason.trim()) {
+        window.alert("Alasan edit wajib diisi.");
+        return;
+      }
+      await run(
+        "UPDATE_SALE",
+        {
+          ...payload,
+          invoiceId: editInvoiceId,
+          reason: editReason.trim(),
+        },
+        "OUTBOUND"
+      );
+      resetForm();
+      return;
+    }
+
+    await run(
       "CREATE_SALE",
       {
-        dateKey,
-        customerId: exactCustomer?.customerId || "",
-        customerName: customerName.trim(),
-        discountRp: Number(discountRp || 0),
+        ...payload,
         paymentStatus,
         paymentMethod:
           paymentStatus === "PAID" ? paymentMethod : "",
-        lines: lines.map((line) => ({
-          ...line,
-          qty: Number(line.qty),
-          unitPriceRp: Number(line.unitPriceRp || 0),
-        })),
       },
       "OUTBOUND"
     );
+    resetForm();
   };
 
   return (
     <>
       {canWrite ? (
         <Panel
-          title="Barang Keluar"
-          subtitle="PAID = lunas. NOT PAID = piutang."
+          title={editInvoiceId ? `Edit ${editInvoiceNo}` : "Barang Keluar"}
+          subtitle={
+            editInvoiceId
+              ? "Edit aman; stok dan audit ikut disesuaikan."
+              : "Lunas atau piutang."
+          }
         >
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid4}>
@@ -2286,18 +2372,17 @@ function Outbound({
                 />
               </Field>
 
-              <Field label="Customer" className={styles.customerField}>
+              <Field label="Customer">
                 <input
                   required
-                  list="plastic-customer-options"
+                  list="plastic-customer-options-v2o"
                   placeholder="Nama customer"
                   value={customerName}
-                  autoComplete="off"
                   onChange={(event) =>
                     setCustomerName(event.target.value)
                   }
                 />
-                <datalist id="plastic-customer-options">
+                <datalist id="plastic-customer-options-v2o">
                   {customers.map((customer) => (
                     <option
                       key={customer.customerId}
@@ -2307,19 +2392,30 @@ function Outbound({
                 </datalist>
               </Field>
 
-              <Field label="Pembayaran">
-                <select
-                  value={paymentStatus}
-                  onChange={(event) =>
-                    setPaymentStatus(event.target.value)
-                  }
-                >
-                  <option value="PAID">LUNAS</option>
-                  <option value="NOT_PAID">PIUTANG</option>
-                </select>
-              </Field>
+              {!editInvoiceId ? (
+                <Field label="Pembayaran">
+                  <select
+                    value={paymentStatus}
+                    onChange={(event) =>
+                      setPaymentStatus(event.target.value)
+                    }
+                  >
+                    <option value="PAID">LUNAS</option>
+                    <option value="NOT_PAID">PIUTANG</option>
+                  </select>
+                </Field>
+              ) : (
+                <div className={styles.simpleInfoCard}>
+                  <span>STATUS</span>
+                  <strong>
+                    {paymentStatus === "PAID"
+                      ? "LUNAS"
+                      : "BELUM LUNAS"}
+                  </strong>
+                </div>
+              )}
 
-              {paymentStatus === "PAID" ? (
+              {!editInvoiceId && paymentStatus === "PAID" ? (
                 <Field label="Metode">
                   <select
                     value={paymentMethod}
@@ -2332,12 +2428,26 @@ function Outbound({
                     <option>QRIS</option>
                   </select>
                 </Field>
-              ) : (
-                <div className={styles.simpleInfoCard}>
-                  <span>PIUTANG</span>
-                  <strong>{money.format(estimatedGrand)}</strong>
-                </div>
-              )}
+              ) : null}
+
+              <Field label="Catatan">
+                <input
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                />
+              </Field>
+
+              {editInvoiceId ? (
+                <Field label="Alasan Edit">
+                  <input
+                    required
+                    value={editReason}
+                    onChange={(event) =>
+                      setEditReason(event.target.value)
+                    }
+                  />
+                </Field>
+              ) : null}
             </div>
 
             <div className={styles.lineSection}>
@@ -2346,17 +2456,7 @@ function Outbound({
                 <button
                   type="button"
                   className={styles.secondaryButton}
-                  onClick={() =>
-                    setLines([
-                      ...lines,
-                      {
-                        variantId: "",
-                        qty: "1",
-                        unit: "",
-                        unitPriceRp: "",
-                      },
-                    ])
-                  }
+                  onClick={() => setLines([...lines, emptyLine()])}
                 >
                   + Item
                 </button>
@@ -2499,9 +2599,8 @@ function Outbound({
             <div className={styles.saleSummary}>
               <div>
                 <span>SUBTOTAL</span>
-                <strong>{money.format(estimatedSubtotal)}</strong>
+                <strong>{money.format(subtotal)}</strong>
               </div>
-
               <Field label="Diskon">
                 <input
                   type="number"
@@ -2512,16 +2611,24 @@ function Outbound({
                   }
                 />
               </Field>
-
               <div className={styles.saleGrand}>
                 <span>TOTAL</span>
-                <strong>{money.format(estimatedGrand)}</strong>
+                <strong>{money.format(grand)}</strong>
               </div>
             </div>
 
             <div className={styles.actions}>
+              {editInvoiceId ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={resetForm}
+                >
+                  Batal
+                </button>
+              ) : null}
               <button className={styles.primaryButton} disabled={busy}>
-                Simpan
+                {editInvoiceId ? "Simpan Edit" : "Simpan"}
               </button>
             </div>
           </form>
@@ -2530,7 +2637,7 @@ function Outbound({
 
       <Panel title="Riwayat Keluar">
         <DataTable
-          rows={rows}
+          rows={invoices}
           columns={[
             ["dateKey", "Tanggal"],
             ["invoiceNo", "Invoice"],
@@ -2538,13 +2645,7 @@ function Outbound({
             [
               "grandTotalRp",
               "Sales",
-              (row) =>
-                money.format(Number(row.grandTotalRp || 0)),
-            ],
-            [
-              "cogsRp",
-              "HPP",
-              (row) => money.format(Number(row.cogsRp || 0)),
+              (row) => money.format(Number(row.grandTotalRp || 0)),
             ],
             [
               "grossProfitRp",
@@ -2559,12 +2660,37 @@ function Outbound({
                 money.format(Number(row.outstandingRp || 0)),
             ],
             [
-              "status",
+              "payment",
               "Status",
               (row) =>
                 Number(row.outstandingRp || 0) > 0
                   ? "BELUM LUNAS"
                   : "LUNAS",
+            ],
+            [
+              "actions",
+              "Aksi",
+              (row) =>
+                canEdit ? (
+                  <div className={styles.tableActions}>
+                    <button
+                      type="button"
+                      className={styles.inlineEditButton}
+                      onClick={() => startEdit(row)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.inlineDangerButton}
+                      onClick={() => voidSale(row)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                ) : (
+                  "-"
+                ),
             ],
           ]}
         />
@@ -2572,7 +2698,6 @@ function Outbound({
     </>
   );
 }
-
 
 function Inventory({ rows }: { rows: Row[] }) {
   return (
@@ -2605,25 +2730,65 @@ function Inventory({ rows }: { rows: Row[] }) {
 }
 
 function Receivables({
-  rows,
+  data,
   canWrite,
+  canManage,
   busy,
   run,
 }: {
-  rows: Row[];
+  data: Row;
   canWrite: boolean;
+  canManage: boolean;
   busy: boolean;
   run: any;
 }) {
-  /* RKN_PLASTIC_RECEIVABLES_NO_DUE_DATE_V2N2 */
+  /* RKN_PLASTIC_RECEIVABLE_LEDGER_UI_V2O */
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  const customers = Array.isArray(data.customers)
+    ? data.customers
+    : [];
+  const payments = Array.isArray(data.payments)
+    ? data.payments
+    : [];
+  const ledger = Array.isArray(data.ledger) ? data.ledger : [];
+
   const [invoiceId, setInvoiceId] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("TRANSFER");
+  const [customerId, setCustomerId] = useState("");
 
-  const totalReceivable = rows.reduce(
-    (total, row) => total + Number(row.outstandingRp || 0),
+  const total = rows.reduce(
+    (sum: number, row: Row) =>
+      sum + Number(row.outstandingRp || 0),
     0
   );
+
+  const customerLedger = useMemo(() => {
+    if (!customerId) return [];
+    let balance = 0;
+    return ledger
+      .filter(
+        (row: Row) => String(row.customerId || "") === customerId
+      )
+      .slice()
+      .sort((a: Row, b: Row) =>
+        String(a.createdAt || "").localeCompare(
+          String(b.createdAt || "")
+        )
+      )
+      .map((row: Row) => {
+        const signed =
+          Number(row.amountRp || 0) * Number(row.direction || 0);
+        balance += signed;
+        return {
+          ...row,
+          debitRp: signed > 0 ? signed : 0,
+          creditRp: signed < 0 ? Math.abs(signed) : 0,
+          balanceRp: balance,
+        };
+      })
+      .reverse();
+  }, [customerId, ledger]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -2640,18 +2805,59 @@ function Receivables({
     setAmount("");
   };
 
+  const reversePayment = async (row: Row) => {
+    if (!canManage || row.status !== "POSTED") return;
+    const reason = window.prompt(
+      `Alasan batalkan pembayaran ${row.invoiceNo || ""}?`
+    );
+    if (!reason?.trim()) return;
+    await run(
+      "REVERSE_PAYMENT",
+      {
+        paymentId: row.paymentId,
+        reason: reason.trim(),
+      },
+      "RECEIVABLES"
+    );
+  };
+
   return (
     <>
       <div className={styles.receivableSummary}>
         <span>TOTAL PIUTANG</span>
-        <strong>{money.format(totalReceivable)}</strong>
+        <strong>{money.format(total)}</strong>
       </div>
+
+      <Panel title="Piutang Customer">
+        <DataTable
+          rows={customers}
+          columns={[
+            ["customerName", "Customer"],
+            [
+              "salesRp",
+              "Transaksi",
+              (row) => money.format(Number(row.salesRp || 0)),
+            ],
+            [
+              "paidRp",
+              "Dibayar",
+              (row) => money.format(Number(row.paidRp || 0)),
+            ],
+            [
+              "outstandingRp",
+              "Sisa",
+              (row) =>
+                money.format(Number(row.outstandingRp || 0)),
+            ],
+          ]}
+        />
+      </Panel>
 
       {canWrite && rows.length ? (
         <Panel title="Pembayaran">
           <form onSubmit={submit} className={styles.formStack}>
             <div className={styles.formGrid3}>
-              <Field label="Piutang">
+              <Field label="Transaksi">
                 <select
                   required
                   value={invoiceId}
@@ -2660,7 +2866,7 @@ function Receivables({
                   }
                 >
                   <option value="">Pilih transaksi</option>
-                  {rows.map((row) => (
+                  {rows.map((row: Row) => (
                     <option
                       key={row.invoiceId}
                       value={row.invoiceId}
@@ -2725,8 +2931,7 @@ function Receivables({
             [
               "paidRp",
               "Dibayar",
-              (row) =>
-                money.format(Number(row.paidRp || 0)),
+              (row) => money.format(Number(row.paidRp || 0)),
             ],
             [
               "outstandingRp",
@@ -2737,10 +2942,99 @@ function Receivables({
           ]}
         />
       </Panel>
+
+      <Panel title="Ledger Customer">
+        <div className={styles.ledgerFilter}>
+          <select
+            value={customerId}
+            onChange={(event) => setCustomerId(event.target.value)}
+          >
+            <option value="">Pilih customer</option>
+            {customers.map((row: Row) => (
+              <option key={row.customerId} value={row.customerId}>
+                {row.customerName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <DataTable
+          rows={customerLedger}
+          columns={[
+            ["dateKey", "Tanggal"],
+            [
+              "eventType",
+              "Jenis",
+              (row) =>
+                row.eventType === "SALE"
+                  ? "BARANG KELUAR"
+                  : row.eventType === "PAYMENT"
+                    ? "PEMBAYARAN"
+                    : "BATAL BAYAR",
+            ],
+            ["referenceNo", "Ref"],
+            [
+              "debitRp",
+              "Tambah",
+              (row) =>
+                row.debitRp
+                  ? money.format(Number(row.debitRp))
+                  : "-",
+            ],
+            [
+              "creditRp",
+              "Bayar",
+              (row) =>
+                row.creditRp
+                  ? money.format(Number(row.creditRp))
+                  : "-",
+            ],
+            [
+              "balanceRp",
+              "Saldo",
+              (row) =>
+                money.format(Number(row.balanceRp || 0)),
+            ],
+          ]}
+        />
+      </Panel>
+
+      <Panel title="Riwayat Pembayaran">
+        <DataTable
+          rows={payments}
+          columns={[
+            ["dateKey", "Tanggal"],
+            ["invoiceNo", "Invoice"],
+            ["customerName", "Customer"],
+            [
+              "amountRp",
+              "Nominal",
+              (row) => money.format(Number(row.amountRp || 0)),
+            ],
+            ["paymentMethod", "Metode"],
+            ["status", "Status"],
+            [
+              "paymentAction",
+              "Aksi",
+              (row) =>
+                canManage && row.status === "POSTED" ? (
+                  <button
+                    type="button"
+                    className={styles.inlineDangerButton}
+                    onClick={() => reversePayment(row)}
+                  >
+                    Batalkan
+                  </button>
+                ) : (
+                  "-"
+                ),
+            ],
+          ]}
+        />
+      </Panel>
     </>
   );
 }
-
 
 function Opname({
   rows,
@@ -3002,117 +3296,349 @@ function Reports({
   data: Row;
   period: string;
 }) {
-  /* RKN_PLASTIC_REPORTS_UI_PDF_V2N */
+  /* RKN_PLASTIC_REPORTS_GRID_PDF_V2O */
   const stockRows = Array.isArray(data.stock) ? data.stock : [];
-  const inboundRows = Array.isArray(data.inbound) ? data.inbound : [];
-  const outboundRows = Array.isArray(data.outbound) ? data.outbound : [];
+  const opnameRows = Array.isArray(data.opname) ? data.opname : [];
+  const receivables = Array.isArray(data.receivables)
+    ? data.receivables
+    : [];
+  const metrics = data.metrics || {};
 
   const polymailer = stockRows.filter(
     (row: Row) => String(row.category || "").toUpperCase() !== "THERMAL"
   );
-
   const thermal = stockRows.filter(
     (row: Row) => String(row.category || "").toUpperCase() === "THERMAL"
   );
 
-  const number2 = (value: unknown) =>
+  const n = (value: unknown) =>
     qtyFmt.format(Number(value || 0));
 
-  const pdfAscii = (value: unknown) =>
+  const varianceStatus = (value: unknown) => {
+    const v = Number(value || 0);
+    if (Math.abs(v) < 0.000001) return "BALANCE";
+    return v > 0 ? "LEBIH" : "KURANG";
+  };
+
+  const ascii = (value: unknown) =>
     String(value ?? "")
       .normalize("NFKD")
       .replace(/[^\x20-\x7E]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
 
-  const pdfCell = (value: unknown, width: number) => {
-    const raw = pdfAscii(value);
-    const clipped =
-      raw.length > width ? raw.slice(0, Math.max(0, width - 1)) + "~" : raw;
-    return clipped.padEnd(width, " ");
-  };
+  const downloadPdf = () => {
+    type PdfTable = {
+      title: string;
+      headers: string[];
+      widths: number[];
+      rows: Array<Array<string | number>>;
+    };
 
-  const buildPdf = (
-    title: string,
-    lines: string[],
-    filename: string
-  ) => {
-    const clean = [
-      title,
-      `RKN / PLASTIC / PERIODE ${period}`,
-      `Generated: ${new Date().toLocaleString("id-ID")}`,
-      "",
-      ...lines,
-    ].map(pdfAscii);
+    const tables: PdfTable[] = [
+      {
+        title: "STOCK POLYMAILER",
+        headers: [
+          "Warna",
+          "Ukuran",
+          "Ball",
+          "Isi/Ball",
+          "Total Roll",
+          "Harga/Ball",
+          "Stock Value",
+        ],
+        widths: [105, 75, 60, 70, 78, 105, 115],
+        rows: polymailer.map((row: Row) => {
+          const per = Math.max(1, Number(row.unitsPerPack || 1));
+          const qty = Number(row.qtyBase || 0);
+          return [
+            row.color || "-",
+            row.size || "-",
+            n(qty / per),
+            n(per),
+            n(qty),
+            money.format(Number(row.defaultSellPricePackRp || 0)),
+            money.format(Number(row.stockValueRp || 0)),
+          ];
+        }),
+      },
+      {
+        title: "STOCK THERMAL",
+        headers: [
+          "Produk",
+          "Dus",
+          "Stack",
+          "Lembar",
+          "Harga/Dus",
+          "Stock Value",
+        ],
+        widths: [185, 60, 65, 75, 110, 120],
+        rows: thermal.map((row: Row) => {
+          const pack = Math.max(1, Number(row.unitsPerPack || 1));
+          const mid = Math.max(1, Number(row.unitsPerMid || 1));
+          const qty = Number(row.qtyBase || 0);
+          return [
+            row.productName || "-",
+            n(qty / pack),
+            n(qty / mid),
+            n(qty),
+            money.format(Number(row.defaultSellPricePackRp || 0)),
+            money.format(Number(row.stockValueRp || 0)),
+          ];
+        }),
+      },
+      {
+        title: "STOCK OPNAME - BALANCE / SELISIH",
+        headers: [
+          "Tanggal",
+          "No. SO",
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "System",
+          "Fisik",
+          "Selisih",
+          "Status",
+        ],
+        widths: [62, 100, 145, 70, 65, 68, 68, 68, 65],
+        rows: opnameRows.map((row: Row) => [
+          row.dateKey || "-",
+          row.opnameNo || "-",
+          row.productName || "-",
+          row.color || "-",
+          row.size || "-",
+          `${n(row.systemQtyBase)} ${row.baseUnit || ""}`,
+          `${n(row.physicalQtyBase)} ${row.baseUnit || ""}`,
+          `${n(row.varianceQtyBase)} ${row.baseUnit || ""}`,
+          varianceStatus(row.varianceQtyBase),
+        ]),
+      },
+      {
+        title: "PIUTANG AKTIF",
+        headers: [
+          "Tanggal",
+          "Invoice",
+          "Customer",
+          "Total",
+          "Dibayar",
+          "Sisa",
+        ],
+        widths: [72, 120, 190, 115, 115, 115],
+        rows: receivables.map((row: Row) => [
+          row.dateKey || "-",
+          row.invoiceNo || "-",
+          row.customerName || "-",
+          money.format(Number(row.grandTotalRp || 0)),
+          money.format(Number(row.paidRp || 0)),
+          money.format(Number(row.outstandingRp || 0)),
+        ]),
+      },
+    ];
 
-    const pageLines = 48;
+    const PAGE_W = 842;
+    const PAGE_H = 595;
+    const M = 28;
+    const BOTTOM = 28;
     const pages: string[][] = [];
+    let commands: string[] = [];
+    let y = 0;
+    let pageNo = 0;
 
-    for (let index = 0; index < clean.length; index += pageLines) {
-      pages.push(clean.slice(index, index + pageLines));
-    }
-
-    if (!pages.length) pages.push(["Tidak ada data."]);
-
-    const escapePdf = (value: string) =>
-      value
+    const esc = (value: unknown) =>
+      ascii(value)
         .replace(/\\/g, "\\\\")
         .replace(/\(/g, "\\(")
         .replace(/\)/g, "\\)");
 
+    const text = (
+      x: number,
+      yy: number,
+      value: unknown,
+      size = 8,
+      bold = false
+    ) => {
+      commands.push(
+        `BT /${bold ? "F2" : "F1"} ${size} Tf ${x.toFixed(
+          1
+        )} ${yy.toFixed(1)} Td (${esc(value)}) Tj ET`
+      );
+    };
+
+    const rect = (
+      x: number,
+      yy: number,
+      w: number,
+      h: number,
+      fill = ""
+    ) => {
+      if (fill) commands.push(`${fill} rg`);
+      commands.push(
+        `${x.toFixed(1)} ${yy.toFixed(1)} ${w.toFixed(
+          1
+        )} ${h.toFixed(1)} re ${fill ? "B" : "S"}`
+      );
+      if (fill) commands.push("0 0 0 rg");
+    };
+
+    const startPage = () => {
+      if (commands.length) pages.push(commands);
+      commands = [];
+      pageNo += 1;
+
+      commands.push("0.06 0.12 0.20 rg");
+      commands.push(`0 ${PAGE_H - 58} ${PAGE_W} 58 re f`);
+      commands.push("1 1 1 rg");
+      text(M, PAGE_H - 25, "RKN ERP", 15, true);
+      text(M, PAGE_H - 41, "PLASTIC TRADING", 8, true);
+      commands.push("0 0 0 rg");
+
+      text(
+        PAGE_W - 220,
+        PAGE_H - 25,
+        `PERIODE ${period}`,
+        9,
+        true
+      );
+      text(
+        PAGE_W - 220,
+        PAGE_H - 41,
+        `HALAMAN ${pageNo}`,
+        7,
+        false
+      );
+
+      y = PAGE_H - 82;
+    };
+
+    const ensure = (height: number) => {
+      if (y - height < BOTTOM) startPage();
+    };
+
+    const summary = () => {
+      const items = [
+        ["STOCK VALUE", money.format(Number(metrics.stockValueRp || 0))],
+        ["PIUTANG", money.format(Number(metrics.receivableRp || 0))],
+        ["SALES", money.format(Number(metrics.salesRp || 0))],
+        ["GROSS PROFIT", money.format(Number(metrics.grossProfitRp || 0))],
+      ];
+
+      ensure(58);
+      const gap = 8;
+      const w = (PAGE_W - M * 2 - gap * 3) / 4;
+
+      items.forEach(([label, value], index) => {
+        const x = M + index * (w + gap);
+        rect(x, y - 44, w, 44, "0.96 0.97 0.99");
+        text(x + 8, y - 16, label, 6.5, true);
+        text(x + 8, y - 33, value, 9, true);
+      });
+
+      y -= 58;
+    };
+
+    const table = (spec: PdfTable) => {
+      if (!spec.rows.length) return;
+
+      const widths = [...spec.widths];
+      const total = widths.reduce((a, b) => a + b, 0);
+      const available = PAGE_W - M * 2;
+      const scale = total > available ? available / total : 1;
+      for (let i = 0; i < widths.length; i += 1) {
+        widths[i] *= scale;
+      }
+
+      const headerH = 20;
+      const rowH = 18;
+
+      const drawHeader = () => {
+        let x = M;
+        spec.headers.forEach((header, index) => {
+          const w = widths[index];
+          rect(x, y - headerH, w, headerH, "0.88 0.92 0.96");
+          text(x + 4, y - 13, header, 6.4, true);
+          x += w;
+        });
+        y -= headerH;
+      };
+
+      ensure(50);
+      text(M, y, spec.title, 10, true);
+      y -= 15;
+      drawHeader();
+
+      for (const row of spec.rows) {
+        if (y - rowH < BOTTOM) {
+          startPage();
+          text(M, y, spec.title, 9, true);
+          y -= 14;
+          drawHeader();
+        }
+
+        let x = M;
+        row.forEach((cell, index) => {
+          const w = widths[index] || 60;
+          rect(x, y - rowH, w, rowH);
+          const limit = Math.max(4, Math.floor(w / 4.4));
+          const raw = ascii(cell);
+          const clipped =
+            raw.length > limit
+              ? raw.slice(0, Math.max(1, limit - 3)) + "..."
+              : raw;
+          text(x + 4, y - 12, clipped, 6.2, false);
+          x += w;
+        });
+        y -= rowH;
+      }
+
+      y -= 16;
+    };
+
+    startPage();
+    summary();
+    tables.forEach(table);
+
+    if (commands.length) pages.push(commands);
+
     const objects: string[] = [];
     const pageRefs: string[] = [];
+    const fontNormal = 3;
+    const fontBold = 4;
+    let nextObject = 5;
 
-    const fontObject = 3;
-    let nextObject = 4;
-
-    for (const page of pages) {
+    pages.forEach((page) => {
       const pageObject = nextObject++;
       const contentObject = nextObject++;
-
       pageRefs.push(`${pageObject} 0 R`);
 
-      const commands = [
-        "BT",
-        "/F1 8 Tf",
-        "28 560 Td",
-        "10.5 TL",
-        ...page.flatMap((line, index) =>
-          index === 0
-            ? [`(${escapePdf(line)}) Tj`]
-            : ["T*", `(${escapePdf(line)}) Tj`]
-        ),
-        "ET",
-      ].join("\n");
+      const stream = page.join("\n");
 
       objects[pageObject] =
         `${pageObject} 0 obj\n` +
-        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] ` +
-        `/Resources << /Font << /F1 ${fontObject} 0 R >> >> ` +
+        `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] ` +
+        `/Resources << /Font << /F1 ${fontNormal} 0 R /F2 ${fontBold} 0 R >> >> ` +
         `/Contents ${contentObject} 0 R >>\nendobj\n`;
 
       objects[contentObject] =
         `${contentObject} 0 obj\n` +
-        `<< /Length ${commands.length} >>\nstream\n` +
-        `${commands}\nendstream\nendobj\n`;
-    }
+        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`;
+    });
 
     objects[1] =
       "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
-
     objects[2] =
-      `2 0 obj\n<< /Type /Pages /Count ${pages.length} ` +
-      `/Kids [${pageRefs.join(" ")}] >>\nendobj\n`;
-
-    objects[fontObject] =
-      `${fontObject} 0 obj\n` +
-      "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n";
+      `2 0 obj\n<< /Type /Pages /Count ${pages.length} /Kids [${pageRefs.join(
+        " "
+      )}] >>\nendobj\n`;
+    objects[fontNormal] =
+      `${fontNormal} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`;
+    objects[fontBold] =
+      `${fontBold} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n`;
 
     const maxObject = objects.length - 1;
     let pdf = "%PDF-1.4\n";
     const offsets = new Array(maxObject + 1).fill(0);
 
-    for (let objectNo = 1; objectNo <= maxObject; objectNo++) {
+    for (let objectNo = 1; objectNo <= maxObject; objectNo += 1) {
       if (!objects[objectNo]) continue;
       offsets[objectNo] = pdf.length;
       pdf += objects[objectNo];
@@ -3121,8 +3647,7 @@ function Reports({
     const xrefOffset = pdf.length;
     pdf += `xref\n0 ${maxObject + 1}\n`;
     pdf += "0000000000 65535 f \n";
-
-    for (let objectNo = 1; objectNo <= maxObject; objectNo++) {
+    for (let objectNo = 1; objectNo <= maxObject; objectNo += 1) {
       pdf +=
         String(offsets[objectNo] || 0).padStart(10, "0") +
         " 00000 n \n";
@@ -3134,103 +3659,21 @@ function Reports({
 
     const blob = new Blob([pdf], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `RKN_PLASTIC_REPORT_${period}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1200);
-  };
-
-  const downloadPdf = () => {
-    const lines: string[] = [];
-
-    lines.push("POLYMAILER");
-    lines.push(
-      [
-        pdfCell("WARNA", 14),
-        pdfCell("UKURAN", 10),
-        pdfCell("BALL", 10),
-        pdfCell("ISI/BALL", 10),
-        pdfCell("TOTAL ROLL", 12),
-        pdfCell("HARGA/BALL", 15),
-      ].join(" ")
-    );
-
-    lines.push("-".repeat(78));
-
-    for (const row of polymailer) {
-      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 1));
-      const qtyBase = Number(row.qtyBase || 0);
-
-      lines.push(
-        [
-          pdfCell(row.color || "-", 14),
-          pdfCell(row.size || "-", 10),
-          pdfCell(number2(qtyBase / unitsPerPack), 10),
-          pdfCell(number2(unitsPerPack), 10),
-          pdfCell(number2(qtyBase), 12),
-          pdfCell(
-            `Rp ${Number(row.defaultSellPricePackRp || 0).toLocaleString("id-ID")}`,
-            15
-          ),
-        ].join(" ")
-      );
-    }
-
-    lines.push("");
-    lines.push("THERMAL");
-    lines.push(
-      [
-        pdfCell("PRODUK", 26),
-        pdfCell("DUS", 10),
-        pdfCell("STACK", 10),
-        pdfCell("LEMBAR", 12),
-        pdfCell("HARGA/DUS", 15),
-      ].join(" ")
-    );
-
-    lines.push("-".repeat(78));
-
-    for (const row of thermal) {
-      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 1));
-      const unitsPerMid = Math.max(1, Number(row.unitsPerMid || 1));
-      const qtyBase = Number(row.qtyBase || 0);
-
-      lines.push(
-        [
-          pdfCell(row.productName || "-", 26),
-          pdfCell(number2(qtyBase / unitsPerPack), 10),
-          pdfCell(number2(qtyBase / unitsPerMid), 10),
-          pdfCell(number2(qtyBase), 12),
-          pdfCell(
-            `Rp ${Number(row.defaultSellPricePackRp || 0).toLocaleString("id-ID")}`,
-            15
-          ),
-        ].join(" ")
-      );
-    }
-
-    lines.push("");
-    lines.push(`BARANG MASUK / ${inboundRows.length} BARIS`);
-    lines.push(`BARANG KELUAR / ${outboundRows.length} BARIS`);
-
-    buildPdf(
-      "RKN ERP - LAPORAN PLASTIC TRADING",
-      lines,
-      `RKN_PLASTIC_REPORT_${period}.pdf`
-    );
   };
 
   return (
     <>
       <div className={styles.reportToolbar}>
         <div>
-          <strong>Laporan Plastic Trading</strong>
-          <span>
-            Format mengikuti master UOM.
-          </span>
+          <strong>Laporan</strong>
+          <span>Stok, opname, piutang.</span>
         </div>
         <button
           type="button"
@@ -3241,10 +3684,7 @@ function Reports({
         </button>
       </div>
 
-      <Panel
-        title="Stock Polymailer"
-        subtitle="Ball dihitung dari isi per Ball."
-      >
+      <Panel title="Stock Polymailer">
         <DataTable
           rows={polymailer}
           columns={[
@@ -3254,45 +3694,29 @@ function Reports({
               "ball",
               "Ball",
               (row) =>
-                number2(
+                n(
                   Number(row.qtyBase || 0) /
                     Math.max(1, Number(row.unitsPerPack || 1))
                 ),
             ],
-            [
-              "unitsPerPack",
-              "Isi / Ball",
-              (row) => number2(row.unitsPerPack),
-            ],
-            [
-              "qtyBase",
-              "Total Roll",
-              (row) => number2(row.qtyBase),
-            ],
+            ["unitsPerPack", "Isi/Ball", (row) => n(row.unitsPerPack)],
+            ["qtyBase", "Total Roll", (row) => n(row.qtyBase)],
             [
               "defaultSellPricePackRp",
-              "Harga Master / Ball",
+              "Harga/Ball",
               (row) =>
                 money.format(Number(row.defaultSellPricePackRp || 0)),
             ],
             [
-              "avgCostRp",
-              "Avg HPP / Roll",
-              (row) => money.format(Number(row.avgCostRp || 0)),
-            ],
-            [
               "stockValueRp",
-              "Nilai Stock",
+              "Stock Value",
               (row) => money.format(Number(row.stockValueRp || 0)),
             ],
           ]}
         />
       </Panel>
 
-      <Panel
-        title="Stock Thermal"
-        subtitle="Dus / Stack / Lembar sesuai master."
-      >
+      <Panel title="Stock Thermal">
         <DataTable
           rows={thermal}
           columns={[
@@ -3301,7 +3725,7 @@ function Reports({
               "dus",
               "Dus",
               (row) =>
-                number2(
+                n(
                   Number(row.qtyBase || 0) /
                     Math.max(1, Number(row.unitsPerPack || 1))
                 ),
@@ -3310,93 +3734,79 @@ function Reports({
               "stack",
               "Stack",
               (row) =>
-                number2(
+                n(
                   Number(row.qtyBase || 0) /
                     Math.max(1, Number(row.unitsPerMid || 1))
                 ),
             ],
-            [
-              "qtyBase",
-              "Lembar",
-              (row) => number2(row.qtyBase),
-            ],
-            [
-              "defaultSellPricePackRp",
-              "Harga Master / Dus",
-              (row) =>
-                money.format(Number(row.defaultSellPricePackRp || 0)),
-            ],
-            [
-              "avgCostRp",
-              "Avg HPP / Lembar",
-              (row) => money.format(Number(row.avgCostRp || 0)),
-            ],
+            ["qtyBase", "Lembar", (row) => n(row.qtyBase)],
             [
               "stockValueRp",
-              "Nilai Stock",
+              "Stock Value",
               (row) => money.format(Number(row.stockValueRp || 0)),
             ],
           ]}
         />
       </Panel>
 
-      <Panel
-        title="Barang Masuk"
-        subtitle="Periode aktif."
-      >
+      <Panel title="Stock Opname">
         <DataTable
-          rows={inboundRows}
+          rows={opnameRows}
           columns={[
             ["dateKey", "Tanggal"],
-            ["referenceNo", "No. IN"],
-            ["partyName", "Supplier"],
+            ["opnameNo", "No. SO"],
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
             [
-              "qty",
-              "Qty",
+              "systemQtyBase",
+              "System",
               (row) =>
-                `${number2(row.qty)} ${row.unit || ""}`,
+                `${n(row.systemQtyBase)} ${row.baseUnit || ""}`,
             ],
             [
-              "totalRp",
-              "Nilai",
-              (row) => money.format(Number(row.totalRp || 0)),
+              "physicalQtyBase",
+              "Fisik",
+              (row) =>
+                `${n(row.physicalQtyBase)} ${row.baseUnit || ""}`,
+            ],
+            [
+              "varianceQtyBase",
+              "Selisih",
+              (row) =>
+                `${n(row.varianceQtyBase)} ${row.baseUnit || ""}`,
+            ],
+            [
+              "varianceStatus",
+              "Status",
+              (row) => varianceStatus(row.varianceQtyBase),
             ],
           ]}
         />
       </Panel>
 
-      <Panel
-        title="Barang Keluar"
-        subtitle="Periode aktif."
-      >
+      <Panel title="Piutang">
         <DataTable
-          rows={outboundRows}
+          rows={receivables}
           columns={[
             ["dateKey", "Tanggal"],
-            ["referenceNo", "Invoice"],
-            ["partyName", "Customer"],
-            ["productName", "Produk"],
-            ["color", "Warna"],
-            ["size", "Ukuran"],
-            ["qtyBase", "Qty Base", (row) => number2(row.qtyBase)],
+            ["invoiceNo", "Invoice"],
+            ["customerName", "Customer"],
             [
-              "totalRp",
-              "Sales",
-              (row) => money.format(Number(row.totalRp || 0)),
+              "grandTotalRp",
+              "Total",
+              (row) => money.format(Number(row.grandTotalRp || 0)),
             ],
             [
-              "cogsRp",
-              "HPP",
-              (row) => money.format(Number(row.cogsRp || 0)),
+              "paidRp",
+              "Dibayar",
+              (row) => money.format(Number(row.paidRp || 0)),
             ],
             [
-              "grossProfitRp",
-              "Gross Profit",
+              "outstandingRp",
+              "Sisa",
               (row) =>
-                money.format(Number(row.grossProfitRp || 0)),
+                money.format(Number(row.outstandingRp || 0)),
             ],
           ]}
         />
