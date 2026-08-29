@@ -730,81 +730,162 @@ if(view==='RECEIVABLES'){
 }
 
 /* RKN_PLASTIC_REPORTS_PRO_V2O */
+/* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 if(view==='REPORTS'){
-  const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period);
-  const cogs=scalar(sql,`SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,period);
-  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
-  const stockValue=scalar(sql,`SELECT COALESCE(SUM(qty_base*avg_cost_rp),0) value FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC'`);
+  const stock=sql.exec(
+    `SELECT
+       v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,
+       v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       v.default_sell_price_base_rp defaultSellPriceBaseRp,
+       v.default_sell_price_mid_rp defaultSellPriceMidRp,
+       v.default_sell_price_pack_rp defaultSellPricePackRp,
+       COALESCE(b.qty_base,0) qtyBase,
+       COALESCE(b.avg_cost_rp,0) avgCostRp,
+       ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp
+     FROM plastic_product_variant v
+     LEFT JOIN plastic_inventory_balance b
+       ON b.business_unit_id=v.business_unit_id
+      AND b.variant_id=v.variant_id
+     WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
+     ORDER BY v.category,v.product_name,UPPER(v.color),UPPER(v.size)`
+  ).toArray();
+
+  const activeSo=sql.exec(
+    `SELECT
+       so_id soId,so_no soNo,date_key dateKey,status,reason,created_at createdAt
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC'
+       AND period_key=?
+       AND status IN('DRAFT','REVIEW')
+     ORDER BY date_key DESC,created_at DESC
+     LIMIT 1`,
+    period
+  ).toArray()[0]??null;
+
+  const soPrep=activeSo
+    ? sql.exec(
+        `SELECT
+           l.variant_id variantId,l.system_qty_base systemQtyBase,
+           l.physical_qty_base physicalQtyBase,l.physical_entered physicalEntered,l.note,
+           v.product_name productName,v.category,v.color,v.size,
+           v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+           COALESCE(v.units_per_mid,1) unitsPerMid,
+           COALESCE(v.units_per_pack,1) unitsPerPack
+         FROM plastic_so_session_line l
+         JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+         WHERE l.so_id=?
+         ORDER BY v.category,v.product_name,UPPER(v.color),UPPER(v.size)`,
+        String(activeSo.soId)
+      ).toArray()
+    : [];
+
+  const soSessions=sql.exec(
+    `SELECT
+       s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
+       COUNT(l.line_id) totalSku,
+       SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) countedSku,
+       SUM(CASE WHEN l.physical_entered=1 AND ABS(l.physical_qty_base-l.system_qty_base)<0.000001 THEN 1 ELSE 0 END) balanceSku,
+       SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base<l.system_qty_base-0.000001 THEN 1 ELSE 0 END) lessSku,
+       SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
+     FROM plastic_so_session s
+     LEFT JOIN plastic_so_session_line l ON l.so_id=s.so_id
+     WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
+     GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+     ORDER BY s.date_key DESC,s.created_at DESC
+     LIMIT 24`,
+    period
+  ).toArray();
+
+  const opname=sql.exec(
+    `SELECT
+       o.opname_no opnameNo,o.date_key dateKey,o.reason,
+       l.variant_id variantId,
+       v.product_name productName,v.category,v.color,v.size,
+       v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       l.system_qty_base systemQtyBase,
+       l.physical_qty_base physicalQtyBase,
+       l.variance_qty_base varianceQtyBase
+     FROM plastic_stock_opname o
+     JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
+     JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+     WHERE o.business_unit_id='BU-PLASTIC' AND o.period_key=?
+     ORDER BY o.date_key DESC,o.created_at DESC,v.category,v.product_name,UPPER(v.color),UPPER(v.size)
+     LIMIT 1200`,
+    period
+  ).toArray();
+
+  const receivables=sql.exec(
+    `SELECT
+       i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,
+       COALESCE(c.customer_name,'') customerName,
+       i.grand_total_rp grandTotalRp,i.status
+     FROM plastic_sales_invoice i
+     LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
+     WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
+     ORDER BY i.date_key,i.invoice_no`
+  ).toArray()
+    .map((r:any)=>{
+      const paidRp=paid(sql,String(r.invoiceId));
+      return{
+        ...r,
+        paidRp,
+        outstandingRp:Math.max(0,N(r.grandTotalRp)-paidRp)
+      };
+    })
+    .filter((r:any)=>r.outstandingRp>0);
+
+  const inbound=sql.exec(
+    `SELECT
+       i.date_key dateKey,i.inbound_no referenceNo,
+       v.product_name productName,v.category,v.color,v.size,
+       l.qty_input qty,l.input_unit unit,l.qty_base qtyBase,
+       l.unit_cost_rp unitCostRp,l.line_total_rp totalRp
+     FROM plastic_inbound i
+     JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
+     JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+     WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=?
+     ORDER BY i.date_key,i.created_at`,
+    period
+  ).toArray();
+
+  const outbound=sql.exec(
+    `SELECT
+       i.date_key dateKey,i.invoice_no referenceNo,
+       COALESCE(c.customer_name,'') customerName,
+       v.product_name productName,v.category,v.color,v.size,
+       l.qty_base qtyBase,l.line_total_rp totalRp,l.cogs_total_rp cogsRp,
+       (l.line_total_rp-l.cogs_total_rp) grossProfitRp
+     FROM plastic_sales_invoice i
+     JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
+     JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+     LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
+     WHERE i.business_unit_id='BU-PLASTIC'
+       AND i.period_key=?
+       AND i.status<>'VOID'
+     ORDER BY i.date_key,i.created_at`,
+    period
+  ).toArray();
 
   return{
     view,
     periodKey:period,
     actor:a,
-    metrics:{salesRp:sales,cogsRp:cogs,grossProfitRp:sales-cogs,receivableRp:rec,stockValueRp:stockValue},
-    stock:sql.exec(
-      `SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,
-              v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
-              COALESCE(v.units_per_mid,1) unitsPerMid,COALESCE(v.units_per_pack,1) unitsPerPack,
-              v.default_buy_price_rp defaultBuyPriceRp,
-              v.default_sell_price_base_rp defaultSellPriceBaseRp,
-              v.default_sell_price_mid_rp defaultSellPriceMidRp,
-              v.default_sell_price_pack_rp defaultSellPricePackRp,
-              COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp,
-              ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp
-       FROM plastic_product_variant v
-       LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id
-       WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
-       ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`
-    ).toArray(),
-    opname:sql.exec(
-      `SELECT o.opname_id opnameId,o.opname_no opnameNo,o.date_key dateKey,o.reason,
-              l.variant_id variantId,v.product_name productName,v.category,v.color,v.size,
-              v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
-              v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,
-              l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
-              l.variance_qty_base varianceQtyBase
-       FROM plastic_stock_opname o
-       JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
-       JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-       WHERE o.business_unit_id='BU-PLASTIC' AND o.period_key=?
-       ORDER BY o.date_key DESC,o.created_at DESC,v.category,v.color,v.size`,
-      period
-    ).toArray(),
-    receivables:sql.exec(
-      `SELECT i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,
-              COALESCE(c.customer_name,'') customerName,i.grand_total_rp grandTotalRp
-       FROM plastic_sales_invoice i
-       LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
-       WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-       ORDER BY i.date_key DESC`
-    ).toArray().map((r:any)=>{
-      const p=paid(sql,String(r.invoiceId));
-      return{...r,paidRp:p,outstandingRp:Math.max(0,N(r.grandTotalRp)-p)};
-    }).filter((r:any)=>r.outstandingRp>0),
-    inbound:sql.exec(
-      `SELECT i.date_key dateKey,i.inbound_no referenceNo,i.supplier_name partyName,
-              v.product_name productName,v.category,v.color,v.size,
-              l.qty_input qty,l.input_unit unit,l.qty_base qtyBase,l.line_total_rp totalRp
-       FROM plastic_inbound i
-       JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
-       JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-       WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=?
-       ORDER BY i.date_key`,
-      period
-    ).toArray(),
-    outbound:sql.exec(
-      `SELECT i.date_key dateKey,i.invoice_no referenceNo,COALESCE(c.customer_name,'') partyName,
-              v.product_name productName,v.category,v.color,v.size,l.qty_base qtyBase,
-              l.line_total_rp totalRp,l.cogs_total_rp cogsRp,
-              (l.line_total_rp-l.cogs_total_rp) grossProfitRp
-       FROM plastic_sales_invoice i
-       JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
-       JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-       LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
-       WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'
-       ORDER BY i.date_key`,
-      period
-    ).toArray()
+    metrics:{
+      stockValueRp:stock.reduce((sum:any,row:any)=>sum+N(row.stockValueRp),0),
+      receivableRp:receivables.reduce((sum:any,row:any)=>sum+N(row.outstandingRp),0)
+    },
+    stock,
+    activeSo,
+    soPrep,
+    soSessions,
+    opname,
+    receivables,
+    inbound,
+    outbound
   };
 }
 

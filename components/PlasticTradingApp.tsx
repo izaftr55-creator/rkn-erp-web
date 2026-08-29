@@ -1224,9 +1224,9 @@ function Dashboard({ data }: { data: Row }) {
         >
           <div className={styles.soChart}>
             <div className={styles.soChartTop}>
-              <strong>{balancePct}%</strong>
+              <strong>{totalSo > 0 ? `${balancePct}%` : "—"}</strong>
               <span>
-                {Number(so.balance || 0)} / {totalSo} SKU balance
+                {totalSo > 0 ? `${Number(so.balance || 0)} / ${totalSo} SKU balance` : "Belum ada hasil SO"}
               </span>
             </div>
 
@@ -2220,7 +2220,7 @@ function Inbound({
   busy: boolean;
   run: any;
 }) {
-  /* RKN_PLASTIC_INBOUND_EDIT_UI_V2N */
+  /* RKN_PLASTIC_INBOUND_SIMPLE_UI_V2Q */
   const emptyLine = () => ({
     variantId: "",
     qty: "1",
@@ -2229,8 +2229,6 @@ function Inbound({
   });
 
   const [dateKey, setDateKey] = useState(today());
-  const [supplierName, setSupplierName] = useState("");
-  const [supplierRef, setSupplierRef] = useState("");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState([emptyLine()]);
   const [editInboundId, setEditInboundId] = useState("");
@@ -2239,8 +2237,6 @@ function Inbound({
 
   const resetForm = () => {
     setDateKey(today());
-    setSupplierName("");
-    setSupplierRef("");
     setNote("");
     setLines([emptyLine()]);
     setEditInboundId("");
@@ -2253,8 +2249,8 @@ function Inbound({
 
     const payload = {
       dateKey,
-      supplierName,
-      supplierRef,
+      supplierName: "",
+      supplierRef: "",
       note,
       lines: lines.map((line) => ({
         ...line,
@@ -2265,9 +2261,7 @@ function Inbound({
 
     if (editInboundId) {
       if (!editReason.trim()) {
-        if (typeof window !== "undefined") {
-          window.alert("Alasan edit Barang Masuk wajib diisi.");
-        }
+        window.alert("Alasan edit Barang Masuk wajib diisi.");
         return;
       }
 
@@ -2301,8 +2295,6 @@ function Inbound({
     setEditInboundId(inboundId);
     setEditInboundNo(String(header.inboundNo || ""));
     setDateKey(String(header.dateKey || today()));
-    setSupplierName(String(header.supplierName || ""));
-    setSupplierRef(String(header.supplierRef || ""));
     setNote(String(header.note || ""));
     setEditReason("");
 
@@ -2322,9 +2314,7 @@ function Inbound({
       })
     );
 
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -2338,12 +2328,12 @@ function Inbound({
           }
           subtitle={
             editInboundId
-              ? "Edit aman; stok dan audit ikut disesuaikan."
-              : "HPP mengikuti UOM."
+              ? "Koreksi Qty, UOM, HPP atau tanggal. Perubahan tetap tercatat di Audit."
+              : "Catat barang yang masuk. HPP mengikuti UOM yang dipilih."
           }
         >
           <form onSubmit={submit} className={styles.formStack}>
-            <div className={styles.formGrid3}>
+            <div className={styles.inboundHeaderGrid}>
               <Field label="Tanggal">
                 <input
                   required
@@ -2353,38 +2343,19 @@ function Inbound({
                 />
               </Field>
 
-              <Field label="Supplier">
-                <input
-                  placeholder="Nama supplier"
-                  value={supplierName}
-                  onChange={(event) => setSupplierName(event.target.value)}
-                />
-              </Field>
-
-              <Field label="Invoice / Surat Jalan">
-                <input
-                  placeholder="Nomor referensi"
-                  value={supplierRef}
-                  onChange={(event) => setSupplierRef(event.target.value)}
-                />
-              </Field>
-
               <Field label="Catatan">
                 <input
-                  placeholder="Catatan transaksi"
+                  placeholder="Opsional"
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                 />
               </Field>
 
               {editInboundId ? (
-                <Field
-                  label="Alasan Edit"
-                  hint="Wajib untuk Audit Trail."
-                >
+                <Field label="Alasan Edit" hint="Wajib untuk Audit.">
                   <input
                     required
-                    placeholder="Contoh: salah qty / supplier / HPP"
+                    placeholder="Contoh: salah Qty / UOM / HPP"
                     value={editReason}
                     onChange={(event) => setEditReason(event.target.value)}
                   />
@@ -2398,9 +2369,7 @@ function Inbound({
                   <strong>
                     {editInboundId ? "Item Setelah Edit" : "Item Masuk"}
                   </strong>
-                  <span>
-                    Produk, qty, UOM, dan HPP bisa diedit.
-                  </span>
+                  <span>Produk, Qty, UOM dan HPP.</span>
                 </div>
 
                 <button
@@ -2429,16 +2398,18 @@ function Inbound({
                       value={line.variantId}
                       className={styles.itemProduct}
                       onChange={(variantId, chosen) => {
+                        const chosenUnit = String(
+                          chosen?.packUnit ||
+                            chosen?.midUnit ||
+                            chosen?.baseUnit ||
+                            ""
+                        ).toUpperCase();
+
                         const next = [...lines];
                         next[index] = {
                           ...line,
                           variantId,
-                          unit: String(
-                            chosen?.packUnit ||
-                              chosen?.midUnit ||
-                              chosen?.baseUnit ||
-                              ""
-                          ).toUpperCase(),
+                          unit: chosenUnit,
                         };
                         setLines(next);
                       }}
@@ -2465,6 +2436,7 @@ function Inbound({
                     <Field label="UOM">
                       <select
                         required
+                        disabled={!product}
                         value={line.unit}
                         onChange={(event) => {
                           const next = [...lines];
@@ -2484,12 +2456,13 @@ function Inbound({
 
                     <Field
                       label="HPP / UOM"
+                      hint="Harga beli per UOM."
                       className={styles.moneyField}
-                      hint="Harga beli per UOM yang dipilih."
                     >
                       <input
                         type="number"
                         min="0"
+                        disabled={!product}
                         value={line.unitCostRp}
                         onChange={(event) => {
                           const next = [...lines];
@@ -2538,7 +2511,7 @@ function Inbound({
 
               <button className={styles.primaryButton} disabled={busy}>
                 {editInboundId
-                  ? "Simpan Perubahan Barang Masuk"
+                  ? "Simpan Perubahan"
                   : "Simpan Barang Masuk"}
               </button>
             </div>
@@ -2546,17 +2519,12 @@ function Inbound({
         </Panel>
       ) : null}
 
-      <Panel
-        title="Riwayat Barang Masuk"
-        subtitle="Edit sesuai akses. Periode tutup tetap terkunci."
-      >
+      <Panel title="Riwayat Barang Masuk">
         <DataTable
           rows={rows}
           columns={[
             ["dateKey", "Tanggal"],
             ["inboundNo", "No. IN"],
-            ["supplierName", "Supplier"],
-            ["supplierRef", "Invoice / Ref"],
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
@@ -2567,6 +2535,11 @@ function Inbound({
                 `${qtyFmt.format(Number(row.qtyInput || 0))} ${
                   row.inputUnit || ""
                 }`,
+            ],
+            [
+              "unitCostRp",
+              "HPP",
+              (row) => money.format(Number(row.unitCostRp || 0)),
             ],
             [
               "lineTotalRp",
@@ -4174,41 +4147,90 @@ function Reports({
   data: Row;
   period: string;
 }) {
-  /* RKN_PLASTIC_REPORT_CENTER_V2O5 */
+  /* RKN_PLASTIC_REPORT_CENTER_UI_V2Q */
   type ReportTab =
     | "STOCK"
     | "SO_PREP"
     | "SO_RESULT"
-    | "RECEIVABLES";
+    | "RECEIVABLES"
+    | "INBOUND"
+    | "OUTBOUND";
 
   const [reportTab, setReportTab] =
     useState<ReportTab>("STOCK");
 
-  const [soDate, setSoDate] = useState("2026-09-28");
-
-  const stockRows = Array.isArray(data.stock) ? data.stock : [];
-  const opnameRows = Array.isArray(data.opname) ? data.opname : [];
+  const stock = Array.isArray(data.stock) ? data.stock : [];
+  const soPrep = Array.isArray(data.soPrep) ? data.soPrep : [];
+  const soSessions = Array.isArray(data.soSessions)
+    ? data.soSessions
+    : [];
+  const opname = Array.isArray(data.opname) ? data.opname : [];
   const receivables = Array.isArray(data.receivables)
     ? data.receivables
     : [];
-  const metrics = data.metrics || {};
+  const inbound = Array.isArray(data.inbound) ? data.inbound : [];
+  const outbound = Array.isArray(data.outbound)
+    ? data.outbound
+    : [];
+  const activeSo = data.activeSo || null;
 
-  const polymailer = stockRows.filter(
+  const polymailer = stock.filter(
     (row: Row) =>
-      String(row.category || "").toUpperCase() !== "THERMAL"
+      String(row.category || "").toUpperCase() === "POLYMAILER"
   );
-
-  const thermal = stockRows.filter(
+  const thermal = stock.filter(
     (row: Row) =>
       String(row.category || "").toUpperCase() === "THERMAL"
   );
 
-  const qty = (value: unknown) =>
+  const qtyText = (value: unknown) =>
     qtyFmt.format(Number(value || 0));
 
-  const dateId = (value: string) => {
-    const [year, month, day] = value.split("-");
-    return [day, month, year].filter(Boolean).join("/");
+  const decompose = (row: Row, totalValue: unknown) => {
+    let total = Math.max(0, Number(totalValue || 0));
+    const packFactor = Math.max(
+      1,
+      Number(row.unitsPerPack || 1)
+    );
+    const midFactor = Math.max(
+      1,
+      Number(row.unitsPerMid || 1)
+    );
+
+    let pack = 0;
+    let mid = 0;
+
+    if (row.packUnit) {
+      pack = Math.floor((total + 1e-9) / packFactor);
+      total -= pack * packFactor;
+    }
+
+    if (row.midUnit) {
+      mid = Math.floor((total + 1e-9) / midFactor);
+      total -= mid * midFactor;
+    }
+
+    return {
+      pack,
+      mid,
+      base: Math.max(0, total),
+    };
+  };
+
+  const stockHuman = (row: Row, total: unknown) => {
+    const parts = decompose(row, total);
+
+    return [
+      row.packUnit
+        ? `${qtyText(parts.pack)} ${row.packUnit}`
+        : "",
+      row.midUnit
+        ? `${qtyText(parts.mid)} ${row.midUnit}`
+        : "",
+      `${qtyText(parts.base)} ${row.baseUnit || ""}`,
+    ]
+      .filter(Boolean)
+      .join(" + ");
   };
 
   const varianceStatus = (value: unknown) => {
@@ -4217,13 +4239,18 @@ function Reports({
     return variance > 0 ? "LEBIH" : "KURANG";
   };
 
-  const prepRows = stockRows.map((row: Row) => ({
-    ...row,
-    systemText: `${qty(row.qtyBase)} ${row.baseUnit || ""}`,
-    physicalText: "",
-    varianceText: "",
-    noteText: "",
-  }));
+  const reportTitle =
+    reportTab === "STOCK"
+      ? "Laporan Stok"
+      : reportTab === "SO_PREP"
+        ? "Persiapan Stock Opname"
+        : reportTab === "SO_RESULT"
+          ? "Hasil Stock Opname"
+          : reportTab === "RECEIVABLES"
+            ? "Piutang Belum Bayar"
+            : reportTab === "INBOUND"
+              ? "Barang Masuk"
+              : "Barang Keluar";
 
   const loadLogoData = async () => {
     const response = await fetch("/rkn-logo.png", {
@@ -4236,8 +4263,7 @@ function Reports({
 
     return await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () =>
-        resolve(String(reader.result || ""));
+      reader.onload = () => resolve(String(reader.result || ""));
       reader.onerror = () =>
         reject(new Error("RKN_LOGO_READ_FAILED"));
       reader.readAsDataURL(blob);
@@ -4245,12 +4271,13 @@ function Reports({
   };
 
   const downloadPdf = async () => {
-    const [{ jsPDF }, autoTableModule] = await Promise.all([
+    const [{ jsPDF }, tableModule] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
     ]);
 
-    const autoTable = autoTableModule.default;
+    const autoTable: any =
+      (tableModule as any).default || tableModule;
 
     const doc = new jsPDF({
       orientation: "landscape",
@@ -4259,6 +4286,7 @@ function Reports({
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const tableWidth = pageWidth - 8;
 
     let logoData = "";
@@ -4269,32 +4297,14 @@ function Reports({
       logoData = "";
     }
 
-    const reportMeta =
-      reportTab === "STOCK"
-        ? {
-            title: "LAPORAN STOK",
-            subtitle: `PERIODE ${period}`,
-            filename: `RKN_STOCK_${period}.pdf`,
-          }
-        : reportTab === "SO_PREP"
-          ? {
-              title: "PERSIAPAN STOCK OPNAME",
-              subtitle: `TANGGAL SO ${dateId(soDate)}`,
-              filename: `RKN_SO_PREP_${soDate}.pdf`,
-            }
-          : reportTab === "SO_RESULT"
-            ? {
-                title: "HASIL STOCK OPNAME",
-                subtitle: `PERIODE ${period}`,
-                filename: `RKN_SO_RESULT_${period}.pdf`,
-              }
-            : {
-                title: "PIUTANG BELUM BAYAR",
-                subtitle: `PERIODE ${period}`,
-                filename: `RKN_PIUTANG_BELUM_BAYAR_${period}.pdf`,
-              };
+    const subtitle =
+      reportTab === "SO_PREP"
+        ? activeSo
+          ? `SO ${activeSo.soNo} / ${activeSo.dateKey} / ${activeSo.status}`
+          : `PERIODE ${period} / BELUM ADA SO AKTIF`
+        : `PERIODE ${period}`;
 
-    const drawHeader = (pageNumber: number) => {
+    const drawHeader = (pageNo: number) => {
       doc.setFillColor(7, 22, 39);
       doc.rect(0, 0, pageWidth, 29, "F");
 
@@ -4302,10 +4312,10 @@ function Reports({
         doc.addImage(
           logoData,
           "PNG",
-          7,
-          4.5,
-          19,
-          19,
+          6,
+          3.5,
+          22,
+          22,
           "RKN_LOGO",
           "FAST"
         );
@@ -4313,241 +4323,378 @@ function Reports({
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(15);
-      doc.text("RKN ERP", 31, 11);
+      doc.setFontSize(16);
+      doc.text("RKN ERP", 32, 10);
 
-      doc.setFontSize(8.5);
-      doc.text("PLASTIC TRADING", 31, 17);
+      doc.setFontSize(9);
+      doc.text("PLASTIC TRADING", 32, 17);
 
-      doc.setFontSize(11);
+      doc.setFontSize(12);
       doc.text(
-        reportMeta.title,
-        pageWidth - 7,
-        10,
+        reportTitle.toUpperCase(),
+        pageWidth - 6,
+        9.5,
         { align: "right" }
       );
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.text(
-        reportMeta.subtitle,
-        pageWidth - 7,
+        subtitle.toUpperCase(),
+        pageWidth - 6,
         16,
         { align: "right" }
       );
 
       doc.text(
-        `HALAMAN ${pageNumber}`,
-        pageWidth - 7,
-        21.5,
+        `HALAMAN ${pageNo}`,
+        pageWidth - 6,
+        22,
         { align: "right" }
       );
 
-      doc.setTextColor(20, 30, 42);
+      doc.setTextColor(25, 34, 46);
     };
 
-    const common = {
-      theme: "grid" as const,
-      tableWidth,
-      margin: {
-        left: 4,
-        right: 4,
-        top: 34,
-        bottom: 8,
-      },
-      styles: {
-        font: "helvetica",
-        fontSize: 7.4,
-        textColor: [23, 33, 45] as [number, number, number],
-        cellPadding: 1.45,
-        lineColor: [70, 84, 101] as [number, number, number],
-        lineWidth: 0.15,
-        overflow: "linebreak" as const,
-        valign: "middle" as const,
-      },
-      headStyles: {
-        fillColor: [18, 53, 88] as [number, number, number],
-        textColor: [255, 255, 255] as [number, number, number],
-        fontStyle: "bold" as const,
-        lineColor: [70, 84, 101] as [number, number, number],
-        lineWidth: 0.15,
-      },
-      alternateRowStyles: {
-        fillColor: [246, 248, 251] as [number, number, number],
-      },
-      willDrawPage: (hook: any) => {
-        drawHeader(Number(hook.pageNumber || 1));
-      },
+    const table = (
+      head: string[],
+      body: any[][],
+      startY = 34
+    ) => {
+      autoTable(doc, {
+        theme: "grid",
+        tableWidth,
+        startY,
+        margin: {
+          left: 4,
+          right: 4,
+          top: 34,
+          bottom: 8,
+        },
+        head: [head],
+        body,
+        styles: {
+          font: "helvetica",
+          fontSize: 7.2,
+          textColor: [25, 34, 46],
+          cellPadding: 1.45,
+          lineColor: [68, 82, 99],
+          lineWidth: 0.16,
+          overflow: "linebreak",
+          valign: "middle",
+        },
+        headStyles: {
+          fillColor: [18, 53, 88],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          lineColor: [68, 82, 99],
+          lineWidth: 0.16,
+        },
+        alternateRowStyles: {
+          fillColor: [246, 248, 251],
+        },
+        didDrawPage: (hook: any) =>
+          drawHeader(Number(hook.pageNumber || 1)),
+      });
+
+      return Number((doc as any).lastAutoTable?.finalY || startY);
     };
 
-    const nextY = () => {
-      const last = (doc as any).lastAutoTable;
-      return last?.finalY ? Number(last.finalY) + 5 : 34;
-    };
+    drawHeader(1);
 
     if (reportTab === "STOCK") {
-      autoTable(doc, {
-        ...common,
-        startY: 34,
-        head: [[
+      let y = table(
+        [
           "Warna",
           "Ukuran",
           "Ball",
+          "Sisa Roll",
           "Isi/Ball",
           "Total Roll",
-          "Harga/Ball",
+          "Avg HPP/Roll",
           "Stock Value",
-        ]],
-        body: polymailer.map((row: Row) => {
-          const per = Math.max(
-            1,
-            Number(row.unitsPerPack || 1)
-          );
-          const base = Number(row.qtyBase || 0);
+        ],
+        polymailer.map((row: Row) => {
+          const parts = decompose(row, row.qtyBase);
 
           return [
             row.color || "-",
             row.size || "-",
-            qty(base / per),
-            qty(per),
-            qty(base),
-            money.format(
-              Number(row.defaultSellPricePackRp || 0)
-            ),
+            qtyText(parts.pack),
+            qtyText(parts.base),
+            qtyText(row.unitsPerPack),
+            qtyText(row.qtyBase),
+            money.format(Number(row.avgCostRp || 0)),
             money.format(Number(row.stockValueRp || 0)),
           ];
-        }),
-        didDrawPage: undefined,
-      });
+        })
+      );
 
-      autoTable(doc, {
-        ...common,
-        startY: nextY(),
-        head: [[
-          "Produk Thermal",
+      y += 5;
+
+      table(
+        [
+          "Produk",
+          "Varian",
           "Dus",
           "Stack",
-          "Lembar",
-          "Harga/Dus",
+          "Sisa Lembar",
+          "Total Lembar",
+          "Avg HPP/Lembar",
           "Stock Value",
-        ]],
-        body: thermal.map((row: Row) => {
-          const pack = Math.max(
-            1,
-            Number(row.unitsPerPack || 1)
-          );
-          const mid = Math.max(
-            1,
-            Number(row.unitsPerMid || 1)
-          );
-          const base = Number(row.qtyBase || 0);
+        ],
+        thermal.map((row: Row) => {
+          const parts = decompose(row, row.qtyBase);
 
           return [
             row.productName || "-",
-            qty(base / pack),
-            qty(base / mid),
-            qty(base),
-            money.format(
-              Number(row.defaultSellPricePackRp || 0)
-            ),
+            row.size || "-",
+            qtyText(parts.pack),
+            qtyText(parts.mid),
+            qtyText(parts.base),
+            qtyText(row.qtyBase),
+            money.format(Number(row.avgCostRp || 0)),
             money.format(Number(row.stockValueRp || 0)),
           ];
         }),
-        didDrawPage: undefined,
-      });
+        y
+      );
     }
 
     if (reportTab === "SO_PREP") {
-      autoTable(doc, {
-        ...common,
-        startY: 34,
-        head: [[
-          "Produk",
-          "Warna",
-          "Ukuran / Varian",
-          "UOM",
-          "System",
-          "Fisik",
-          "Selisih",
-          "Catatan",
-        ]],
-        body: prepRows.map((row: Row) => [
-          row.category || row.productName || "-",
-          row.color || "-",
-          row.size || row.productName || "-",
-          row.baseUnit || "-",
-          row.systemText,
-          "",
-          "",
-          "",
-        ]),
-        didDrawPage: undefined,
-      });
+      if (!soPrep.length) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text(
+          "BELUM ADA SO AKTIF.",
+          pageWidth / 2,
+          pageHeight / 2 - 4,
+          { align: "center" }
+        );
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(
+          "Mulai SO dari menu Opname agar snapshot sistem dibekukan terlebih dahulu.",
+          pageWidth / 2,
+          pageHeight / 2 + 4,
+          { align: "center" }
+        );
+      } else {
+        const polyPrep = soPrep.filter(
+          (row: Row) =>
+            String(row.category || "").toUpperCase() ===
+            "POLYMAILER"
+        );
+        const thermalPrep = soPrep.filter(
+          (row: Row) =>
+            String(row.category || "").toUpperCase() ===
+            "THERMAL"
+        );
+
+        let y = table(
+          [
+            "Produk",
+            "Warna",
+            "Ukuran",
+            "Isi/Ball",
+            "System Ball",
+            "System Roll",
+            "Fisik Ball",
+            "Fisik Roll",
+            "Total Fisik Roll",
+            "Selisih Roll",
+            "Catatan",
+          ],
+          polyPrep.map((row: Row) => {
+            const system = decompose(row, row.systemQtyBase);
+
+            return [
+              "Polymailer",
+              row.color || "-",
+              row.size || "-",
+              qtyText(row.unitsPerPack),
+              qtyText(system.pack),
+              qtyText(system.base),
+              "",
+              "",
+              "",
+              "",
+              "",
+            ];
+          })
+        );
+
+        y += 5;
+
+        table(
+          [
+            "Produk",
+            "Varian",
+            "System Dus",
+            "System Stack",
+            "System Lembar",
+            "Fisik Dus",
+            "Fisik Stack",
+            "Fisik Lembar",
+            "Total Fisik Lembar",
+            "Selisih Lembar",
+            "Catatan",
+          ],
+          thermalPrep.map((row: Row) => {
+            const system = decompose(row, row.systemQtyBase);
+
+            return [
+              row.productName || "Thermal",
+              row.size || "-",
+              qtyText(system.pack),
+              qtyText(system.mid),
+              qtyText(system.base),
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+            ];
+          }),
+          y
+        );
+      }
     }
 
     if (reportTab === "SO_RESULT") {
-      autoTable(doc, {
-        ...common,
-        startY: 34,
-        head: [[
+      table(
+        [
           "Tanggal",
           "No. SO",
           "Produk",
           "Warna",
-          "Ukuran",
+          "Ukuran / Varian",
           "System",
           "Fisik",
           "Selisih",
           "Status",
-        ]],
-        body: opnameRows.map((row: Row) => [
+        ],
+        opname.map((row: Row) => [
           row.dateKey || "-",
           row.opnameNo || "-",
-          row.productName || "-",
+          row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
-          `${qty(row.systemQtyBase)} ${row.baseUnit || ""}`,
-          `${qty(row.physicalQtyBase)} ${row.baseUnit || ""}`,
-          `${qty(row.varianceQtyBase)} ${row.baseUnit || ""}`,
+          stockHuman(row, row.systemQtyBase),
+          stockHuman(row, row.physicalQtyBase),
+          `${qtyText(row.varianceQtyBase)} ${
+            row.baseUnit || ""
+          }`,
           varianceStatus(row.varianceQtyBase),
-        ]),
-        didDrawPage: undefined,
-      });
+        ])
+      );
     }
 
     if (reportTab === "RECEIVABLES") {
-      autoTable(doc, {
-        ...common,
-        startY: 34,
-        head: [[
+      table(
+        [
           "Tanggal",
           "Invoice",
           "Customer",
           "Total",
           "Dibayar",
           "Belum Bayar",
-        ]],
-        body: receivables.map((row: Row) => [
+        ],
+        receivables.map((row: Row) => [
           row.dateKey || "-",
           row.invoiceNo || "-",
           row.customerName || "-",
           money.format(Number(row.grandTotalRp || 0)),
           money.format(Number(row.paidRp || 0)),
           money.format(Number(row.outstandingRp || 0)),
-        ]),
-        didDrawPage: undefined,
-      });
+        ])
+      );
     }
 
-    doc.save(reportMeta.filename);
+    if (reportTab === "INBOUND") {
+      table(
+        [
+          "Tanggal",
+          "No. IN",
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "Qty",
+          "HPP",
+          "Nilai",
+        ],
+        inbound.map((row: Row) => [
+          row.dateKey || "-",
+          row.referenceNo || "-",
+          row.productName || "-",
+          row.color || "-",
+          row.size || "-",
+          `${qtyText(row.qty)} ${row.unit || ""}`,
+          money.format(Number(row.unitCostRp || 0)),
+          money.format(Number(row.totalRp || 0)),
+        ])
+      );
+    }
+
+    if (reportTab === "OUTBOUND") {
+      table(
+        [
+          "Tanggal",
+          "Invoice",
+          "Customer",
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "Qty Base",
+          "Sales",
+          "HPP",
+          "Gross Profit",
+        ],
+        outbound.map((row: Row) => [
+          row.dateKey || "-",
+          row.referenceNo || "-",
+          row.customerName || "-",
+          row.productName || "-",
+          row.color || "-",
+          row.size || "-",
+          qtyText(row.qtyBase),
+          money.format(Number(row.totalRp || 0)),
+          money.format(Number(row.cogsRp || 0)),
+          money.format(Number(row.grossProfitRp || 0)),
+        ])
+      );
+    }
+
+    const suffix =
+      reportTab === "SO_PREP" && activeSo
+        ? `${activeSo.dateKey}_${activeSo.soNo}`
+        : period;
+
+    doc.save(
+      `RKN_${reportTab}_${String(suffix)
+        .replace(/[^0-9A-Za-z_-]/g, "_")
+        .toUpperCase()}.pdf`
+    );
   };
+
+  const tabs: [ReportTab, string][] = [
+    ["STOCK", "Stok"],
+    ["SO_PREP", "Persiapan SO"],
+    ["SO_RESULT", "Hasil SO"],
+    ["RECEIVABLES", "Piutang Belum Bayar"],
+    ["INBOUND", "Barang Masuk"],
+    ["OUTBOUND", "Barang Keluar"],
+  ];
 
   return (
     <>
       <div className={styles.reportCenterHead}>
         <div>
           <strong>Report Center</strong>
-          <span>Pilih laporan.</span>
+          <span>
+            Stok, SO, piutang dan transaksi dari satu sumber data.
+          </span>
         </div>
 
         <button
@@ -4560,81 +4707,44 @@ function Reports({
       </div>
 
       <div className={styles.reportSubnav}>
-        <button
-          type="button"
-          className={
-            reportTab === "STOCK"
-              ? styles.reportSubnavActive
-              : styles.reportSubnavButton
-          }
-          onClick={() => setReportTab("STOCK")}
-        >
-          Stok
-        </button>
-
-        <button
-          type="button"
-          className={
-            reportTab === "SO_PREP"
-              ? styles.reportSubnavActive
-              : styles.reportSubnavButton
-          }
-          onClick={() => setReportTab("SO_PREP")}
-        >
-          Persiapan SO
-        </button>
-
-        <button
-          type="button"
-          className={
-            reportTab === "SO_RESULT"
-              ? styles.reportSubnavActive
-              : styles.reportSubnavButton
-          }
-          onClick={() => setReportTab("SO_RESULT")}
-        >
-          Hasil SO
-        </button>
-
-        <button
-          type="button"
-          className={
-            reportTab === "RECEIVABLES"
-              ? styles.reportSubnavActive
-              : styles.reportSubnavButton
-          }
-          onClick={() => setReportTab("RECEIVABLES")}
-        >
-          Piutang Belum Bayar
-        </button>
+        {tabs.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            className={
+              reportTab === key
+                ? styles.reportSubnavActive
+                : styles.reportSubnavButton
+            }
+            onClick={() => setReportTab(key)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {reportTab === "STOCK" ? (
         <>
-          <section className={styles.metricGrid}>
+          <section className={styles.reportMetricGrid}>
             <MetricCard
               label="Stock Value"
               value={money.format(
-                Number(metrics.stockValueRp || 0)
+                Number(data.metrics?.stockValueRp || 0)
               )}
             />
             <MetricCard
               label="Piutang"
               value={money.format(
-                Number(metrics.receivableRp || 0)
+                Number(data.metrics?.receivableRp || 0)
               )}
             />
             <MetricCard
-              label="Sales"
-              value={money.format(
-                Number(metrics.salesRp || 0)
-              )}
+              label="SKU Aktif"
+              value={qtyText(stock.length)}
             />
             <MetricCard
-              label="Gross Profit"
-              value={money.format(
-                Number(metrics.grossProfitRp || 0)
-              )}
+              label="SO Periode"
+              value={qtyText(soSessions.length)}
             />
           </section>
 
@@ -4648,41 +4758,29 @@ function Reports({
                   "ball",
                   "Ball",
                   (row) =>
-                    qty(
-                      Number(row.qtyBase || 0) /
-                        Math.max(
-                          1,
-                          Number(row.unitsPerPack || 1)
-                        )
-                    ),
+                    qtyText(decompose(row, row.qtyBase).pack),
+                ],
+                [
+                  "rollLoose",
+                  "Sisa Roll",
+                  (row) =>
+                    qtyText(decompose(row, row.qtyBase).base),
                 ],
                 [
                   "unitsPerPack",
                   "Isi/Ball",
-                  (row) => qty(row.unitsPerPack),
+                  (row) => qtyText(row.unitsPerPack),
                 ],
                 [
                   "qtyBase",
                   "Total Roll",
-                  (row) => qty(row.qtyBase),
-                ],
-                [
-                  "defaultSellPricePackRp",
-                  "Harga/Ball",
-                  (row) =>
-                    money.format(
-                      Number(
-                        row.defaultSellPricePackRp || 0
-                      )
-                    ),
+                  (row) => qtyText(row.qtyBase),
                 ],
                 [
                   "stockValueRp",
                   "Stock Value",
                   (row) =>
-                    money.format(
-                      Number(row.stockValueRp || 0)
-                    ),
+                    money.format(Number(row.stockValueRp || 0)),
                 ],
               ]}
             />
@@ -4693,42 +4791,35 @@ function Reports({
               rows={thermal}
               columns={[
                 ["productName", "Produk"],
+                ["size", "Varian"],
                 [
                   "dus",
                   "Dus",
                   (row) =>
-                    qty(
-                      Number(row.qtyBase || 0) /
-                        Math.max(
-                          1,
-                          Number(row.unitsPerPack || 1)
-                        )
-                    ),
+                    qtyText(decompose(row, row.qtyBase).pack),
                 ],
                 [
                   "stack",
                   "Stack",
                   (row) =>
-                    qty(
-                      Number(row.qtyBase || 0) /
-                        Math.max(
-                          1,
-                          Number(row.unitsPerMid || 1)
-                        )
-                    ),
+                    qtyText(decompose(row, row.qtyBase).mid),
+                ],
+                [
+                  "loose",
+                  "Sisa Lembar",
+                  (row) =>
+                    qtyText(decompose(row, row.qtyBase).base),
                 ],
                 [
                   "qtyBase",
-                  "Lembar",
-                  (row) => qty(row.qtyBase),
+                  "Total Lembar",
+                  (row) => qtyText(row.qtyBase),
                 ],
                 [
                   "stockValueRp",
                   "Stock Value",
                   (row) =>
-                    money.format(
-                      Number(row.stockValueRp || 0)
-                    ),
+                    money.format(Number(row.stockValueRp || 0)),
                 ],
               ]}
             />
@@ -4737,86 +4828,175 @@ function Reports({
       ) : null}
 
       {reportTab === "SO_PREP" ? (
-        <Panel
-          title="Persiapan Stock Opname"
-          subtitle={`Template SO ${dateId(soDate)}.`}
-        >
-          <div className={styles.soDateRow}>
-            <Field label="Tanggal SO">
-              <input
-                type="date"
-                value={soDate}
-                onChange={(event) =>
-                  setSoDate(event.target.value)
-                }
-              />
-            </Field>
+        <>
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Snapshot SO</span>
+              <strong>
+                {activeSo
+                  ? `${activeSo.soNo} / ${activeSo.dateKey}`
+                  : "Belum ada SO aktif"}
+              </strong>
+            </div>
+            <small>
+              Persiapan SO mengikuti snapshot sistem, bukan stok live
+              setelah snapshot.
+            </small>
           </div>
 
-          <DataTable
-            rows={prepRows}
-            columns={[
-              ["category", "Produk"],
-              ["color", "Warna"],
-              [
-                "size",
-                "Ukuran / Varian",
-                (row) =>
-                  row.size || row.productName || "-",
-              ],
-              ["baseUnit", "UOM"],
-              ["systemText", "System"],
-              ["physicalText", "Fisik"],
-              ["varianceText", "Selisih"],
-              ["noteText", "Catatan"],
-            ]}
-          />
-        </Panel>
+          {soPrep.length ? (
+            <>
+              <Panel title="Persiapan SO / Polymailer">
+                <DataTable
+                  rows={soPrep.filter(
+                    (row: Row) =>
+                      String(row.category || "").toUpperCase() ===
+                      "POLYMAILER"
+                  )}
+                  columns={[
+                    ["color", "Warna"],
+                    ["size", "Ukuran"],
+                    [
+                      "unitsPerPack",
+                      "Isi/Ball",
+                      (row) => qtyText(row.unitsPerPack),
+                    ],
+                    [
+                      "systemBall",
+                      "System Ball",
+                      (row) =>
+                        qtyText(
+                          decompose(row, row.systemQtyBase).pack
+                        ),
+                    ],
+                    [
+                      "systemRoll",
+                      "System Roll",
+                      (row) =>
+                        qtyText(
+                          decompose(row, row.systemQtyBase).base
+                        ),
+                    ],
+                    ["physicalBall", "Fisik Ball", () => ""],
+                    ["physicalRoll", "Fisik Roll", () => ""],
+                    ["variance", "Selisih", () => ""],
+                    ["note", "Catatan", () => ""],
+                  ]}
+                />
+              </Panel>
+
+              <Panel title="Persiapan SO / Thermal">
+                <DataTable
+                  rows={soPrep.filter(
+                    (row: Row) =>
+                      String(row.category || "").toUpperCase() ===
+                      "THERMAL"
+                  )}
+                  columns={[
+                    ["productName", "Produk"],
+                    ["size", "Varian"],
+                    [
+                      "systemDus",
+                      "System Dus",
+                      (row) =>
+                        qtyText(
+                          decompose(row, row.systemQtyBase).pack
+                        ),
+                    ],
+                    [
+                      "systemStack",
+                      "System Stack",
+                      (row) =>
+                        qtyText(
+                          decompose(row, row.systemQtyBase).mid
+                        ),
+                    ],
+                    [
+                      "systemLembar",
+                      "System Lembar",
+                      (row) =>
+                        qtyText(
+                          decompose(row, row.systemQtyBase).base
+                        ),
+                    ],
+                    ["physicalDus", "Fisik Dus", () => ""],
+                    ["physicalStack", "Fisik Stack", () => ""],
+                    ["physicalLembar", "Fisik Lembar", () => ""],
+                    ["variance", "Selisih", () => ""],
+                    ["note", "Catatan", () => ""],
+                  ]}
+                />
+              </Panel>
+            </>
+          ) : (
+            <div className={styles.reportEmptyAction}>
+              <strong>Belum ada snapshot SO aktif.</strong>
+              <span>
+                Buka menu Opname lalu klik Mulai SO. Setelah itu
+                Persiapan SO otomatis muncul di sini.
+              </span>
+            </div>
+          )}
+        </>
       ) : null}
 
       {reportTab === "SO_RESULT" ? (
-        <Panel title="Hasil Stock Opname">
-          <DataTable
-            rows={opnameRows}
-            columns={[
-              ["dateKey", "Tanggal"],
-              ["opnameNo", "No. SO"],
-              ["productName", "Produk"],
-              ["color", "Warna"],
-              ["size", "Ukuran"],
-              [
-                "systemQtyBase",
-                "System",
-                (row) =>
-                  `${qty(row.systemQtyBase)} ${
-                    row.baseUnit || ""
-                  }`,
-              ],
-              [
-                "physicalQtyBase",
-                "Fisik",
-                (row) =>
-                  `${qty(row.physicalQtyBase)} ${
-                    row.baseUnit || ""
-                  }`,
-              ],
-              [
-                "varianceQtyBase",
-                "Selisih",
-                (row) =>
-                  `${qty(row.varianceQtyBase)} ${
-                    row.baseUnit || ""
-                  }`,
-              ],
-              [
-                "varianceStatus",
-                "Status",
-                (row) =>
-                  varianceStatus(row.varianceQtyBase),
-              ],
-            ]}
-          />
-        </Panel>
+        <>
+          <Panel title="Riwayat SO">
+            <DataTable
+              rows={soSessions}
+              columns={[
+                ["dateKey", "Tanggal"],
+                ["soNo", "No. SO"],
+                ["status", "Status"],
+                ["totalSku", "SKU"],
+                ["countedSku", "Dihitung"],
+                ["balanceSku", "Balance"],
+                ["lessSku", "Kurang"],
+                ["moreSku", "Lebih"],
+              ]}
+            />
+          </Panel>
+
+          <Panel title="Hasil SO">
+            <DataTable
+              rows={opname}
+              columns={[
+                ["dateKey", "Tanggal"],
+                ["opnameNo", "No. SO"],
+                ["productName", "Produk"],
+                ["color", "Warna"],
+                ["size", "Ukuran / Varian"],
+                [
+                  "system",
+                  "System",
+                  (row) =>
+                    stockHuman(row, row.systemQtyBase),
+                ],
+                [
+                  "physical",
+                  "Fisik",
+                  (row) =>
+                    stockHuman(row, row.physicalQtyBase),
+                ],
+                [
+                  "variance",
+                  "Selisih",
+                  (row) =>
+                    `${qtyText(row.varianceQtyBase)} ${
+                      row.baseUnit || ""
+                    }`,
+                ],
+                [
+                  "status",
+                  "Status",
+                  (row) =>
+                    varianceStatus(row.varianceQtyBase),
+                ],
+              ]}
+            />
+          </Panel>
+        </>
       ) : null}
 
       {reportTab === "RECEIVABLES" ? (
@@ -4831,9 +5011,7 @@ function Reports({
                 "grandTotalRp",
                 "Total",
                 (row) =>
-                  money.format(
-                    Number(row.grandTotalRp || 0)
-                  ),
+                  money.format(Number(row.grandTotalRp || 0)),
               ],
               [
                 "paidRp",
@@ -4845,9 +5023,75 @@ function Reports({
                 "outstandingRp",
                 "Belum Bayar",
                 (row) =>
-                  money.format(
-                    Number(row.outstandingRp || 0)
-                  ),
+                  money.format(Number(row.outstandingRp || 0)),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "INBOUND" ? (
+        <Panel title="Barang Masuk">
+          <DataTable
+            rows={inbound}
+            columns={[
+              ["dateKey", "Tanggal"],
+              ["referenceNo", "No. IN"],
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              [
+                "qty",
+                "Qty",
+                (row) =>
+                  `${qtyText(row.qty)} ${row.unit || ""}`,
+              ],
+              [
+                "unitCostRp",
+                "HPP",
+                (row) =>
+                  money.format(Number(row.unitCostRp || 0)),
+              ],
+              [
+                "totalRp",
+                "Nilai",
+                (row) =>
+                  money.format(Number(row.totalRp || 0)),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "OUTBOUND" ? (
+        <Panel title="Barang Keluar">
+          <DataTable
+            rows={outbound}
+            columns={[
+              ["dateKey", "Tanggal"],
+              ["referenceNo", "Invoice"],
+              ["customerName", "Customer"],
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              ["qtyBase", "Qty Base", (row) => qtyText(row.qtyBase)],
+              [
+                "totalRp",
+                "Sales",
+                (row) =>
+                  money.format(Number(row.totalRp || 0)),
+              ],
+              [
+                "cogsRp",
+                "HPP",
+                (row) =>
+                  money.format(Number(row.cogsRp || 0)),
+              ],
+              [
+                "grossProfitRp",
+                "Gross Profit",
+                (row) =>
+                  money.format(Number(row.grossProfitRp || 0)),
               ],
             ]}
           />
