@@ -4333,6 +4333,13 @@ function Opname({
     ? data.sessions
     : [];
   const history = Array.isArray(data.rows) ? data.rows : [];
+  const authoritativeSystemReady =
+    Number(data.systemBasisReady || 0) === 1 &&
+    String(data.systemBasis || "") ===
+      "OFFICIAL_DOCUMENTS_AS_OF_SO_DATE";
+  const systemSnapshotDriftCount = Number(
+    data.systemSnapshotDriftCount || 0
+  );
 
   const defaultDate = `${String(
     data.periodKey || today().slice(0, 7)
@@ -4413,7 +4420,24 @@ function Opname({
   };
 
   const qtyText = (row: Row, totalValue: number) => {
-    const parts = decompose(row, totalValue);
+    const raw = Number(totalValue || 0);
+    const parts = decompose(row, Math.abs(raw));
+
+    if (raw < -0.000001) {
+      const negativeParts = [
+        row.packUnit && parts.pack > 0
+          ? `${qtyFmt.format(parts.pack)} ${row.packUnit}`
+          : "",
+        row.midUnit && parts.mid > 0
+          ? `${qtyFmt.format(parts.mid)} ${row.midUnit}`
+          : "",
+        parts.base > 0
+          ? `${qtyFmt.format(parts.base)} ${row.baseUnit || ""}`
+          : "",
+      ].filter(Boolean);
+
+      return `-${negativeParts.join(" / ") || `0 ${row.baseUnit || ""}`}`;
+    }
 
     return [
       row.packUnit
@@ -4785,6 +4809,13 @@ function Opname({
   };
 
   const postSo = async () => {
+    if (!authoritativeSystemReady) {
+      window.alert(
+        "System authoritative belum siap. Refresh halaman sebelum posting."
+      );
+      return;
+    }
+
     if (!postReason.trim()) {
       window.alert("Alasan posting adjustment wajib diisi.");
       return;
@@ -4792,7 +4823,7 @@ function Opname({
 
     if (
       !window.confirm(
-        "Post hasil SO? Selisih akan menjadi adjustment stok."
+        "Post hasil SO berdasarkan Opening + IN resmi - OUT non-VOID? Selisih akan menjadi adjustment stok."
       )
     ) {
       return;
@@ -5090,7 +5121,7 @@ function Opname({
           {active.status === "REVIEW" ? (
             <Panel
               title="Review SO"
-              subtitle="Bandingkan sistem dengan fisik sebelum posting adjustment."
+              subtitle="System authoritative dihitung dari checkpoint resmi sampai tanggal SO. Bandingkan dengan fisik sebelum posting adjustment."
             >
               <div className={styles.soReviewSummary}>
                 <div>
@@ -5129,6 +5160,21 @@ function Opname({
                 </div>
               </div>
 
+              <div className={styles.soAuthoritativeNotice}>
+                <strong>
+                  {authoritativeSystemReady
+                    ? "SYSTEM AUTHORITATIVE SIAP"
+                    : "SYSTEM AUTHORITATIVE BELUM SIAP"}
+                </strong>
+                <span>
+                  Opening/checkpoint + IN resmi − OUT non-VOID + koreksi
+                  manual sah sampai {formatSoDate(active.dateKey)}.
+                  {systemSnapshotDriftCount > 0
+                    ? ` ${systemSnapshotDriftCount} snapshot lama sudah diganti untuk review ini.`
+                    : " Snapshot SO sudah konsisten."}
+                </span>
+              </div>
+
               <DataTable
                 rows={lines}
                 columns={[
@@ -5142,7 +5188,7 @@ function Opname({
                   ],
                   [
                     "systemQtyBase",
-                    "System",
+                    "System Authoritative",
                     (row) =>
                       qtyText(
                         row,
@@ -5201,6 +5247,7 @@ function Opname({
                   disabled={
                     busy ||
                     !canManage ||
+                    !authoritativeSystemReady ||
                     !postReason.trim()
                   }
                   onClick={postSo}

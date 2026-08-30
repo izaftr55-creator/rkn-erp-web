@@ -364,6 +364,153 @@ function syncAuthoritativeInventory(sql:Sql){
   });
 }
 
+/* RKN_PLASTIC_SO_AUTHORITATIVE_SYSTEM_V2R21
+   Every SO surface must use the same document-based system quantity.
+   The first SO starts from the effective 28/07 opening. A later SO starts
+   from the latest posted SO physical checkpoint, then applies official IN,
+   non-VOID OUT, and genuine manual corrections up to the new SO date. */
+const PLASTIC_OPENING_DATE_KEY='2026-07-28';
+
+function authoritativeSoStockRows(sql:Sql,targetDateV:any){
+  const targetDate=DK(targetDateV);
+  const checkpoint=sql.exec(
+    `SELECT so_id soId,date_key dateKey
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC'
+       AND status='POSTED'
+       AND date_key<?
+     ORDER BY date_key DESC,posted_at DESC,created_at DESC
+     LIMIT 1`,
+    targetDate
+  ).toArray()[0]??null;
+  const checkpointDate=checkpoint
+    ? T(checkpoint.dateKey,10)
+    : PLASTIC_OPENING_DATE_KEY;
+  const checkpointPhysical=new Map<string,number>();
+
+  if(checkpoint?.soId){
+    const checkpointLines=sql.exec(
+      `SELECT variant_id variantId,physical_qty_base physicalQtyBase,
+              physical_entered physicalEntered
+       FROM plastic_so_session_line
+       WHERE so_id=?`,
+      T(checkpoint.soId,160)
+    ).toArray();
+
+    for(const row of checkpointLines as any[]){
+      if(Number(row.physicalEntered||0)===1){
+        checkpointPhysical.set(T(row.variantId,120),N(row.physicalQtyBase));
+      }
+    }
+  }
+
+  const products=sql.exec(
+    `SELECT v.variant_id variantId,v.product_name productName,v.category,
+            v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,
+            v.pack_unit packUnit,COALESCE(v.units_per_mid,1) unitsPerMid,
+            COALESCE(v.units_per_pack,1) unitsPerPack,
+            COALESCE(b.avg_cost_rp,0) avgCostRp
+     FROM plastic_product_variant v
+     LEFT JOIN plastic_inventory_balance b
+       ON b.business_unit_id=v.business_unit_id
+      AND b.variant_id=v.variant_id
+     WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
+     ORDER BY v.variant_id`
+  ).toArray();
+
+  return (products as any[]).map((product:any)=>{
+    const variantId=T(product.variantId,120);
+    const baselineQtyBase=checkpoint
+      ? N(checkpointPhysical.get(variantId))
+      : scalar(
+          sql,
+          `SELECT COALESCE(SUM(
+             CASE
+               WHEN movement_type='OPENING' AND source_type='OPENING_BALANCE'
+                 THEN qty_base
+               WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+                AND movement_type='ADJUSTMENT_IN'
+                 THEN qty_base
+               WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+                AND movement_type='ADJUSTMENT_OUT'
+                 THEN -qty_base
+               ELSE 0
+             END
+           ),0) value
+           FROM plastic_inventory_movement
+           WHERE business_unit_id='BU-PLASTIC'
+             AND variant_id=?
+             AND date_key=?`,
+          variantId,
+          PLASTIC_OPENING_DATE_KEY
+        );
+    const inboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_inbound_line l
+       JOIN plastic_inbound i ON i.inbound_id=l.inbound_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND l.variant_id=?
+         AND i.date_key>?
+         AND i.date_key<=?`,
+      variantId,
+      checkpointDate,
+      targetDate
+    );
+    const outboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_sales_line l
+       JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND i.status<>'VOID'
+         AND l.variant_id=?
+         AND i.date_key>?
+         AND i.date_key<=?`,
+      variantId,
+      checkpointDate,
+      targetDate
+    );
+    const correctionQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(
+         CASE
+           WHEN movement_type='ADJUSTMENT_IN' THEN qty_base
+           WHEN movement_type='ADJUSTMENT_OUT' THEN -qty_base
+           ELSE 0
+         END
+       ),0) value
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND variant_id=?
+         AND date_key>?
+         AND date_key<=?
+         AND movement_type IN('ADJUSTMENT_IN','ADJUSTMENT_OUT')
+         AND source_type NOT LIKE 'INBOUND%'
+         AND source_type NOT LIKE 'SALE%'
+         AND source_type NOT LIKE 'OPENING%'
+         AND source_type NOT IN('SO_SESSION','STOCK_OPNAME','SO_ADJUSTMENT')`,
+      variantId,
+      checkpointDate,
+      targetDate
+    );
+    const systemQtyBase=
+      baselineQtyBase+inboundQtyBase-outboundQtyBase+correctionQtyBase;
+
+    return{
+      ...product,
+      baselineQtyBase,
+      inboundQtyBase,
+      outboundQtyBase,
+      correctionQtyBase,
+      systemQtyBase,
+      checkpointDateKey:checkpointDate,
+      checkpointSoId:T(checkpoint?.soId,160),
+      systemSource:'OFFICIAL_DOCUMENTS_AS_OF_SO_DATE'
+    };
+  });
+}
+
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=/^\d{4}-\d{2}$/.test(String(periodV??''))?String(periodV):curPeriod();const view=T(viewV,32).toUpperCase();
 /* RKN_PLASTIC_DASHBOARD_SO_CHART_V2P */
 if(view==='DASHBOARD'){
@@ -1935,7 +2082,15 @@ if(view==='OPNAME'){
     period
   ).toArray()[0]??null;
 
-  const activeLines=active
+  const activeSystemRows=active
+    ? authoritativeSoStockRows(sql,String(active.dateKey||''))
+    : [];
+  const activeSystemByVariant=new Map<string,any>();
+  for(const row of activeSystemRows as any[]){
+    activeSystemByVariant.set(T(row.variantId,120),row);
+  }
+
+  const activeLinesRaw=active
     ? sql.exec(
         `SELECT
            l.line_id lineId,l.so_id soId,l.variant_id variantId,
@@ -1953,6 +2108,54 @@ if(view==='OPNAME'){
         String(active.soId),String(active.dateKey || '')
       ).toArray()
     : [];
+  const activeLines=(activeLinesRaw as any[]).map((row:any)=>{
+    const authoritative=activeSystemByVariant.get(T(row.variantId,120));
+    const storedSystemQtyBase=N(row.systemQtyBase);
+    const systemQtyBase=authoritative
+      ? N(authoritative.systemQtyBase)
+      : storedSystemQtyBase;
+
+    return{
+      ...row,
+      storedSystemQtyBase,
+      systemQtyBase,
+      systemSnapshotDriftQtyBase:storedSystemQtyBase-systemQtyBase,
+      systemSource:authoritative?.systemSource||'STORED_SO_SNAPSHOT',
+      checkpointDateKey:authoritative?.checkpointDateKey||''
+    };
+  });
+  const sessionsRaw=sql.exec(
+    `SELECT s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
+            COUNT(l.line_id) totalSku,
+            SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) countedSku,
+            SUM(CASE WHEN l.physical_entered=1 AND ABS(l.physical_qty_base-l.system_qty_base)<0.000001 THEN 1 ELSE 0 END) balanceSku,
+            SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base<l.system_qty_base-0.000001 THEN 1 ELSE 0 END) lessSku,
+            SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
+     FROM plastic_so_session s
+     LEFT JOIN plastic_so_session_line l
+       ON l.so_id=s.so_id
+      AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')
+     WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
+     GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+     ORDER BY s.date_key DESC,s.created_at DESC
+     LIMIT 24`,
+    period
+  ).toArray();
+  const sessions=(sessionsRaw as any[]).map((session:any)=>{
+    if(!active||T(session.soId,160)!==T(active.soId,160))return session;
+    const counted=activeLines.filter((row:any)=>Number(row.physicalEntered||0)===1);
+    const balance=counted.filter((row:any)=>Math.abs(N(row.physicalQtyBase)-N(row.systemQtyBase))<0.000001).length;
+    const less=counted.filter((row:any)=>N(row.physicalQtyBase)<N(row.systemQtyBase)-0.000001).length;
+    const more=counted.filter((row:any)=>N(row.physicalQtyBase)>N(row.systemQtyBase)+0.000001).length;
+    return{
+      ...session,
+      countedSku:counted.length,
+      balanceSku:balance,
+      lessSku:less,
+      moreSku:more,
+      systemSource:'OFFICIAL_DOCUMENTS_AS_OF_SO_DATE'
+    };
+  });
 
   return{
     view,
@@ -1960,23 +2163,13 @@ if(view==='OPNAME'){
     actor:a,
     active,
     activeLines,
-    sessions:sql.exec(
-      `SELECT s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
-              COUNT(l.line_id) totalSku,
-              SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) countedSku,
-              SUM(CASE WHEN l.physical_entered=1 AND ABS(l.physical_qty_base-l.system_qty_base)<0.000001 THEN 1 ELSE 0 END) balanceSku,
-              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base<l.system_qty_base-0.000001 THEN 1 ELSE 0 END) lessSku,
-              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
-       FROM plastic_so_session s
-       LEFT JOIN plastic_so_session_line l
-         ON l.so_id=s.so_id
-        AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')
-       WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
-       GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
-       ORDER BY s.date_key DESC,s.created_at DESC
-       LIMIT 24`,
-      period
-    ).toArray(),
+    systemBasisReady:active?1:0,
+    systemBasis:'OFFICIAL_DOCUMENTS_AS_OF_SO_DATE',
+    systemBasisDateKey:active?String(active.dateKey||''):'',
+    systemSnapshotDriftCount:activeLines.filter((row:any)=>
+      Math.abs(N(row.systemSnapshotDriftQtyBase))>0.000001
+    ).length,
+    sessions,
     rows:sql.exec(
       `SELECT o.opname_no opnameNo,o.date_key dateKey,o.reason,l.variant_id variantId,
               v.product_name productName,v.category,v.color,v.size,
@@ -3357,6 +3550,7 @@ if(cmd==='START_SO_SESSION'){
   syncAuthoritativeInventory(sql);
   mg(a);
   const date=DK(p.dateKey),period=date.slice(0,7),reason=T(p.reason||'Stock Opname',500);
+  if(date<PLASTIC_OPENING_DATE_KEY)throw Error('PLASTIC_SO_BEFORE_OPENING_DATE');
   open(sql,period);
 
   const existing=sql.exec(
@@ -3371,31 +3565,9 @@ if(cmd==='START_SO_SESSION'){
 
   if(existing)throw Error('PLASTIC_SO_ACTIVE_ALREADY_EXISTS');
 
-  const snapshot=sql.exec(
-    `SELECT
-       v.variant_id variantId,
-       COALESCE(SUM(
-         CASE
-           WHEN m.movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN m.qty_base
-           WHEN m.movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -m.qty_base
-           ELSE 0
-         END
-       ),0) systemQtyBase,
-       COALESCE(b.avg_cost_rp,0) avgCostRp
-     FROM plastic_product_variant v
-     LEFT JOIN plastic_inventory_movement m
-       ON m.business_unit_id=v.business_unit_id
-      AND m.variant_id=v.variant_id
-      AND m.date_key<=?
-     LEFT JOIN plastic_inventory_balance b
-       ON b.business_unit_id=v.business_unit_id
-      AND b.variant_id=v.variant_id
-     WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
-       AND NOT (v.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
-     GROUP BY v.variant_id,b.avg_cost_rp
-     ORDER BY v.variant_id`,
-    date,date
-  ).toArray();
+  const snapshot=authoritativeSoStockRows(sql,date).filter((row:any)=>
+    !(T(row.variantId,120)==='PL-THERMAL-THERMAL-GOLDWIN' && date==='2026-08-28')
+  );
 
   if(!snapshot.length)throw Error('PLASTIC_SO_NO_PRODUCTS');
 
@@ -3433,7 +3605,7 @@ if(cmd==='SAVE_SO_DRAFT'){
   if(!soId)throw Error('PLASTIC_SO_REQUIRED');
 
   const session=sql.exec(
-    `SELECT so_id soId,period_key periodKey,status
+    `SELECT so_id soId,period_key periodKey,date_key dateKey,status
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC' AND so_id=? LIMIT 1`,
     soId
@@ -3483,7 +3655,7 @@ if(cmd==='REVIEW_SO_SESSION'){
   if(!soId)throw Error('PLASTIC_SO_REQUIRED');
 
   const session=sql.exec(
-    `SELECT so_id soId,period_key periodKey,status
+    `SELECT so_id soId,period_key periodKey,date_key dateKey,status
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC' AND so_id=? LIMIT 1`,
     soId
@@ -3506,6 +3678,16 @@ if(cmd==='REVIEW_SO_SESSION'){
        SET physical_qty_base=?,physical_entered=1,note=?,updated_at=?
        WHERE so_id=? AND variant_id=?`,
       phy,note,t,soId,vid
+    ).toArray();
+  }
+
+  const authoritativeRows=authoritativeSoStockRows(sql,T(session.dateKey,10));
+  for(const row of authoritativeRows as any[]){
+    sql.exec(
+      `UPDATE plastic_so_session_line
+       SET system_qty_base=?,snapshot_unit_cost_rp=?,updated_at=?
+       WHERE so_id=? AND variant_id=?`,
+      N(row.systemQtyBase),I(row.avgCostRp),t,soId,T(row.variantId,120)
     ).toArray();
   }
 
@@ -3563,26 +3745,22 @@ if(cmd==='POST_SO_ADJUSTMENT'){
 
   if(!lines.length)throw Error('PLASTIC_SO_LINES_REQUIRED');
   if(lines.some((row:any)=>Number(row.physicalEntered)!==1))throw Error('PLASTIC_SO_PHYSICAL_INCOMPLETE');
-
-  for(const row of lines){
-    const currentAsOf=scalar(
-      sql,
-      `SELECT COALESCE(SUM(
-         CASE
-           WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base
-           WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base
-           ELSE 0
-         END
-       ),0) value
-       FROM plastic_inventory_movement
-       WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND date_key<=?`,
-      T(row.variantId,120),date
-    );
-
-    if(Math.abs(currentAsOf-N(row.systemQtyBase))>0.000001){
-      throw Error('PLASTIC_SO_SNAPSHOT_STALE');
-    }
+  const authoritativeRows=authoritativeSoStockRows(sql,date);
+  const authoritativeByVariant=new Map<string,any>();
+  for(const row of authoritativeRows as any[]){
+    authoritativeByVariant.set(T(row.variantId,120),row);
   }
+  const postingLines=(lines as any[]).map((row:any)=>{
+    const authoritative=authoritativeByVariant.get(T(row.variantId,120));
+    if(!authoritative)throw Error('PLASTIC_SO_AUTHORITATIVE_VARIANT_MISSING');
+    return{
+      ...row,
+      storedSystemQtyBase:N(row.systemQtyBase),
+      systemQtyBase:N(authoritative.systemQtyBase),
+      snapshotUnitCostRp:I(authoritative.avgCostRp),
+      checkpointDateKey:T(authoritative.checkpointDateKey,10)
+    };
+  });
 
   return atomic(()=>{
     const legacyId=crypto.randomUUID();
@@ -3597,8 +3775,15 @@ if(cmd==='POST_SO_ADJUSTMENT'){
 
     let balanceCount=0,lessCount=0,moreCount=0;
 
-    for(const row of lines){
+    for(const row of postingLines){
       const vid=T(row.variantId,120),sys=N(row.systemQtyBase),phy=N(row.physicalQtyBase),diff=phy-sys,cost=I(row.snapshotUnitCostRp);
+
+      sql.exec(
+        `UPDATE plastic_so_session_line
+         SET system_qty_base=?,snapshot_unit_cost_rp=?,updated_at=?
+         WHERE so_id=? AND variant_id=?`,
+        sys,cost,t,soId,vid
+      ).toArray();
 
       sql.exec(
         `INSERT INTO plastic_stock_opname_line(
@@ -3611,33 +3796,6 @@ if(cmd==='POST_SO_ADJUSTMENT'){
         balanceCount++;
         continue;
       }
-
-      const bal=sql.exec(
-        `SELECT qty_base qtyBase,avg_cost_rp avgCostRp
-         FROM plastic_inventory_balance
-         WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,
-        vid
-      ).toArray()[0];
-
-      const cur=N(bal?.qtyBase),avg=I(bal?.avgCostRp);
-
-      if(diff<0&&cur<Math.abs(diff)-0.000001){
-        throw Error('PLASTIC_SO_ADJUSTMENT_NEGATIVE_STOCK');
-      }
-
-      const next=cur+diff;
-      const nextAvg=diff>0&&next>0
-        ? Math.round((cur*avg+diff*cost)/next)
-        : avg;
-
-      sql.exec(
-        `INSERT INTO plastic_inventory_balance(
-           business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at
-         ) VALUES('BU-PLASTIC',?,?,?,?)
-         ON CONFLICT(business_unit_id,variant_id)
-         DO UPDATE SET qty_base=excluded.qty_base,avg_cost_rp=excluded.avg_cost_rp,updated_at=excluded.updated_at`,
-        vid,next,nextAvg,t
-      ).toArray();
 
       sql.exec(
         `INSERT INTO plastic_inventory_movement(
@@ -3652,6 +3810,11 @@ if(cmd==='POST_SO_ADJUSTMENT'){
       if(diff>0)moreCount++;
     }
 
+    /* The adjustment movement is authoritative. Rebuild the non-negative
+       live cache afterward so a historical negative never becomes a false
+       positive balance (for example -18 + 18 must cache as 0, not 18). */
+    syncAuthoritativeInventory(sql);
+
     sql.exec(
       `UPDATE plastic_so_session
        SET status='POSTED',legacy_opname_id=?,reason=?,updated_at=?,posted_at=?
@@ -3662,11 +3825,16 @@ if(cmd==='POST_SO_ADJUSTMENT'){
     audit(sql,a,'PLASTIC_SO_POST','PLASTIC_SO_SESSION',soId,reason,{
       soNo:T(session.soNo,160),
       dateKey:date,
-      totalSku:lines.length,
+      totalSku:postingLines.length,
       balanceSku:balanceCount,
       lessSku:lessCount,
       moreSku:moreCount,
-      legacyOpnameId:legacyId
+      legacyOpnameId:legacyId,
+      systemBasis:'OFFICIAL_DOCUMENTS_AS_OF_SO_DATE',
+      checkpointDateKey:T(postingLines[0]?.checkpointDateKey,10),
+      refreshedSnapshotSku:postingLines.filter((row:any)=>
+        Math.abs(N(row.storedSystemQtyBase)-N(row.systemQtyBase))>0.000001
+      ).length
     });
 
     return{
@@ -3675,7 +3843,7 @@ if(cmd==='POST_SO_ADJUSTMENT'){
       opnameId:legacyId,
       opnameNo:T(session.soNo,160),
       status:'POSTED',
-      totalSku:lines.length,
+      totalSku:postingLines.length,
       balanceSku:balanceCount,
       lessSku:lessCount,
       moreSku:moreCount
