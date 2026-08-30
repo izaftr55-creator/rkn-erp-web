@@ -312,8 +312,14 @@ function syncAuthoritativeInventory(sql:Sql){
   const rows=authoritativeLiveStockRows(sql) as any[];
   const t=now();
 
+  /* RKN_PLASTIC_NEGATIVE_BALANCE_GUARD_V2R161
+     Historical document gaps may produce a negative raw
+     authoritative result. The physical balance cache has a
+     DB CHECK qty_base>=0, so cache at zero instead of failing.
+     Preserve raw negative value for audit/reconciliation. */
   for(const row of rows){
-    const authoritative=N(row.authoritativeQtyBase);
+    const authoritativeRaw=N(row.authoritativeQtyBase);
+    const authoritative=Math.max(0,authoritativeRaw);
     const cached=N(row.balanceQtyBase);
     const avgCost=I(row.avgCostRp);
 
@@ -334,16 +340,28 @@ function syncAuthoritativeInventory(sql:Sql){
     }
   }
 
-  return rows.map((row:any)=>({
-    ...row,
-    qtyBase:N(row.authoritativeQtyBase),
-    stockValueRp:Math.round(
-      N(row.authoritativeQtyBase)*I(row.avgCostRp)
-    ),
-    balanceDriftQtyBase:
-      N(row.authoritativeQtyBase)-N(row.balanceQtyBase),
-    stockSource:'OFFICIAL_DOCUMENTS'
-  }));
+  return rows.map((row:any)=>{
+    const authoritativeRaw=N(row.authoritativeQtyBase);
+    const qtyBase=Math.max(0,authoritativeRaw);
+
+    return{
+      ...row,
+      authoritativeRawQtyBase:authoritativeRaw,
+      qtyBase,
+      negativeAuthoritative:
+        authoritativeRaw < -0.000001 ? 1 : 0,
+      stockValueRp:Math.round(
+        qtyBase*I(row.avgCostRp)
+      ),
+      balanceDriftQtyBase:
+        qtyBase-N(row.balanceQtyBase),
+      stockSource:'OFFICIAL_DOCUMENTS',
+      stockGuard:
+        authoritativeRaw < -0.000001
+          ? 'NEGATIVE_HISTORY_CLAMPED_TO_ZERO'
+          : 'OK'
+    };
+  });
 }
 
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=/^\d{4}-\d{2}$/.test(String(periodV??''))?String(periodV):curPeriod();const view=T(viewV,32).toUpperCase();
