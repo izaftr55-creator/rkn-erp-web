@@ -777,6 +777,46 @@ function MetricCard({
   );
 }
 
+/* RKN_PLASTIC_FRIENDLY_ERROR_UI_V2R4 */
+function friendlyPlasticError(value: unknown) {
+  const code = String(value || "").trim();
+
+  if (!code) return "Terjadi kesalahan.";
+
+  if (
+    code.includes(
+      "PLASTIC_INBOUND_DELETE_INSUFFICIENT_BALANCE"
+    )
+  ) {
+    return "Barang masuk ini sudah terpakai oleh transaksi stok berikutnya. Void / hapus Barang Keluar yang terkait lebih dulu, lalu hapus Barang Masuk.";
+  }
+
+  if (
+    code.includes(
+      "PLASTIC_INBOUND_DELETE_WOULD_BREAK_STOCK_HISTORY"
+    )
+  ) {
+    return "Penghapusan ditahan karena akan merusak urutan histori stok. Bersihkan transaksi keluar yang memakai stok ini lebih dulu.";
+  }
+
+  if (
+    code.includes(
+      "PLASTIC_INBOUND_DELETE_LEGACY_AMBIGUOUS_STOCK"
+    )
+  ) {
+    return "Data lama tidak bisa dibersihkan otomatis karena saldo dan ledger tidak cukup jelas. Cek transaksi SKU tersebut sebelum menghapus.";
+  }
+
+  if (code.includes("PLASTIC_INSUFFICIENT_STOCK")) {
+    return "Stok tidak cukup untuk Barang Keluar. Pastikan Opening dan Barang Masuk sebelum tanggal transaksi sudah diinput.";
+  }
+
+  return code
+    .replace(/^PLASTIC[_ ]?/i, "")
+    .replace(/_+/g, " ")
+    .trim();
+}
+
 export default function PlasticTradingApp({
   initialDashboard,
 }: {
@@ -850,7 +890,7 @@ const loadMasters = useCallback(async () => {
       }
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "LOAD_FAILED"
+        friendlyPlasticError(error instanceof Error ? error.message : "LOAD_FAILED")
       );
     } finally {
       setBusy(false);
@@ -969,7 +1009,7 @@ const [nextView, nextDashboard] = await Promise.all([
       setDashboard(nextDashboard);
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "SAVE_FAILED"
+        friendlyPlasticError(error instanceof Error ? error.message : "SAVE_FAILED")
       );
     } finally {
       setBusy(false);
