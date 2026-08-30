@@ -5275,6 +5275,7 @@ function Reconciliation({
   data: Row;
 }) {
   /* RKN_PLASTIC_RECON_BALL_FIRST_UI_V2R17 */
+  /* RKN_PLASTIC_RECON_ROOT_CAUSE_UI_V2R18 */
   const summary = data.summary || {};
   const rows = Array.isArray(data.rows)
     ? data.rows
@@ -5479,6 +5480,48 @@ function Reconciliation({
     ],
   ];
 
+  const diagnosticLabel = (row: Row) => {
+    const code = String(row.diagnosticCode || "");
+
+    if (code === "SO_NOT_SAVED") {
+      return "SO BELUM TERSIMPAN";
+    }
+
+    if (code === "SO_DIFF_FROM_REFERENCE") {
+      return "SO BEDA DARI REFERENSI";
+    }
+
+    if (code === "RAW_LEDGER_DRIFT") {
+      return "RAW LEDGER BERBEDA";
+    }
+
+    if (code === "SYSTEM_NEGATIVE") {
+      return "SYSTEM NEGATIF";
+    }
+
+    if (code === "FACTUAL_VARIANCE_OR_DOC_GAP") {
+      return "CEK DOKUMEN / SELISIH FAKTUAL";
+    }
+
+    return "OK";
+  };
+
+  const diagnosticRows = rows.filter(
+    (row: Row) =>
+      String(row.diagnosticCode || "OK") !== "OK"
+  );
+
+  const referenceQty = (row: Row) =>
+    Number(row.referencePresent || 0) === 1
+      ? reconQty(
+          row,
+          "referencePhysicalQtyBase"
+        )
+      : "-";
+
+  const rawQty = (row: Row) =>
+    reconQty(row, "rawLedgerQtyBase");
+
   const syncNow = () => {
     window.location.reload();
   };
@@ -5586,6 +5629,105 @@ function Reconciliation({
       </section>
 
       <Panel
+        title="Audit Penyebab Selisih / Belum Dihitung"
+        subtitle="Read-only diagnostic. Tidak mengubah transaksi. Referensi SO lama hanya pembanding, bukan source of truth."
+      >
+        <section className={styles.metricGrid}>
+          <MetricCard
+            label="SO Belum Tersimpan"
+            value={String(
+              Number(summary.diagnosticSoNotSaved || 0)
+            )}
+            note="physical_entered masih 0"
+          />
+          <MetricCard
+            label="SO Beda Referensi"
+            value={String(
+              Number(summary.diagnosticReferenceDiff || 0)
+            )}
+            note="indikasi input lama / mixed UOM perlu dicek"
+          />
+          <MetricCard
+            label="Raw Ledger Drift"
+            value={String(
+              Number(summary.diagnosticRawDrift || 0)
+            )}
+            note="ledger lama berbeda dari dokumen resmi"
+          />
+          <MetricCard
+            label="System Negatif"
+            value={String(
+              Number(summary.diagnosticSystemNegative || 0)
+            )}
+            note="histori sumber perlu diperiksa"
+          />
+          <MetricCard
+            label="Selisih Factual"
+            value={String(
+              Number(summary.diagnosticFactualVariance || 0)
+            )}
+            note="Opening + IN - OUT tidak sama dengan SO"
+          />
+        </section>
+
+        <DataTable
+          rows={diagnosticRows}
+          columns={[
+            ["productName", "Produk"],
+            ["color", "Warna"],
+            ["size", "Ukuran"],
+            [
+              "openingQtyBase",
+              "Opening",
+              (row) =>
+                reconQty(row, "openingQtyBase"),
+            ],
+            [
+              "inboundQtyBase",
+              "Masuk",
+              (row) =>
+                reconQty(row, "inboundQtyBase"),
+            ],
+            [
+              "outboundQtyBase",
+              "Keluar",
+              (row) =>
+                reconQty(row, "outboundQtyBase"),
+            ],
+            [
+              "systemQtyBase",
+              "System",
+              (row) =>
+                reconQty(row, "systemQtyBase"),
+            ],
+            [
+              "physicalQtyBase",
+              "SO Sekarang",
+              (row) =>
+                Number(row.physicalEntered || 0) === 1
+                  ? reconQty(row, "physicalQtyBase")
+                  : "-",
+            ],
+            [
+              "referencePhysicalQtyBase",
+              "Ref SO Lama",
+              (row) => referenceQty(row),
+            ],
+            [
+              "rawLedgerQtyBase",
+              "Raw Ledger",
+              (row) => rawQty(row),
+            ],
+            [
+              "diagnosticCode",
+              "Diagnosis",
+              (row) => diagnosticLabel(row),
+            ],
+          ]}
+        />
+      </Panel>
+
+            <Panel
         title="Rekonsiliasi Polymailer / 28-08-2026"
         subtitle="BALL-first. System dihitung ulang dari Opening efektif + Barang Masuk resmi - Barang Keluar non-VOID sampai 28/08."
       >

@@ -827,6 +827,80 @@ if(view==='RECONCILIATION'){
           ? 'BALANCE'
           : 'SELISIH';
 
+    /* RKN_PLASTIC_RECON_ROOT_CAUSE_V2R18
+       Diagnostic only. Does not mutate Opening / IN / OUT / SO. */
+    const legacyReference=sql.exec(
+      `SELECT
+         physical_qty_base physicalQtyBase
+       FROM plastic_so_snapshot
+       WHERE business_unit_id='BU-PLASTIC'
+         AND snapshot_date_key=?
+         AND variant_id=?
+         AND mapping_status='MAPPED'
+       LIMIT 1`,
+      target,
+      variantId
+    ).toArray()[0]??null;
+
+    const rawLedgerQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(
+         CASE
+           WHEN movement_type IN(
+             'OPENING','IN','RETURN_IN','ADJUSTMENT_IN'
+           ) THEN qty_base
+           WHEN movement_type IN(
+             'OUT','RETURN_OUT','ADJUSTMENT_OUT'
+           ) THEN -qty_base
+           ELSE 0
+         END
+       ),0) value
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND variant_id=?
+         AND date_key<=?`,
+      variantId,
+      target
+    );
+
+    const referencePresent=
+      legacyReference?.physicalQtyBase!==undefined &&
+      legacyReference?.physicalQtyBase!==null;
+
+    const referencePhysicalQtyBase=
+      referencePresent
+        ? N(legacyReference.physicalQtyBase)
+        : null;
+
+    const referenceDiffQtyBase=
+      physicalEntered && referencePresent
+        ? physicalQtyBase-N(referencePhysicalQtyBase)
+        : null;
+
+    const rawVsOfficialQtyBase=
+      rawLedgerQtyBase-systemQtyBase;
+
+    let diagnosticCode='OK';
+
+    if(!physicalEntered){
+      diagnosticCode='SO_NOT_SAVED';
+    }else if(systemQtyBase<-0.000001){
+      diagnosticCode='SYSTEM_NEGATIVE';
+    }else if(
+      referencePresent &&
+      Math.abs(N(referenceDiffQtyBase))>0.000001
+    ){
+      diagnosticCode='SO_DIFF_FROM_REFERENCE';
+    }else if(
+      Math.abs(rawVsOfficialQtyBase)>0.000001
+    ){
+      diagnosticCode='RAW_LEDGER_DRIFT';
+    }else if(
+      Math.abs(N(varianceQtyBase))>0.000001
+    ){
+      diagnosticCode='FACTUAL_VARIANCE_OR_DOC_GAP';
+    }
+
     return{
       ...product,
       openingQtyBase,
@@ -837,7 +911,13 @@ if(view==='RECONCILIATION'){
       physicalQtyBase,
       physicalEntered:physicalEntered?1:0,
       varianceQtyBase,
-      status
+      status,
+      referencePresent:referencePresent?1:0,
+      referencePhysicalQtyBase,
+      referenceDiffQtyBase,
+      rawLedgerQtyBase,
+      rawVsOfficialQtyBase,
+      diagnosticCode
     };
   });
 
@@ -962,6 +1042,21 @@ if(view==='RECONCILIATION'){
       balancedVariants:balanced,
       varianceVariants:variance,
       uncountedVariants:uncounted,
+      diagnosticSoNotSaved:rows.filter(
+        (row:any)=>row.diagnosticCode==='SO_NOT_SAVED'
+      ).length,
+      diagnosticReferenceDiff:rows.filter(
+        (row:any)=>row.diagnosticCode==='SO_DIFF_FROM_REFERENCE'
+      ).length,
+      diagnosticRawDrift:rows.filter(
+        (row:any)=>row.diagnosticCode==='RAW_LEDGER_DRIFT'
+      ).length,
+      diagnosticSystemNegative:rows.filter(
+        (row:any)=>row.diagnosticCode==='SYSTEM_NEGATIVE'
+      ).length,
+      diagnosticFactualVariance:rows.filter(
+        (row:any)=>row.diagnosticCode==='FACTUAL_VARIANCE_OR_DOC_GAP'
+      ).length,
 
       polySystemBallCount:
         polySystemParts.ball,
