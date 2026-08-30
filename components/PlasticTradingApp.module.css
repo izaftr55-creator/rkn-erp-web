@@ -4942,3 +4942,97 @@
 .soZeroHint {
   line-height: 1.55 !important;
 }
+
+
+/* =========================================================
+   RKN_PLASTIC_FAST_BACKFILL_REPORT_UI_V2R1
+   ========================================================= */
+
+.inboundActionGroup {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  flex-wrap: wrap !important;
+}
+
+.inlineDeleteButton {
+  min-width: 64px !important;
+  min-height: 34px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(230, 91, 104, .52) !important;
+  border-radius: 8px !important;
+  background: rgba(89, 22, 34, .42) !important;
+  color: #ffbec5 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+}
+
+.inlineDeleteButton:hover {
+  border-color: rgba(255, 129, 142, .9) !important;
+  background: rgba(123, 28, 43, .62) !important;
+  color: #fff !important;
+}
+
+.inlineDeleteButton:disabled {
+  opacity: .5 !important;
+  cursor: not-allowed !important;
+}
+
+.reportInfoStrip {
+  width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 10px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  border: 1px solid #1c3553 !important;
+  border-radius: 9px !important;
+  background: #081725 !important;
+}
+
+.reportInfoStrip > div {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 3px !important;
+}
+
+.reportInfoStrip span {
+  color: #6682a5 !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: .055em !important;
+  text-transform: uppercase !important;
+}
+
+.reportInfoStrip strong {
+  color: #f1f6ff !important;
+  font-size: 12px !important;
+}
+
+.reportInfoStrip small {
+  max-width: 760px !important;
+  color: #7890ad !important;
+  font-size: 9px !important;
+  line-height: 1.45 !important;
+  text-align: right !important;
+}
+
+@media (max-width: 820px) {
+  .reportInfoStrip {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  .reportInfoStrip small {
+    max-width: none !important;
+    text-align: left !important;
+  }
+
+  .inboundActionGroup {
+    width: 100% !important;
+  }
+}

@@ -2424,6 +2424,60 @@ function Inbound({
     resetForm();
   };
 
+  /* RKN_PLASTIC_INBOUND_CONTROLLED_DELETE_UI_V2R1 */
+  const deleteInboundLine = async (row: Row) => {
+    const lineId = String(row.lineId || "");
+    const integrity = String(row.historyIntegrity || "OK");
+
+    if (!lineId || integrity !== "OK") {
+      window.alert(
+        "Baris recovery/legacy tidak dapat dihapus langsung. Perbaiki linkage terlebih dahulu."
+      );
+      return;
+    }
+
+    const label = [
+      row.productName,
+      row.color,
+      row.size,
+      `${qtyFmt.format(Number(row.qtyInput || 0))} ${row.inputUnit || ""}`,
+    ]
+      .filter(Boolean)
+      .join(" / ");
+
+    if (
+      !window.confirm(
+        `Hapus item Barang Masuk?\n\n${label}\n${row.dateKey || ""} · ${row.inboundNo || ""}\n\nStok terkait akan direversal dan tindakan dicatat di Audit.`
+      )
+    ) {
+      return;
+    }
+
+    const reason = window.prompt(
+      "Alasan hapus (wajib untuk Audit):",
+      "Input ulang / koreksi data testing"
+    );
+
+    if (reason === null) return;
+    if (!reason.trim()) {
+      window.alert("Alasan hapus wajib diisi.");
+      return;
+    }
+
+    await run(
+      "DELETE_INBOUND_LINE",
+      {
+        lineId,
+        reason: reason.trim(),
+      },
+      "INBOUND"
+    );
+
+    if (editInboundId === String(row.inboundId || "")) {
+      resetForm();
+    }
+  };
+
   const startEdit = (row: Row) => {
     const inboundId = String(row.inboundId || "");
     const documentRows = rows.filter(
@@ -2692,14 +2746,26 @@ function Inbound({
               "inboundAction",
               "Aksi",
               (row) =>
-                canEdit ? (
-                  <button
-                    type="button"
-                    className={styles.inlineEditButton}
-                    onClick={() => startEdit(row)}
-                  >
-                    Edit
-                  </button>
+                canEdit &&
+                Boolean(row.lineId) &&
+                String(row.historyIntegrity || "OK") === "OK" ? (
+                  <div className={styles.inboundActionGroup}>
+                    <button
+                      type="button"
+                      className={styles.inlineEditButton}
+                      onClick={() => startEdit(row)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.inlineDeleteButton}
+                      disabled={busy}
+                      onClick={() => deleteInboundLine(row)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
                 ) : (
                   "-"
                 ),
@@ -4638,6 +4704,7 @@ function Reports({
   /* RKN_PLASTIC_REPORT_CENTER_UI_V2Q */
   type ReportTab =
     | "STOCK"
+    | "LEDGER_SO"
     | "SO_PREP"
     | "SO_RESULT"
     | "RECEIVABLES"
@@ -4661,6 +4728,15 @@ function Reports({
     ? data.outbound
     : [];
   const activeSo = data.activeSo || null;
+  const auditLedger = Array.isArray(data.auditLedger)
+    ? data.auditLedger
+    : [];
+  const auditOpeningDate = String(
+    data.auditOpeningDate || "2026-07-28"
+  );
+  const auditSoDate = String(data.auditSoDate || "2026-08-28");
+  const auditSo = data.auditSo || null;
+
 
   const polymailer = stock.filter(
     (row: Row) =>
@@ -4730,6 +4806,8 @@ function Reports({
   const reportTitle =
     reportTab === "STOCK"
       ? "Laporan Stok"
+      : reportTab === "LEDGER_SO"
+        ? "Audit Opening ke Stock Opname"
       : reportTab === "SO_PREP"
         ? "Persiapan Stock Opname"
         : reportTab === "SO_RESULT"
@@ -4786,7 +4864,9 @@ function Reports({
     }
 
     const subtitle =
-      reportTab === "SO_PREP"
+      reportTab === "LEDGER_SO"
+        ? `OPENING ${auditOpeningDate} / CUT-OFF SO ${auditSoDate}`
+        : reportTab === "SO_PREP"
         ? activeSo
           ? `SO ${activeSo.soNo} / ${activeSo.dateKey} / ${activeSo.status}`
           : `PERIODE ${period} / BELUM ADA SO AKTIF`
@@ -4946,6 +5026,67 @@ function Reports({
           ];
         }),
         y
+      );
+    }
+
+    if (reportTab === "LEDGER_SO") {
+      table(
+        [
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "Opening",
+          "Masuk",
+          "Keluar",
+          "Koreksi",
+          "System Ledger",
+          "Snapshot SO",
+          "Fisik SO",
+          "Selisih SO",
+          "On Hand Live",
+          "Check",
+        ],
+        auditLedger.map((row: Row) => {
+          const snapshot =
+            row.systemSnapshotQtyBase === null ||
+            row.systemSnapshotQtyBase === undefined
+              ? "-"
+              : stockHuman(row, row.systemSnapshotQtyBase);
+          const physical =
+            Number(row.physicalEntered || 0) === 1
+              ? stockHuman(row, row.physicalQtyBase)
+              : "BELUM DIHITUNG";
+          const variance =
+            row.varianceQtyBase === null ||
+            row.varianceQtyBase === undefined
+              ? "-"
+              : stockHuman(row, Math.abs(Number(row.varianceQtyBase || 0)));
+          const ledgerDiff = Number(row.ledgerVsSnapshotQtyBase || 0);
+
+          return [
+            row.productName || row.category || "-",
+            row.color || "-",
+            row.size || "-",
+            stockHuman(row, row.openingQtyBase),
+            stockHuman(row, row.inboundQtyBase),
+            stockHuman(row, row.outboundQtyBase),
+            stockHuman(row, Math.abs(Number(row.correctionQtyBase || 0))),
+            stockHuman(row, row.systemLedgerQtyBase),
+            snapshot,
+            physical,
+            row.varianceQtyBase === null ||
+            row.varianceQtyBase === undefined
+              ? "-"
+              : `${Number(row.varianceQtyBase || 0) >= 0 ? "+" : "-"}${variance}`,
+            stockHuman(row, row.liveOnHandQtyBase),
+            row.systemSnapshotQtyBase === null ||
+            row.systemSnapshotQtyBase === undefined
+              ? "NO SNAPSHOT"
+              : Math.abs(ledgerDiff) < 0.000001
+                ? "MATCH"
+                : `CHECK ${qtyText(ledgerDiff)}`,
+          ];
+        })
       );
     }
 
@@ -5155,7 +5296,9 @@ function Reports({
     }
 
     const suffix =
-      reportTab === "SO_PREP" && activeSo
+      reportTab === "LEDGER_SO"
+        ? `${auditOpeningDate}_${auditSoDate}`
+        : reportTab === "SO_PREP" && activeSo
         ? `${activeSo.dateKey}_${activeSo.soNo}`
         : period;
 
@@ -5168,6 +5311,7 @@ function Reports({
 
   const tabs: [ReportTab, string][] = [
     ["STOCK", "Stok"],
+    ["LEDGER_SO", "Audit 28/07 → 28/08"],
     ["SO_PREP", "Persiapan SO"],
     ["SO_RESULT", "Hasil SO"],
     ["RECEIVABLES", "Piutang Belum Bayar"],
@@ -5213,6 +5357,17 @@ function Reports({
 
       {reportTab === "STOCK" ? (
         <>
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Sumber On Hand</span>
+              <strong>Inventory Balance / Live</strong>
+            </div>
+            <small>
+              Angka Stok di tab ini mengikuti plastic_inventory_balance saat ini.
+              Untuk audit 28/07 → 28/08 gunakan tab Audit agar System SO tidak
+              tercampur adjustment setelah opname.
+            </small>
+          </div>
           <section className={styles.reportMetricGrid}>
             <MetricCard
               label="Stock Value"
@@ -5308,6 +5463,158 @@ function Reports({
                   "Stock Value",
                   (row) =>
                     money.format(Number(row.stockValueRp || 0)),
+                ],
+              ]}
+            />
+          </Panel>
+        </>
+      ) : null}
+
+      {reportTab === "LEDGER_SO" ? (
+        <>
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Audit Cut-off</span>
+              <strong>
+                Opening {auditOpeningDate} → SO {auditSoDate}
+              </strong>
+            </div>
+            <small>
+              Formula: Opening + Masuk - Keluar + Koreksi = System sebelum SO.
+              Adjustment dari SO_SESSION / STOCK_OPNAME dikeluarkan agar tidak
+              circular. On Hand Live hanya pembanding kondisi saat ini.
+            </small>
+          </div>
+
+          <section className={styles.reportMetricGrid}>
+            <MetricCard
+              label="Opening"
+              value={qtyText(
+                auditLedger.reduce(
+                  (sum: number, row: Row) =>
+                    sum + Number(row.openingQtyBase || 0),
+                  0
+                )
+              )}
+            />
+            <MetricCard
+              label="Masuk"
+              value={qtyText(
+                auditLedger.reduce(
+                  (sum: number, row: Row) =>
+                    sum + Number(row.inboundQtyBase || 0),
+                  0
+                )
+              )}
+            />
+            <MetricCard
+              label="Keluar"
+              value={qtyText(
+                auditLedger.reduce(
+                  (sum: number, row: Row) =>
+                    sum + Number(row.outboundQtyBase || 0),
+                  0
+                )
+              )}
+            />
+            <MetricCard
+              label="SO Snapshot"
+              value={auditSo ? String(auditSo.soNo || auditSoDate) : "BELUM ADA"}
+            />
+          </section>
+
+          <Panel title="Opening → In / Out → Stock Opname">
+            <DataTable
+              rows={auditLedger}
+              columns={[
+                ["productName", "Produk"],
+                ["color", "Warna"],
+                ["size", "Ukuran"],
+                [
+                  "opening",
+                  "Opening 28/07",
+                  (row) => stockHuman(row, row.openingQtyBase),
+                ],
+                [
+                  "inbound",
+                  "Masuk",
+                  (row) => stockHuman(row, row.inboundQtyBase),
+                ],
+                [
+                  "outbound",
+                  "Keluar",
+                  (row) => stockHuman(row, row.outboundQtyBase),
+                ],
+                [
+                  "correction",
+                  "Koreksi",
+                  (row) => {
+                    const value = Number(row.correctionQtyBase || 0);
+                    return `${value >= 0 ? "+" : "-"}${stockHuman(
+                      row,
+                      Math.abs(value)
+                    )}`;
+                  },
+                ],
+                [
+                  "systemLedger",
+                  "System 28/08",
+                  (row) => stockHuman(row, row.systemLedgerQtyBase),
+                ],
+                [
+                  "snapshot",
+                  "Snapshot SO",
+                  (row) =>
+                    row.systemSnapshotQtyBase === null ||
+                    row.systemSnapshotQtyBase === undefined
+                      ? "-"
+                      : stockHuman(row, row.systemSnapshotQtyBase),
+                ],
+                [
+                  "physical",
+                  "Fisik SO",
+                  (row) =>
+                    Number(row.physicalEntered || 0) === 1
+                      ? stockHuman(row, row.physicalQtyBase)
+                      : "BELUM DIHITUNG",
+                ],
+                [
+                  "variance",
+                  "Selisih",
+                  (row) => {
+                    if (
+                      row.varianceQtyBase === null ||
+                      row.varianceQtyBase === undefined
+                    ) {
+                      return "-";
+                    }
+                    const value = Number(row.varianceQtyBase || 0);
+                    return `${value >= 0 ? "+" : "-"}${stockHuman(
+                      row,
+                      Math.abs(value)
+                    )}`;
+                  },
+                ],
+                [
+                  "live",
+                  "On Hand Live",
+                  (row) => stockHuman(row, row.liveOnHandQtyBase),
+                ],
+                [
+                  "ledgerCheck",
+                  "Check",
+                  (row) => {
+                    if (
+                      row.systemSnapshotQtyBase === null ||
+                      row.systemSnapshotQtyBase === undefined
+                    ) {
+                      return "NO SNAPSHOT";
+                    }
+                    const diff = Number(row.ledgerVsSnapshotQtyBase || 0);
+                    return Math.abs(diff) < 0.000001
+                      ? "MATCH"
+                      : `CHECK ${qtyText(diff)}`;
+                  },
                 ],
               ]}
             />
