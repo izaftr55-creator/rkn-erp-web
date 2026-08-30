@@ -2687,12 +2687,13 @@ if(cmd==='DELETE_INBOUND_LINE'){
       );
     }
 
-    if(
-      inventoryMode!=='HISTORY_ONLY' &&
-      currentQty-qtyBase < -1e-9
-    ){
-      throw Error('PLASTIC_INBOUND_DELETE_INSUFFICIENT_BALANCE');
-    }
+    /* RKN_PLASTIC_HISTORICAL_INBOUND_CORRECTION_V2R19 */
+    const rawNextQty=
+      inventoryMode==='HISTORY_ONLY'
+        ? currentQty
+        : currentQty-qtyBase;
+    const negativeHistoryClamped=
+      inventoryMode!=='HISTORY_ONLY' && rawNextQty < -1e-9;
 
     const t=now();
     const deleteId=crypto.randomUUID();
@@ -2705,7 +2706,7 @@ if(cmd==='DELETE_INBOUND_LINE'){
     let nextAvg=currentAvg;
 
     if(inventoryMode!=='HISTORY_ONLY'){
-      nextQty=Math.max(0,currentQty-qtyBase);
+      nextQty=Math.max(0,rawNextQty);
 
       const currentValue=Math.round(currentQty*currentAvg);
       const removeValue=Math.round(qtyBase*unitCostRp);
@@ -2981,19 +2982,18 @@ if(cmd==='UPDATE_INBOUND'){
       const currentAvg=I(balance?.avgCostRp);
       const currentValue=Math.round(currentQty*currentAvg);
 
-      const nextQty=currentQty-oldPart.qtyBase+newPart.qtyBase;
-      const nextValue=currentValue-oldPart.valueRp+newPart.valueRp;
+      /* RKN_PLASTIC_HISTORICAL_INBOUND_CORRECTION_V2R19
+         Official historical documents are factual. A later OUT may have
+         consumed the old IN already, so the live cache must not block the
+         correction. Preserve the raw negative state for diagnostics and
+         clamp only the non-negative balance cache. */
+      const rawNextQty=currentQty-oldPart.qtyBase+newPart.qtyBase;
+      const rawNextValue=currentValue-oldPart.valueRp+newPart.valueRp;
+      const negativeHistoryClamped=rawNextQty < -1e-9;
+      const historicalCostClamped=rawNextValue < -0.5;
 
-      if(nextQty<-1e-9){
-        throw Error('PLASTIC_INBOUND_EDIT_INSUFFICIENT_BALANCE:'+variantId);
-      }
-
-      if(nextValue<-0.5){
-        throw Error('PLASTIC_INBOUND_EDIT_HISTORICAL_COST_UNSAFE:'+variantId);
-      }
-
-      const safeQty=Math.max(0,nextQty);
-      const safeValue=Math.max(0,nextValue);
+      const safeQty=Math.max(0,rawNextQty);
+      const safeValue=safeQty>0?Math.max(0,rawNextValue):0;
       const nextAvg=safeQty>0?Math.round(safeValue/safeQty):0;
 
       sql.exec(
@@ -3014,10 +3014,14 @@ if(cmd==='UPDATE_INBOUND'){
         oldInboundQty:oldPart.qtyBase,
         newInboundQty:newPart.qtyBase,
         nextQty:safeQty,
+        rawNextQty,
+        negativeHistoryClamped,
         currentValue,
         oldInboundValue:oldPart.valueRp,
         newInboundValue:newPart.valueRp,
-        nextValue:safeValue
+        nextValue:safeValue,
+        rawNextValue,
+        historicalCostClamped
       });
     }
 
@@ -3139,7 +3143,7 @@ if(cmd==='UPDATE_INBOUND'){
 /* RKN_PLASTIC_BACKFILL_OUT_RECORDING_V2R6 */
 /* RKN_PLASTIC_FACTUAL_OUT_MODE_V2R7 */
 if(cmd==='CREATE_SALE'){
-  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=true;open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],asOf=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND date_key<=? AND source_type NOT IN('STOCK_OPNAME','SO_SESSION','SO_ADJUSTMENT')`,vid,date).toArray()[0],liveLedger=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,vid).toArray()[0],avail=N(asOf?.qty_base),liveAvail=N(liveLedger?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);if(price<=0){const mid=String(v.mid_unit||'').toUpperCase();price=q.unit===String(v.pack_unit).toUpperCase()?I(v.default_sell_price_pack_rp):mid&&q.unit===mid?I(v.default_sell_price_mid_rp):I(v.default_sell_price_base_rp)};const sum=Math.round(q.qty*price),uc=I(b?.avg_cost_rp),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
+  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=historicalBackfill;open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],asOf=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND date_key<=? AND source_type NOT IN('STOCK_OPNAME','SO_SESSION','SO_ADJUSTMENT')`,vid,date).toArray()[0],liveLedger=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,vid).toArray()[0],avail=N(asOf?.qty_base),liveAvail=N(liveLedger?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);if(price<=0){const mid=String(v.mid_unit||'').toUpperCase();price=q.unit===String(v.pack_unit).toUpperCase()?I(v.default_sell_price_pack_rp):mid&&q.unit===mid?I(v.default_sell_price_mid_rp):I(v.default_sell_price_base_rp)};const sum=Math.round(q.qty*price),uc=I(b?.avg_cost_rp),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});/* RKN_PLASTIC_SALE_AGGREGATE_STOCK_GUARD_V2R19 */if(!factualOutMode){const requestedByVariant=new Map<string,{requested:number;available:number}>();for(const row of norm){const current=requestedByVariant.get(row.vid)??{requested:0,available:row.avail};current.requested+=row.baseQty;current.available=Math.min(current.available,row.avail);requestedByVariant.set(row.vid,current)}for(const row of requestedByVariant.values()){if(row.requested>row.available+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK')}}const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}syncAuthoritativeInventory(sql);if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
 /* RKN_PLASTIC_SALE_LIFECYCLE_V2O */
 if(cmd==='UPDATE_SALE'){
   mg(a);

@@ -6101,3 +6101,55 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   RKN_PLASTIC_GLOBAL_DASHBOARD_ALIGNMENT_V2R20
+   Dashboard spacing is controlled only by its grid gap.
+   This overrides the legacy .panel margin and adjacent-panel
+   specificity conflict that offset the first chart card.
+   ========================================================= */
+.dashboardShell > .panel,
+.dashboardShell .dashboardCharts > .panel,
+.dashboardShell .dashboardCharts > .panel + .panel {
+  margin: 0 !important;
+  margin-block: 0 !important;
+  align-self: stretch !important;
+  height: 100% !important;
+}
+
+.dashboardShell .dashboardCharts {
+  margin: 0 !important;
+  align-items: stretch !important;
+}
+
+.dashboardShell .dashboardCharts > .panel > .panelHead {
+  flex: 0 0 40px !important;
+  min-height: 40px !important;
+  margin: 0 0 10px !important;
+}
+
+.dashboardShell .dashboardCharts .soChart,
+.dashboardShell .dashboardCharts .salesBars,
+.dashboardShell .dashboardCharts .chartEmpty {
+  flex: 1 1 auto !important;
+  min-height: 220px !important;
+  height: auto !important;
+}
+
+@media (min-width: 1181px) {
+  .dashboardShell .dashboardCharts {
+    grid-auto-rows: minmax(0, 1fr) !important;
+  }
+
+  .dashboardShell .dashboardCharts > .panel {
+    min-height: 310px !important;
+  }
+}
+
+@media (max-width: 1180px) {
+  .dashboardShell > .panel,
+  .dashboardShell .dashboardCharts > .panel,
+  .dashboardShell .dashboardCharts > .panel + .panel {
+    height: auto !important;
+  }
+}
