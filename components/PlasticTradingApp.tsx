@@ -753,6 +753,107 @@ function Panel({
   );
 }
 
+/* RKN_PLASTIC_FILTERED_PDF_V2R16 */
+type RknPlasticFilterSnapshot = {
+  search: string;
+  dateFrom: string;
+  dateTo: string;
+  status: string;
+};
+
+let rknPlasticPdfFilterSnapshot: RknPlasticFilterSnapshot = {
+  search: "",
+  dateFrom: "",
+  dateTo: "",
+  status: "",
+};
+
+function applyRknPlasticPdfFilter(rows: Row[]) {
+  const snapshot = rknPlasticPdfFilterSnapshot;
+  const search = String(snapshot.search || "")
+    .toLocaleLowerCase("id-ID")
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const dateCandidates = [
+    "dateKey",
+    "createdAt",
+    "lastPurchaseDate",
+    "dueDateKey",
+    "occurredAt",
+    "updatedAt",
+  ];
+
+  const statusCandidates = [
+    "paymentLabel",
+    "status",
+    "historyIntegrity",
+    "mappingStatus",
+    "periodStatus",
+  ];
+
+  const dateField = dateCandidates.find((key) =>
+    rows.some((row) => Boolean(row?.[key]))
+  );
+
+  const statusField = statusCandidates.find((key) =>
+    rows.some((row) => Boolean(row?.[key]))
+  );
+
+  return rows.filter((row) => {
+    if (search) {
+      const haystack = Object.values(row || {})
+        .filter(
+          (value) =>
+            value === null ||
+            value === undefined ||
+            ["string", "number", "boolean"].includes(
+              typeof value
+            )
+        )
+        .map((value) =>
+          String(value ?? "")
+            .toLocaleLowerCase("id-ID")
+            .replace(/_/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+        )
+        .join(" ");
+
+      if (!haystack.includes(search)) return false;
+    }
+
+    if (dateField) {
+      const rawDate = String(row?.[dateField] || "").slice(0, 10);
+
+      if (
+        snapshot.dateFrom &&
+        (!rawDate || rawDate < snapshot.dateFrom)
+      ) {
+        return false;
+      }
+
+      if (
+        snapshot.dateTo &&
+        (!rawDate || rawDate > snapshot.dateTo)
+      ) {
+        return false;
+      }
+    }
+
+    if (
+      statusField &&
+      snapshot.status &&
+      String(row?.[statusField] || "") !== snapshot.status
+    ) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 /* RKN_PLASTIC_GLOBAL_SMART_TABLE_FILTER_V2R10 */
 function DataTable({
   rows,
@@ -883,6 +984,20 @@ function DataTable({
     Boolean(filterDateFrom) ||
     Boolean(filterDateTo) ||
     Boolean(filterStatus);
+
+  useEffect(() => {
+    rknPlasticPdfFilterSnapshot = {
+      search: filterSearch,
+      dateFrom: filterDateFrom,
+      dateTo: filterDateTo,
+      status: filterStatus,
+    };
+  }, [
+    filterSearch,
+    filterDateFrom,
+    filterDateTo,
+    filterStatus,
+  ]);
 
   const resetFilters = () => {
     setFilterSearch("");
@@ -4637,6 +4752,38 @@ function Opname({
     );
   };
 
+  /* RKN_PLASTIC_RESET_SO_DRAFT_UI_V2R16 */
+  const resetSoDraft = async () => {
+    if (!active?.soId) return;
+
+    if (
+      !window.confirm(
+        "Reset SO ini dan input ulang dari awal? Hanya draft SO yang dihapus."
+      )
+    ) {
+      return;
+    }
+
+    const reason =
+      window.prompt(
+        "Alasan reset SO:",
+        "Input ulang SO 28/08"
+      )?.trim() || "";
+
+    if (!reason) return;
+
+    await run(
+      "RESET_SO_DRAFT",
+      {
+        soId: active.soId,
+        reason,
+      },
+      "OPNAME"
+    );
+
+    clearEntry();
+  };
+
   const postSo = async () => {
     if (!postReason.trim()) {
       window.alert("Alasan posting adjustment wajib diisi.");
@@ -4917,7 +5064,16 @@ function Opname({
                       Lihat Rekonsiliasi
                     </button>
 
-                    <button
+                                      <button
+                    type="button"
+                    className={styles.inlineDangerButton}
+                    disabled={busy || !canManage}
+                    onClick={resetSoDraft}
+                  >
+                    Reset Draft SO
+                  </button>
+
+<button
                       type="button"
                       className={styles.primaryButton}
                       disabled={busy || !canManage || !allEntered}
@@ -5692,21 +5848,28 @@ function Reports({
             : "-",
         ]);
 
+      const pdfVarianceRows =
+        applyRknPlasticPdfFilter(varianceRows);
+      const pdfBalanceRows =
+        applyRknPlasticPdfFilter(balanceRows);
+      const pdfUncountedRows =
+        applyRknPlasticPdfFilter(uncountedRows);
+
       const sections: Array<{
         title: string;
         rows: Row[];
       }> = [
         {
-          title: `MASIH SELISIH (${varianceRows.length} SKU)`,
-          rows: varianceRows,
+          title: `MASIH SELISIH (${pdfVarianceRows.length} SKU)`,
+          rows: pdfVarianceRows,
         },
         {
-          title: `SUDAH BALANCE (${balanceRows.length} SKU)`,
-          rows: balanceRows,
+          title: `SUDAH BALANCE (${pdfBalanceRows.length} SKU)`,
+          rows: pdfBalanceRows,
         },
         {
-          title: `BELUM DIHITUNG (${uncountedRows.length} SKU)`,
-          rows: uncountedRows,
+          title: `BELUM DIHITUNG (${pdfUncountedRows.length} SKU)`,
+          rows: pdfUncountedRows,
         },
       ].filter((section) => section.rows.length > 0);
 
@@ -5732,7 +5895,7 @@ function Reports({
     if (reportTab === "STOCK") {
       table(
         ["Produk", "Warna", "Ukuran", "Stok Live", "Avg HPP", "Nilai"],
-        stock.map((row: Row) => [
+        applyRknPlasticPdfFilter(stock).map((row: Row) => [
           row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
@@ -5746,7 +5909,7 @@ function Reports({
     if (reportTab === "INBOUND") {
       table(
         ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty", "HPP", "Nilai"],
-        inbound.map((row: Row) => [
+        applyRknPlasticPdfFilter(inbound).map((row: Row) => [
           row.dateKey || "-",
           row.referenceNo || "-",
           row.productName || "-",
@@ -5762,7 +5925,7 @@ function Reports({
     if (reportTab === "OUTBOUND") {
       table(
         ["Tanggal", "Invoice", "Customer", "Produk", "Warna", "Ukuran", "Qty", "Sales"],
-        outbound.map((row: Row) => [
+        applyRknPlasticPdfFilter(outbound).map((row: Row) => [
           row.dateKey || "-",
           row.referenceNo || "-",
           row.customerName || "-",
@@ -5778,7 +5941,7 @@ function Reports({
     if (reportTab === "RECEIVABLES") {
       table(
         ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
-        receivables.map((row: Row) => [
+        applyRknPlasticPdfFilter(receivables).map((row: Row) => [
           row.dateKey || "-",
           row.invoiceNo || "-",
           row.customerName || "-",
@@ -5803,7 +5966,7 @@ function Reports({
           "Snapshot SO",
           "On Hand Live",
         ],
-        auditLedger.map((row: Row) => [
+        applyRknPlasticPdfFilter(auditLedger).map((row: Row) => [
           row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
@@ -5826,10 +5989,18 @@ function Reports({
         ? `REKONSILIASI_${auditOpeningDate}_${auditSoDate}`
         : `${reportTab}_${period}`;
 
+    const filterSuffix =
+      rknPlasticPdfFilterSnapshot.search.trim()
+        ? `_${rknPlasticPdfFilterSnapshot.search
+            .trim()
+            .replace(/[^0-9A-Za-z]+/g, "_")
+            .slice(0, 32)}`
+        : "";
+
     doc.save(
       `RKN_${String(suffix)
         .replace(/[^0-9A-Za-z_-]/g, "_")
-        .toUpperCase()}.pdf`
+        .toUpperCase()}${filterSuffix.toUpperCase()}.pdf`
     );
   };
 
