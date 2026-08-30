@@ -5628,15 +5628,16 @@
    Scrolling remains fully functional.
    ========================================================= */
 
-/* Root document scrollbar on Plastic Trading page */
-:global(html),
-:global(body) {
+/* RKN_PLASTIC_SCROLLBAR_BUILD_SAFE_V2R13
+   CSS-Modules-safe root scrollbar rule.
+   The local .shell inside :has() keeps the selector pure.
+   Chrome / Edge used by this app support :has(). */
+:global(body):has(.shell) {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 
-:global(html)::-webkit-scrollbar,
-:global(body)::-webkit-scrollbar {
+:global(body):has(.shell)::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
   display: none !important;
