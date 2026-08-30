@@ -5620,3 +5620,78 @@
     justify-content: space-between;
   }
 }
+
+
+/* =========================================================
+   RKN_PLASTIC_GLOBAL_SCROLLBAR_CLEAN_V2R11
+   Hide ALL visible scrollbars in Plastic Trading.
+   Scrolling remains fully functional.
+   ========================================================= */
+
+/* Root document scrollbar on Plastic Trading page */
+:global(html),
+:global(body) {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+:global(html)::-webkit-scrollbar,
+:global(body)::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+
+/* Entire Plastic Trading application */
+.shell,
+.shell * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Chromium / Edge / Safari */
+.shell::-webkit-scrollbar,
+.shell *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
+}
+
+.shell::-webkit-scrollbar-track,
+.shell *::-webkit-scrollbar-track {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.shell::-webkit-scrollbar-thumb,
+.shell *::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+/* Known scroll containers — scrolling retained */
+.sidebar,
+.main,
+.tableWrap,
+.panel,
+.lineSection,
+.dataTable,
+.smartFilterBar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Keep overflow behavior intact */
+.sidebar {
+  overflow-y: auto !important;
+}
+
+.tableWrap {
+  overflow: auto !important;
+}
+
+.main {
+  overflow: visible !important;
+}
