@@ -5269,40 +5269,198 @@ function Opname({
   );
 }
 
-function Reconciliation({ data }: { data: Row }) {
-  /* RKN_PLASTIC_RECON_UI_V2M */
+function Reconciliation({
+  data,
+}: {
+  data: Row;
+}) {
+  /* RKN_PLASTIC_RECON_BALL_FIRST_UI_V2R17 */
   const summary = data.summary || {};
-  const rows = data.rows || [];
-  const reviewRows = data.reviewRows || [];
+  const rows = Array.isArray(data.rows)
+    ? data.rows
+    : [];
 
   const polyRows = rows.filter(
-    (row: Row) => String(row.category || "") !== "THERMAL"
-  );
-  const thermalRows = rows.filter(
-    (row: Row) => String(row.category || "") === "THERMAL"
+    (row: Row) =>
+      String(row.category || "") !== "THERMAL"
   );
 
-  const reconQty = (row: Row, key: string) =>
-    stockText({
-      ...row,
-      qtyBase: Number(row[key] || 0),
-    });
+  const thermalRows = rows.filter(
+    (row: Row) =>
+      String(row.category || "") === "THERMAL"
+  );
+
+  const cleanQty = (value: number) =>
+    Math.abs(value) < 0.000001
+      ? 0
+      : value;
+
+  const polyQtyText = (
+    row: Row,
+    valueRaw: unknown,
+    signed = false
+  ) => {
+    const value = cleanQty(
+      Number(valueRaw || 0)
+    );
+
+    const sign =
+      value < 0
+        ? "-"
+        : signed && value > 0
+          ? "+"
+          : "";
+
+    const abs = Math.abs(value);
+
+    const unitsPerBall = Math.max(
+      1,
+      Number(row.unitsPerPack || 1)
+    );
+
+    const ball = Math.floor(
+      (abs + 0.000000001) / unitsPerBall
+    );
+
+    const roll = cleanQty(
+      abs - ball * unitsPerBall
+    );
+
+    const parts: string[] = [];
+
+    if (ball > 0) {
+      parts.push(
+        `${qtyFmt.format(ball)} BALL`
+      );
+    }
+
+    if (roll > 0 || ball === 0) {
+      parts.push(
+        `${qtyFmt.format(roll)} ROLL`
+      );
+    }
+
+    return sign + parts.join(" + ");
+  };
+
+  const thermalQtyText = (
+    row: Row,
+    valueRaw: unknown,
+    signed = false
+  ) => {
+    const value = cleanQty(
+      Number(valueRaw || 0)
+    );
+
+    const sign =
+      value < 0
+        ? "-"
+        : signed && value > 0
+          ? "+"
+          : "";
+
+    const dus =
+      Math.abs(value) /
+      Math.max(
+        1,
+        Number(row.unitsPerPack || 1)
+      );
+
+    return `${sign}${qtyFmt.format(dus)} DUS`;
+  };
+
+  const reconQty = (
+    row: Row,
+    key: string,
+    signed = false
+  ) => {
+    const value = row[key];
+
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "-";
+    }
+
+    return String(row.category || "") === "THERMAL"
+      ? thermalQtyText(row, value, signed)
+      : polyQtyText(row, value, signed);
+  };
+
+  const totalPolyText = (
+    ballRaw: unknown,
+    rollRaw: unknown
+  ) => {
+    const ball = Number(ballRaw || 0);
+    const roll = cleanQty(
+      Number(rollRaw || 0)
+    );
+
+    const parts: string[] = [];
+
+    if (ball > 0) {
+      parts.push(
+        `${qtyFmt.format(ball)} BALL`
+      );
+    }
+
+    if (roll > 0 || ball === 0) {
+      parts.push(
+        `${qtyFmt.format(roll)} ROLL`
+      );
+    }
+
+    return parts.join(" + ");
+  };
 
   const reconColumns: Column[] = [
     ["productName", "Produk"],
     ["color", "Warna"],
     ["size", "Ukuran"],
-    ["systemQtyBase", "System", (row) => reconQty(row, "systemQtyBase")],
-    ["physicalQtyBase", "SO Fisik", (row) => reconQty(row, "physicalQtyBase")],
+    [
+      "openingQtyBase",
+      "Opening 28/07",
+      (row) =>
+        reconQty(row, "openingQtyBase"),
+    ],
+    [
+      "inboundQtyBase",
+      "Masuk",
+      (row) =>
+        reconQty(row, "inboundQtyBase"),
+    ],
+    [
+      "outboundQtyBase",
+      "Keluar",
+      (row) =>
+        reconQty(row, "outboundQtyBase"),
+    ],
+    [
+      "systemQtyBase",
+      "System 28/08",
+      (row) =>
+        reconQty(row, "systemQtyBase"),
+    ],
+    [
+      "physicalQtyBase",
+      "SO Fisik",
+      (row) =>
+        Number(row.physicalEntered || 0) === 1
+          ? reconQty(row, "physicalQtyBase")
+          : "-",
+    ],
     [
       "varianceQtyBase",
       "Variance",
-      (row) => {
-        const value = Number(row.varianceQtyBase || 0);
-        const absRow = { ...row, qtyBase: Math.abs(value) };
-        const text = stockText(absRow);
-        return value < 0 ? `-${text}` : text;
-      },
+      (row) =>
+        Number(row.physicalEntered || 0) === 1
+          ? reconQty(
+              row,
+              "varianceQtyBase",
+              true
+            )
+          : "-",
     ],
     [
       "status",
@@ -5321,85 +5479,131 @@ function Reconciliation({ data }: { data: Row }) {
     ],
   ];
 
+  const syncNow = () => {
+    window.location.reload();
+  };
+
   return (
     <>
+      <div className={styles.actions}>
+        <div
+          style={{
+            marginRight: "auto",
+            display: "grid",
+            gap: 3,
+          }}
+        >
+          <strong>
+            REKONSILIASI AUTHORITATIVE 28/08/2026
+          </strong>
+          <span
+            style={{
+              fontSize: 9,
+              opacity: 0.7,
+            }}
+          >
+            AUTO SYNC saat halaman dibuka · Opening efektif
+            28/07 + IN resmi − OUT non-VOID + koreksi manual
+            sah.
+          </span>
+          <span
+            style={{
+              fontSize: 8,
+              opacity: 0.55,
+            }}
+          >
+            Terakhir sync: {String(data.syncedAt || "-")}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={syncNow}
+        >
+          UPDATE / SYNC DATA
+        </button>
+      </div>
+
       <section className={styles.metricGrid}>
         <MetricCard
           label="Polymailer System"
-          value={qtyFmt.format(Number(summary.polySystemQtyBase || 0))}
-          note="base ROLL"
+          value={totalPolyText(
+            summary.polySystemBallCount,
+            summary.polySystemLooseRollCount
+          )}
+          note="BALL diprioritaskan · sisa tetap ROLL"
         />
+
         <MetricCard
           label="Polymailer Physical"
-          value={qtyFmt.format(Number(summary.polyPhysicalQtyBase || 0))}
+          value={totalPolyText(
+            summary.polyPhysicalBallCount,
+            summary.polyPhysicalLooseRollCount
+          )}
           note="SO fisik 28/08"
         />
+
         <MetricCard
           label="Polymailer Variance"
-          value={qtyFmt.format(Number(summary.polyVarianceQtyBase || 0))}
-          note="Physical - System / ROLL"
+          value={`${Number(
+            summary.polyLessVariants || 0
+          )} KURANG / ${Number(
+            summary.polyMoreVariants || 0
+          )} LEBIH`}
+          note="dibaca per SKU, bukan total ROLL"
         />
+
         <MetricCard
           label="Thermal System"
-          value={stockText({
-            baseUnit: "LEMBAR",
-            midUnit: "STACK",
-            packUnit: "DUS",
-            unitsPerMid: 500,
-            unitsPerPack: 10000,
-            qtyBase: Number(summary.thermalSystemQtyBase || 0),
-          })}
-          note="Dus / Stack / Lembar"
+          value={`${qtyFmt.format(
+            Number(summary.thermalSystemDus || 0)
+          )} DUS`}
+          note="DUS-only"
         />
+
         <MetricCard
           label="Thermal Physical"
-          value={stockText({
-            baseUnit: "LEMBAR",
-            midUnit: "STACK",
-            packUnit: "DUS",
-            unitsPerMid: 500,
-            unitsPerPack: 10000,
-            qtyBase: Number(summary.thermalPhysicalQtyBase || 0),
-          })}
-          note="3 Dus Panjang + 9 Dus Kotak"
+          value={`${qtyFmt.format(
+            Number(summary.thermalPhysicalDus || 0)
+          )} DUS`}
+          note="SO fisik 28/08"
         />
+
         <MetricCard
           label="SKU Balance"
-          value={`${Number(summary.balancedVariants || 0)} / ${Number(
+          value={`${Number(
+            summary.balancedVariants || 0
+          )} / ${Number(
             summary.totalVariants || 0
           )}`}
-          note={`${Number(summary.varianceVariants || 0)} SKU masih selisih`}
+          note={`${Number(
+            summary.varianceVariants || 0
+          )} selisih · ${Number(
+            summary.uncountedVariants || 0
+          )} belum dihitung`}
         />
       </section>
 
       <Panel
         title="Rekonsiliasi Polymailer / 28-08-2026"
-        subtitle="System dari movement ledger sampai 28/08/2026. Spreadsheet IN/OUT tidak dipakai."
+        subtitle="BALL-first. System dihitung ulang dari Opening efektif + Barang Masuk resmi - Barang Keluar non-VOID sampai 28/08."
       >
-        <DataTable rows={polyRows} columns={reconColumns} />
+        <DataTable
+          rows={polyRows}
+          columns={reconColumns}
+        />
       </Panel>
 
       <Panel
         title="Rekonsiliasi Thermal / 28-08-2026"
-        subtitle="Thermal Polos = Thermal Dus Panjang (3 DUS). Thermal Kotak = Thermal Dus Kotak (9 DUS)."
+        subtitle="Pembacaan utama DUS-only. Thermal Goldwin tidak termasuk scope fisik SO 28/08."
       >
-        <DataTable rows={thermalRows} columns={reconColumns} />
+        <DataTable
+          rows={thermalRows}
+          columns={reconColumns}
+        />
       </Panel>
-
-      {reviewRows.length ? (
-        <Panel title="Mapping Review" subtitle="Baris yang masih membutuhkan mapping manual.">
-          <DataTable
-            rows={reviewRows}
-            columns={[
-              ["sourceLabel", "Label SO"],
-              ["sourceQty", "Qty Raw"],
-              ["sourceUnit", "Unit"],
-              ["mappingStatus", "Status"],
-              ["sourceRef", "Sumber"],
-            ]}
-          />
-        </Panel>
-      ) : null}
     </>
   );
 }

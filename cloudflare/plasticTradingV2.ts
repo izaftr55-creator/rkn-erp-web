@@ -615,135 +615,386 @@ if(view==='OPENING_HISTORY'){
 }
 
 /* RKN_PLASTIC_THERMAL_RECON_V2M */
+/* RKN_PLASTIC_RECON_AUTHORITATIVE_SYNC_V2R17 */
 if(view==='RECONCILIATION'){
+  const openingDate='2026-07-28';
   const target='2026-08-28';
+  const goldwinVariantId=
+    'PL-THERMAL-THERMAL-GOLDWIN';
 
-  sql.exec(
-    `UPDATE plastic_so_snapshot
-     SET variant_id='PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK',
-         source_unit='DUS',
-         physical_qty_base=30000,
-         mapping_status='MAPPED',
-         source_ref='SO Thermal 28/08/2026 · Thermal Polos = Dus Panjang'
+  /*
+    AUTO SYNC:
+    This view is recomputed from current official documents
+    every time the page is fetched. No reconciliation cache.
+  */
+  const soSession=sql.exec(
+    `SELECT
+       so_id soId,
+       so_no soNo,
+       status,
+       date_key dateKey,
+       created_at createdAt,
+       updated_at updatedAt
+     FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
-       AND snapshot_date_key=?
-       AND line_key='SO2808-THERMAL-POLOS'`,
+       AND date_key=?
+       AND status<>'CANCELLED'
+     ORDER BY created_at DESC
+     LIMIT 1`,
     target
-  ).toArray();
+  ).toArray()[0]??null;
 
-  sql.exec(
-    `UPDATE plastic_so_snapshot
-     SET variant_id='PL-THERMAL-THERMAL-DUS-KOTAK-TANPA-MERK',
-         source_unit='DUS',
-         physical_qty_base=90000,
-         mapping_status='MAPPED',
-         source_ref='SO Thermal 28/08/2026 · Thermal Kotak = Dus Kotak'
-     WHERE business_unit_id='BU-PLASTIC'
-       AND snapshot_date_key=?
-       AND line_key='SO2808-THERMAL-KOTAK'`,
-    target
-  ).toArray();
+  const physicalByVariant=new Map<string,any>();
 
-  const variants=sql.exec(
+  if(soSession?.soId){
+    const physicalRows=sql.exec(
+      `SELECT
+         variant_id variantId,
+         physical_qty_base physicalQtyBase,
+         physical_entered physicalEntered
+       FROM plastic_so_session_line
+       WHERE so_id=?`,
+      String(soSession.soId)
+    ).toArray();
+
+    for(const row of physicalRows as any[]){
+      physicalByVariant.set(
+        T(row.variantId,120),
+        row
+      );
+    }
+  }
+
+  const products=sql.exec(
     `SELECT
        v.variant_id variantId,
        v.product_name productName,
-       v.category,
-       v.color,
-       v.size,
+       v.category category,
+       v.color color,
+       v.size size,
+       v.grade grade,
        v.base_unit baseUnit,
        v.mid_unit midUnit,
        v.pack_unit packUnit,
-       v.units_per_mid unitsPerMid,
-       v.units_per_pack unitsPerPack,
-       COALESCE(s.physical_qty_base,0) physicalQtyBase,
-       CASE WHEN s.line_key IS NULL THEN 0 ELSE 1 END snapshotPresent
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack
      FROM plastic_product_variant v
-     LEFT JOIN plastic_so_snapshot s
-       ON s.business_unit_id=v.business_unit_id
-      AND s.variant_id=v.variant_id
-      AND s.snapshot_date_key=?
-      AND s.mapping_status='MAPPED'
      WHERE v.business_unit_id='BU-PLASTIC'
        AND v.active=1
-       AND (v.category<>'THERMAL' OR s.line_key IS NOT NULL)
-     ORDER BY v.category,v.color,v.size,v.product_name`,
+       AND NOT (
+         v.variant_id=?
+         AND ?='2026-08-28'
+       )
+     ORDER BY
+       v.category,
+       UPPER(COALESCE(v.color,'')),
+       UPPER(COALESCE(v.size,'')),
+       UPPER(COALESCE(v.product_name,''))`,
+    goldwinVariantId,
     target
-  ).toArray().map((r:any)=>{
-    const sys=scalar(
+  ).toArray();
+
+  const rows=(products as any[]).map((product:any)=>{
+    const variantId=T(product.variantId,120);
+
+    const openingQtyBase=scalar(
       sql,
       `SELECT COALESCE(SUM(
          CASE
-           WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN')
+           WHEN movement_type='OPENING'
+            AND source_type='OPENING_BALANCE'
              THEN qty_base
-           ELSE -qty_base
+
+           WHEN source_type IN(
+             'OPENING_REVISION',
+             'OPENING_VOID',
+             'OPENING_RESET'
+           )
+            AND movement_type='ADJUSTMENT_IN'
+             THEN qty_base
+
+           WHEN source_type IN(
+             'OPENING_REVISION',
+             'OPENING_VOID',
+             'OPENING_RESET'
+           )
+            AND movement_type='ADJUSTMENT_OUT'
+             THEN -qty_base
+
+           ELSE 0
          END
        ),0) value
        FROM plastic_inventory_movement
        WHERE business_unit_id='BU-PLASTIC'
          AND variant_id=?
-         AND date_key<=?`,
-      String(r.variantId),target
+         AND date_key=?`,
+      variantId,
+      openingDate
     );
 
-    const phy=N(r.physicalQtyBase);
-    const diff=phy-sys;
+    const inboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_inbound_line l
+       JOIN plastic_inbound i
+         ON i.inbound_id=l.inbound_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND l.variant_id=?
+         AND i.date_key>?
+         AND i.date_key<=?`,
+      variantId,
+      openingDate,
+      target
+    );
+
+    const outboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_sales_line l
+       JOIN plastic_sales_invoice i
+         ON i.invoice_id=l.invoice_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND i.status<>'VOID'
+         AND l.variant_id=?
+         AND i.date_key>?
+         AND i.date_key<=?`,
+      variantId,
+      openingDate,
+      target
+    );
+
+    /*
+      Only genuine manual corrections are added.
+      Transaction lifecycle movements and SO posting are
+      excluded to avoid double counting.
+    */
+    const correctionQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(
+         CASE
+           WHEN movement_type='ADJUSTMENT_IN'
+             THEN qty_base
+           WHEN movement_type='ADJUSTMENT_OUT'
+             THEN -qty_base
+           ELSE 0
+         END
+       ),0) value
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND variant_id=?
+         AND date_key>?
+         AND date_key<=?
+         AND movement_type IN(
+           'ADJUSTMENT_IN','ADJUSTMENT_OUT'
+         )
+         AND source_type NOT LIKE 'INBOUND%'
+         AND source_type NOT LIKE 'SALE%'
+         AND source_type NOT LIKE 'OPENING%'
+         AND source_type NOT IN(
+           'SO_SESSION','STOCK_OPNAME'
+         )`,
+      variantId,
+      openingDate,
+      target
+    );
+
+    const systemQtyBase=
+      openingQtyBase+
+      inboundQtyBase-
+      outboundQtyBase+
+      correctionQtyBase;
+
+    const physical=
+      physicalByVariant.get(variantId)??null;
+
+    const physicalEntered=
+      Number(physical?.physicalEntered||0)===1;
+
+    const physicalQtyBase=
+      physicalEntered
+        ? N(physical?.physicalQtyBase)
+        : 0;
+
+    const varianceQtyBase=
+      physicalEntered
+        ? physicalQtyBase-systemQtyBase
+        : null;
+
+    const status=
+      !physicalEntered
+        ? 'BELUM DIHITUNG'
+        : Math.abs(N(varianceQtyBase))<0.000001
+          ? 'BALANCE'
+          : 'SELISIH';
 
     return{
-      ...r,
-      systemQtyBase:sys,
-      varianceQtyBase:diff,
-      status:Math.abs(diff)<1e-9?'BALANCE':'SELISIH'
+      ...product,
+      openingQtyBase,
+      inboundQtyBase,
+      outboundQtyBase,
+      correctionQtyBase,
+      systemQtyBase,
+      physicalQtyBase,
+      physicalEntered:physicalEntered?1:0,
+      varianceQtyBase,
+      status
     };
   });
 
-  const review=sql.exec(
-    `SELECT
-       line_key lineKey,
-       source_label sourceLabel,
-       source_qty sourceQty,
-       source_unit sourceUnit,
-       mapping_status mappingStatus,
-       source_ref sourceRef
-     FROM plastic_so_snapshot
-     WHERE business_unit_id='BU-PLASTIC'
-       AND snapshot_date_key=?
-       AND mapping_status='REVIEW'
-     ORDER BY line_key`,
-    target
-  ).toArray();
+  const poly=rows.filter(
+    (row:any)=>T(row.category,40)!=='THERMAL'
+  );
 
-  const poly=variants.filter((r:any)=>String(r.category)!=='THERMAL');
-  const thermal=variants.filter((r:any)=>String(r.category)==='THERMAL');
+  const thermal=rows.filter(
+    (row:any)=>T(row.category,40)==='THERMAL'
+  );
 
-  const sum=(rows:any[],key:string)=>
-    rows.reduce((s:number,r:any)=>s+N(r[key]),0);
+  const polyPhysicalParts=(items:any[],key:string)=>{
+    let ball=0;
+    let roll=0;
 
-  const balanced=variants.filter((r:any)=>r.status==='BALANCE').length;
+    for(const row of items){
+      const value=Math.max(0,N(row[key]));
+      const pack=Math.max(
+        1,
+        N(row.unitsPerPack,1)
+      );
+
+      const balls=Math.floor(
+        (value+0.000000001)/pack
+      );
+
+      const loose=Math.max(
+        0,
+        value-(balls*pack)
+      );
+
+      ball+=balls;
+      roll+=loose;
+    }
+
+    return{ball,roll};
+  };
+
+  const polySystemParts=
+    polyPhysicalParts(poly,'systemQtyBase');
+
+  const polyPhysicalPartsTotal=
+    polyPhysicalParts(
+      poly.filter(
+        (row:any)=>Number(row.physicalEntered||0)===1
+      ),
+      'physicalQtyBase'
+    );
+
+  const sum=(items:any[],key:string)=>
+    items.reduce(
+      (total:number,row:any)=>
+        total+N(row[key]),
+      0
+    );
+
+  const balanced=rows.filter(
+    (row:any)=>row.status==='BALANCE'
+  ).length;
+
+  const variance=rows.filter(
+    (row:any)=>row.status==='SELISIH'
+  ).length;
+
+  const uncounted=rows.filter(
+    (row:any)=>row.status==='BELUM DIHITUNG'
+  ).length;
+
+  const polyLess=poly.filter(
+    (row:any)=>
+      row.varianceQtyBase!==null &&
+      N(row.varianceQtyBase)<-0.000001
+  ).length;
+
+  const polyMore=poly.filter(
+    (row:any)=>
+      row.varianceQtyBase!==null &&
+      N(row.varianceQtyBase)>0.000001
+  ).length;
+
+  const thermalSystemDus=thermal.reduce(
+    (total:number,row:any)=>
+      total+
+      (
+        N(row.systemQtyBase)/
+        Math.max(1,N(row.unitsPerPack,1))
+      ),
+    0
+  );
+
+  const thermalPhysicalDus=thermal
+    .filter(
+      (row:any)=>Number(row.physicalEntered||0)===1
+    )
+    .reduce(
+      (total:number,row:any)=>
+        total+
+        (
+          N(row.physicalQtyBase)/
+          Math.max(1,N(row.unitsPerPack,1))
+        ),
+      0
+    );
 
   return{
     view,
     periodKey:period,
     actor:a,
     targetDateKey:target,
-    rows:variants,
-    reviewRows:review,
+    openingDateKey:openingDate,
+    syncedAt:now(),
+    syncMode:'AUTO_ON_VIEW',
+    sourceModel:
+      'OPENING_EFFECTIVE_PLUS_OFFICIAL_IN_MINUS_NONVOID_OUT',
+    soSession,
+    rows,
+    reviewRows:[],
     summary:{
-      totalVariants:variants.length,
+      totalVariants:rows.length,
+      countedVariants:
+        rows.length-uncounted,
       balancedVariants:balanced,
-      varianceVariants:variants.length-balanced,
-      polyPhysicalQtyBase:sum(poly,'physicalQtyBase'),
-      polySystemQtyBase:sum(poly,'systemQtyBase'),
-      polyVarianceQtyBase:sum(poly,'physicalQtyBase')-sum(poly,'systemQtyBase'),
-      thermalPhysicalQtyBase:sum(thermal,'physicalQtyBase'),
-      thermalSystemQtyBase:sum(thermal,'systemQtyBase'),
-      thermalVarianceQtyBase:sum(thermal,'physicalQtyBase')-sum(thermal,'systemQtyBase'),
-      thermalMappingReview:review.length,
-      reference:'Rekap SO Polymailer + SO Thermal / 28/08/2026'
+      varianceVariants:variance,
+      uncountedVariants:uncounted,
+
+      polySystemBallCount:
+        polySystemParts.ball,
+      polySystemLooseRollCount:
+        polySystemParts.roll,
+
+      polyPhysicalBallCount:
+        polyPhysicalPartsTotal.ball,
+      polyPhysicalLooseRollCount:
+        polyPhysicalPartsTotal.roll,
+
+      polyLessVariants:polyLess,
+      polyMoreVariants:polyMore,
+
+      polySystemQtyBase:
+        sum(poly,'systemQtyBase'),
+      polyPhysicalQtyBase:
+        sum(
+          poly.filter(
+            (row:any)=>
+              Number(row.physicalEntered||0)===1
+          ),
+          'physicalQtyBase'
+        ),
+
+      thermalSystemDus,
+      thermalPhysicalDus,
+
+      reference:
+        'Opening efektif 28/07 + IN resmi - OUT non-VOID + SO fisik 28/08'
     }
   };
 }
-
 if(view==='PRODUCTS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' ORDER BY v.active DESC,v.category,v.product_name,v.color,v.size`).toArray()};
 if(view==='CUSTOMERS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT c.customer_id customerId,c.customer_name customerName,c.phone,c.address,c.notes,c.active,COUNT(DISTINCT i.invoice_id) invoiceCount,COALESCE(SUM(i.grand_total_rp),0) totalSalesRp,MAX(i.date_key) lastPurchaseDate FROM plastic_customer c LEFT JOIN plastic_sales_invoice i ON i.customer_id=c.customer_id AND i.status<>'VOID' WHERE c.business_unit_id='BU-PLASTIC' GROUP BY c.customer_id ORDER BY c.active DESC,c.customer_name`).toArray()};
 /* RKN_PLASTIC_INBOUND_VIEW_V2N */
