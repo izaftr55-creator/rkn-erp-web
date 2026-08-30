@@ -5121,6 +5121,55 @@ function Reports({
     ].join("\n");
   };
 
+  /* RKN_PLASTIC_PDF_NATIVE_MULTILINE_V2R12 */
+  const reportQtyPdfCell = (
+    row: Row,
+    totalValue: unknown
+  ): string | string[] => {
+    const raw = Number(totalValue || 0);
+
+    if (isThermalRow(row)) {
+      const factor = Math.max(
+        1,
+        Number(row.unitsPerPack || 1)
+      );
+
+      return `${reportQtyFmt.format(raw / factor)} DUS`;
+    }
+
+    const factor = Math.max(
+      1,
+      Number(row.unitsPerPack || 1)
+    );
+
+    const sign = raw < 0 ? -1 : 1;
+    let total = Math.abs(raw);
+
+    const ball = Math.floor(
+      (total + 1e-9) / factor
+    );
+
+    total -= ball * factor;
+
+    const roll = Math.max(0, total);
+
+    const signedBall =
+      ball === 0 ? 0 : ball * sign;
+
+    const signedRoll =
+      roll === 0 ? 0 : roll * sign;
+
+    /*
+      IMPORTANT:
+      Return an ARRAY, not a string with "\\n".
+      AutoTable renders each array entry as a real line.
+    */
+    return [
+      `BALL  ${reportQtyFmt.format(signedBall)}`,
+      `ROLL  ${reportQtyFmt.format(signedRoll)}`,
+    ];
+  };
+
   const reportQtyCell = (row: Row, totalValue: unknown) => (
     <span
       style={{
@@ -5345,7 +5394,7 @@ function Reports({
           font: "helvetica",
           fontSize: 7.1,
           textColor: [25, 34, 46],
-          cellPadding: 1.45,
+          cellPadding: 1.7,
           lineColor: [68, 82, 99],
           lineWidth: 0.16,
           overflow: "linebreak",
@@ -5384,15 +5433,15 @@ function Reports({
           row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
-          reportQtyString(row, row.openingQtyBase),
-          reportQtyString(row, row.inboundQtyBase),
-          reportQtyString(row, row.outboundQtyBase),
-          reportQtyString(row, row.expectedQtyBase),
+          reportQtyPdfCell(row, row.openingQtyBase),
+          reportQtyPdfCell(row, row.inboundQtyBase),
+          reportQtyPdfCell(row, row.outboundQtyBase),
+          reportQtyPdfCell(row, row.expectedQtyBase),
           row.counted
-            ? reportQtyString(row, row.physicalQtyBase)
+            ? reportQtyPdfCell(row, row.physicalQtyBase)
             : "BELUM DIHITUNG",
           row.counted
-            ? reportQtyString(row, row.differenceQtyBase)
+            ? reportQtyPdfCell(row, row.differenceQtyBase)
             : "-",
         ]);
 
