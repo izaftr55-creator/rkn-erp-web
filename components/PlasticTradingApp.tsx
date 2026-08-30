@@ -3963,6 +3963,31 @@ function Opname({
   const allEntered =
     lines.length > 0 && countedRows.length === lines.length;
 
+  /* RKN_PLASTIC_SO_LIVE_RECON_UI_V2R9 */
+  const openLiveReconciliation = () => {
+    if (typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(
+        "rkn-plastic-active-tab",
+        "REPORTS"
+      );
+
+      const soPeriod = String(
+        active?.dateKey || "2026-08-28"
+      ).slice(0, 7);
+
+      window.localStorage.setItem(
+        "rkn-plastic-active-period",
+        soPeriod
+      );
+    } catch {
+      // localStorage failure must not affect SO data.
+    }
+
+    window.location.reload();
+  };
+
   const clearEntry = () => {
     setVariantId("");
     setPhysicalQty("");
@@ -4236,7 +4261,7 @@ function Opname({
             <>
               <Panel
                 title="Input Fisik"
-                subtitle="Masukkan satu per satu. Angka sistem disembunyikan sampai Review."
+                subtitle="Setiap Simpan Item langsung masuk Rekonsiliasi. Angka sistem tetap disembunyikan di layar hitung."
               >
                 <div className={styles.soDateStrip}>
                   <div>
@@ -4404,14 +4429,32 @@ function Opname({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    disabled={busy || !canManage || !allEntered}
-                    onClick={reviewSo}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
                   >
-                    Review SO
-                  </button>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      disabled={busy}
+                      onClick={openLiveReconciliation}
+                    >
+                      Lihat Rekonsiliasi
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      disabled={busy || !canManage || !allEntered}
+                      onClick={reviewSo}
+                    >
+                      Final Review SO
+                    </button>
+                  </div>
                 </div>
               </Panel>
             </>
@@ -4743,6 +4786,7 @@ function Reports({
 }) {
   /* RKN_PLASTIC_SIMPLE_RECON_REPORT_UI_V2R3 */
   /* RKN_PLASTIC_RECON_READABILITY_V2R7 */
+  /* RKN_PLASTIC_SO_LIVE_RECON_PDF_V2R9 */
   type ReportTab =
     | "RECON"
     | "STOCK"
@@ -4848,7 +4892,7 @@ function Reports({
     return [
       `BALL  ${reportQtyFmt.format(signedBall)}`,
       `ROLL  ${reportQtyFmt.format(signedRoll)}`,
-    ].join("\\n");
+    ].join("\n");
   };
 
   const reportQtyCell = (row: Row, totalValue: unknown) => (
@@ -4887,15 +4931,10 @@ function Reports({
         differenceQtyBase,
         status,
       };
-    })
-    .filter((row: Row) => {
-      const activity =
-        Math.abs(Number(row.openingQtyBase || 0)) +
-        Math.abs(Number(row.inboundQtyBase || 0)) +
-        Math.abs(Number(row.outboundQtyBase || 0)) +
-        Math.abs(Number(row.correctionQtyBase || 0));
-      return activity > 0.000001 || Boolean(row.counted);
     });
+  /* RKN_PLASTIC_SO_LIVE_RECON_MODEL_V2R9
+     Keep every active SKU from the SO session in reconciliation.
+     Uncounted zero-activity SKU must remain visible as BELUM DIHITUNG. */
 
   const countedRows = simpleRows.filter((row: Row) => row.counted);
   const balanceRows = simpleRows.filter(
@@ -5096,12 +5135,10 @@ function Reports({
         alternateRowStyles: {
           fillColor: [246, 248, 251],
         },
-        didDrawPage: (hook: any) =>
-          drawHeader(Number(hook.pageNumber || 1)),
+        didDrawPage: () =>
+          drawHeader(doc.getNumberOfPages()),
       });
     };
-
-    drawHeader(1);
 
     if (reportTab === "RECON") {
       const reconHead = [
