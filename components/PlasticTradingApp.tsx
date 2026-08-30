@@ -4703,6 +4703,7 @@ function Reports({
 }) {
   /* RKN_PLASTIC_REPORT_CENTER_UI_V2Q */
   type ReportTab =
+    | "FINAL"
     | "STOCK"
     | "LEDGER_SO"
     | "SO_PREP"
@@ -4712,7 +4713,7 @@ function Reports({
     | "OUTBOUND";
 
   const [reportTab, setReportTab] =
-    useState<ReportTab>("STOCK");
+    useState<ReportTab>("FINAL");
 
   const stock = Array.isArray(data.stock) ? data.stock : [];
   const soPrep = Array.isArray(data.soPrep) ? data.soPrep : [];
@@ -4736,6 +4737,22 @@ function Reports({
   );
   const auditSoDate = String(data.auditSoDate || "2026-08-28");
   const auditSo = data.auditSo || null;
+  const finalStatus = String(data.finalStatus || "REVIEW");
+  const finalFailCount = Number(data.finalFailCount || 0);
+  const finalChecks = Array.isArray(data.finalChecks)
+    ? data.finalChecks
+    : [];
+  const finalNegativeRows = Array.isArray(data.finalNegativeRows)
+    ? data.finalNegativeRows
+    : [];
+  const finalLiveMismatchRows = Array.isArray(data.finalLiveMismatchRows)
+    ? data.finalLiveMismatchRows
+    : [];
+  const finalSnapshotMismatchRows = Array.isArray(
+    data.finalSnapshotMismatchRows
+  )
+    ? data.finalSnapshotMismatchRows
+    : [];
 
 
   const polymailer = stock.filter(
@@ -4804,19 +4821,21 @@ function Reports({
   };
 
   const reportTitle =
-    reportTab === "STOCK"
-      ? "Laporan Stok"
-      : reportTab === "LEDGER_SO"
-        ? "Audit Opening ke Stock Opname"
-      : reportTab === "SO_PREP"
-        ? "Persiapan Stock Opname"
-        : reportTab === "SO_RESULT"
-          ? "Hasil Stock Opname"
-          : reportTab === "RECEIVABLES"
-            ? "Piutang Belum Bayar"
-            : reportTab === "INBOUND"
-              ? "Barang Masuk"
-              : "Barang Keluar";
+    reportTab === "FINAL"
+      ? "Final Production Check"
+      : reportTab === "STOCK"
+        ? "Laporan Stok"
+        : reportTab === "LEDGER_SO"
+          ? "Audit Opening ke Stock Opname"
+          : reportTab === "SO_PREP"
+            ? "Persiapan Stock Opname"
+            : reportTab === "SO_RESULT"
+              ? "Hasil Stock Opname"
+              : reportTab === "RECEIVABLES"
+                ? "Piutang Belum Bayar"
+                : reportTab === "INBOUND"
+                  ? "Barang Masuk"
+                  : "Barang Keluar";
 
   const loadLogoData = async () => {
     const response = await fetch("/rkn-logo.png", {
@@ -4864,7 +4883,9 @@ function Reports({
     }
 
     const subtitle =
-      reportTab === "LEDGER_SO"
+      reportTab === "FINAL"
+        ? `FINAL CHECK / OPENING ${auditOpeningDate} / SO ${auditSoDate}`
+      : reportTab === "LEDGER_SO"
         ? `OPENING ${auditOpeningDate} / CUT-OFF SO ${auditSoDate}`
         : reportTab === "SO_PREP"
         ? activeSo
@@ -4969,6 +4990,17 @@ function Reports({
     };
 
     drawHeader(1);
+
+    if (reportTab === "FINAL") {
+      table(
+        ["Check", "Status", "Detail"],
+        finalChecks.map((row: Row) => [
+          row.check || "-",
+          row.status || "-",
+          row.detail || "-",
+        ])
+      );
+    }
 
     if (reportTab === "STOCK") {
       let y = table(
@@ -5296,7 +5328,9 @@ function Reports({
     }
 
     const suffix =
-      reportTab === "LEDGER_SO"
+      reportTab === "FINAL"
+        ? `FINAL_${auditOpeningDate}_${auditSoDate}`
+      : reportTab === "LEDGER_SO"
         ? `${auditOpeningDate}_${auditSoDate}`
         : reportTab === "SO_PREP" && activeSo
         ? `${activeSo.dateKey}_${activeSo.soNo}`
@@ -5310,6 +5344,7 @@ function Reports({
   };
 
   const tabs: [ReportTab, string][] = [
+    ["FINAL", "Final Check"],
     ["STOCK", "Stok"],
     ["LEDGER_SO", "Audit 28/07 → 28/08"],
     ["SO_PREP", "Persiapan SO"],
@@ -5354,6 +5389,119 @@ function Reports({
           </button>
         ))}
       </div>
+
+      {reportTab === "FINAL" ? (
+        <>
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Production Readiness</span>
+              <strong>
+                {finalStatus === "PASS"
+                  ? "PASS / SIAP REPORT"
+                  : `REVIEW / ${finalFailCount} CHECK GAGAL`}
+              </strong>
+            </div>
+            <small>
+              Final Check membaca ledger asli: Opening 28/07, kronologi IN/OUT,
+              snapshot SO 28/08, hasil hitung fisik, serta kesesuaian On Hand
+              live dengan movement ledger. Guard stok tidak dibypass.
+            </small>
+          </div>
+
+          <section className={styles.reportMetricGrid}>
+            <MetricCard
+              label="Final Status"
+              value={finalStatus}
+            />
+            <MetricCard
+              label="Fail"
+              value={qtyText(finalFailCount)}
+            />
+            <MetricCard
+              label="Negative Timeline"
+              value={qtyText(finalNegativeRows.length)}
+            />
+            <MetricCard
+              label="On Hand Mismatch"
+              value={qtyText(finalLiveMismatchRows.length)}
+            />
+          </section>
+
+          <Panel
+            title="Final Production Check"
+            subtitle="Semua baris wajib PASS kecuali Piutang yang bersifat INFO."
+          >
+            <DataTable
+              rows={finalChecks}
+              columns={[
+                ["check", "Check"],
+                ["status", "Status"],
+                ["detail", "Detail"],
+              ]}
+            />
+          </Panel>
+
+          {finalNegativeRows.length ? (
+            <Panel
+              title="Kronologi Stok Negatif"
+              subtitle="Ini penyebab transaksi historis dapat memunculkan PLASTIC_INSUFFICIENT_STOCK. Input / koreksi transaksi harus mengikuti tanggal."
+            >
+              <DataTable
+                rows={finalNegativeRows}
+                columns={[
+                  ["dateKey", "Tanggal"],
+                  ["productName", "Produk"],
+                  ["color", "Warna"],
+                  ["size", "Ukuran"],
+                  ["movementType", "Movement"],
+                  ["sourceType", "Source"],
+                  ["beforeQtyBase", "Sebelum"],
+                  ["movementQtyBase", "Qty"],
+                  ["afterQtyBase", "Sesudah"],
+                ]}
+              />
+            </Panel>
+          ) : null}
+
+          {finalSnapshotMismatchRows.length ? (
+            <Panel
+              title="Ledger vs Snapshot SO"
+              subtitle="System hasil Opening + IN - OUT tidak sama dengan snapshot SO."
+            >
+              <DataTable
+                rows={finalSnapshotMismatchRows}
+                columns={[
+                  ["productName", "Produk"],
+                  ["color", "Warna"],
+                  ["size", "Ukuran"],
+                  ["systemLedgerQtyBase", "Ledger 28/08"],
+                  ["systemSnapshotQtyBase", "Snapshot SO"],
+                  ["ledgerVsSnapshotQtyBase", "Diff"],
+                ]}
+              />
+            </Panel>
+          ) : null}
+
+          {finalLiveMismatchRows.length ? (
+            <Panel
+              title="On Hand Live Mismatch"
+              subtitle="Inventory Balance berbeda dengan full movement ledger."
+            >
+              <DataTable
+                rows={finalLiveMismatchRows}
+                columns={[
+                  ["productName", "Produk"],
+                  ["color", "Warna"],
+                  ["size", "Ukuran"],
+                  ["ledgerQtyBase", "Ledger"],
+                  ["liveQtyBase", "On Hand"],
+                  ["diffQtyBase", "Diff"],
+                ]}
+              />
+            </Panel>
+          ) : null}
+        </>
+      ) : null}
 
       {reportTab === "STOCK" ? (
         <>

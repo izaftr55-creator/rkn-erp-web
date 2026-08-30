@@ -807,6 +807,7 @@ if(view==='RECEIVABLES'){
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 /* RKN_PLASTIC_REPORT_DATE_CUTOFF_V2Q9 */
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
+/* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 if(view==='REPORTS'){
   const stock=sql.exec(
     `SELECT
@@ -1110,6 +1111,167 @@ if(view==='REPORTS'){
     };
   });
 
+
+  /* RKN_PLASTIC_FINAL_PRODUCTION_CHECK_MODEL_V2R2 */
+  const finalTimelineMovements=sql.exec(
+    `SELECT
+       m.variant_id variantId,m.date_key dateKey,m.movement_type movementType,
+       m.qty_base qtyBase,m.source_type sourceType,m.source_key sourceKey,
+       m.created_at createdAt,m.movement_id movementId,
+       v.product_name productName,v.color,v.size
+     FROM plastic_inventory_movement m
+     LEFT JOIN plastic_product_variant v ON v.variant_id=m.variant_id
+     WHERE m.business_unit_id='BU-PLASTIC'
+       AND m.date_key>=? AND m.date_key<=?
+     ORDER BY m.variant_id,m.date_key,m.created_at,m.movement_id`,
+    auditOpeningDate,auditSoDate
+  ).toArray();
+
+  const finalNegativeRows:any[]=[];
+  const finalQtyByVariant=new Map<string,number>();
+
+  for(const movement of finalTimelineMovements as any[]){
+    const sourceType=T(movement.sourceType,80);
+    if(['SO_SESSION','STOCK_OPNAME'].includes(sourceType))continue;
+
+    const variantId=T(movement.variantId,120);
+    const type=T(movement.movementType,40);
+    const qty=Math.max(0,N(movement.qtyBase));
+    const positive=['OPENING','IN','RETURN_IN','ADJUSTMENT_IN'].includes(type);
+    const negative=['OUT','RETURN_OUT','ADJUSTMENT_OUT'].includes(type);
+    const before=N(finalQtyByVariant.get(variantId));
+    const after=before+(positive?qty:negative?-qty:0);
+
+    if(after<-1e-9){
+      finalNegativeRows.push({
+        variantId,
+        productName:T(movement.productName,160),
+        color:T(movement.color,80),
+        size:T(movement.size,80),
+        dateKey:T(movement.dateKey,10),
+        movementType:type,
+        sourceType,
+        sourceKey:T(movement.sourceKey,160),
+        beforeQtyBase:before,
+        movementQtyBase:qty,
+        afterQtyBase:after
+      });
+    }
+
+    finalQtyByVariant.set(variantId,after);
+  }
+
+  const finalAllMovements=sql.exec(
+    `SELECT
+       variant_id variantId,movement_type movementType,qty_base qtyBase
+     FROM plastic_inventory_movement
+     WHERE business_unit_id='BU-PLASTIC'`
+  ).toArray();
+
+  const fullLedgerQtyByVariant=new Map<string,number>();
+  for(const movement of finalAllMovements as any[]){
+    const variantId=T(movement.variantId,120);
+    const type=T(movement.movementType,40);
+    const qty=Math.max(0,N(movement.qtyBase));
+    const positive=['OPENING','IN','RETURN_IN','ADJUSTMENT_IN'].includes(type);
+    const negative=['OUT','RETURN_OUT','ADJUSTMENT_OUT'].includes(type);
+    fullLedgerQtyByVariant.set(
+      variantId,
+      N(fullLedgerQtyByVariant.get(variantId))+(positive?qty:negative?-qty:0)
+    );
+  }
+
+  const finalLiveMismatchRows=(auditProducts as any[])
+    .map((product:any)=>{
+      const variantId=T(product.variantId,120);
+      const ledgerQtyBase=N(fullLedgerQtyByVariant.get(variantId));
+      const liveQtyBase=N(product.liveOnHandQtyBase);
+      return{
+        variantId,
+        productName:T(product.productName,160),
+        color:T(product.color,80),
+        size:T(product.size,80),
+        ledgerQtyBase,
+        liveQtyBase,
+        diffQtyBase:liveQtyBase-ledgerQtyBase
+      };
+    })
+    .filter((row:any)=>Math.abs(N(row.diffQtyBase))>0.000001);
+
+  const finalSnapshotMismatchRows=(auditLedger as any[])
+    .filter((row:any)=>
+      row.systemSnapshotQtyBase!==null &&
+      row.systemSnapshotQtyBase!==undefined &&
+      Math.abs(N(row.ledgerVsSnapshotQtyBase))>0.000001
+    );
+
+  const finalCountedSku=(auditLedger as any[])
+    .filter((row:any)=>Number(row.physicalEntered||0)===1).length;
+
+  const finalActiveSku=(auditProducts as any[]).length;
+  const finalOpeningMovementCount=(auditMovements as any[])
+    .filter((row:any)=>
+      T(row.dateKey,10)===auditOpeningDate &&
+      (
+        T(row.movementType,40)==='OPENING' ||
+        ['OPENING_REVISION','OPENING_VOID'].includes(T(row.sourceType,80))
+      )
+    ).length;
+
+  const finalChecks=[
+    {
+      check:'OPENING 28/07/2026',
+      status:finalOpeningMovementCount>0?'PASS':'FAIL',
+      detail:finalOpeningMovementCount>0
+        ? `${finalOpeningMovementCount} movement opening / revisi ditemukan`
+        : 'Belum ada movement opening 28/07/2026'
+    },
+    {
+      check:'KRONOLOGI STOK 28/07 → 28/08',
+      status:finalNegativeRows.length===0?'PASS':'FAIL',
+      detail:finalNegativeRows.length===0
+        ? 'Tidak ada saldo negatif saat ledger direplay kronologis'
+        : `${finalNegativeRows.length} movement membuat stok negatif`
+    },
+    {
+      check:'SO 28/08/2026',
+      status:auditSo||legacyAuditOpname?'PASS':'FAIL',
+      detail:auditSo
+        ? `${T(auditSo.soNo,160)} / ${T(auditSo.status,40)}`
+        : legacyAuditOpname
+          ? `${T(legacyAuditOpname.opnameNo,160)} / POSTED_LEGACY`
+          : 'Belum ada SO tanggal 28/08/2026'
+    },
+    {
+      check:'SKU SUDAH DIHITUNG',
+      status:finalActiveSku>0&&finalCountedSku===finalActiveSku?'PASS':'FAIL',
+      detail:`${finalCountedSku} / ${finalActiveSku} SKU`
+    },
+    {
+      check:'LEDGER VS SNAPSHOT SO',
+      status:finalSnapshotMismatchRows.length===0?'PASS':'FAIL',
+      detail:finalSnapshotMismatchRows.length===0
+        ? 'System 28/08 match snapshot SO'
+        : `${finalSnapshotMismatchRows.length} SKU tidak match`
+    },
+    {
+      check:'ON HAND LIVE VS MOVEMENT LEDGER',
+      status:finalLiveMismatchRows.length===0?'PASS':'FAIL',
+      detail:finalLiveMismatchRows.length===0
+        ? 'Inventory balance match full movement ledger'
+        : `${finalLiveMismatchRows.length} SKU berbeda`
+    },
+    {
+      check:'PIUTANG AKTIF',
+      status:'INFO',
+      detail:`${receivables.length} invoice belum lunas`
+    }
+  ];
+
+  const finalFailCount=finalChecks.filter((row:any)=>row.status==='FAIL').length;
+  const finalStatus=finalFailCount===0?'PASS':'REVIEW';
+
+
   return{
     view,
     periodKey:period,
@@ -1136,7 +1298,13 @@ if(view==='REPORTS'){
           status: "POSTED_LEGACY"
         }
       : null),
-    auditLedger
+    auditLedger,
+    finalStatus,
+    finalFailCount,
+    finalChecks,
+    finalNegativeRows,
+    finalLiveMismatchRows,
+    finalSnapshotMismatchRows
   };
 }
 
