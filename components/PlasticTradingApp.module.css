@@ -5435,3 +5435,53 @@
     width: 100% !important;
   }
 }
+
+
+/* =========================================================
+   RKN_PLASTIC_CUSTOMER_ARROW_CLEAN_V2R8_FIXED2
+   Hide native datalist triangle in Customer Name.
+   Autocomplete behavior remains available.
+   UI ONLY.
+   ========================================================= */
+
+.shell input[list] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+  padding-right: 11px !important;
+}
+
+.customerField input,
+.customerField input[list] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background-image: none !important;
+  padding-right: 11px !important;
+}
+
+.shell input[list]::-webkit-calendar-picker-indicator,
+.customerField input::-webkit-calendar-picker-indicator,
+.customerField input[list]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+.shell input[list]::-webkit-list-button,
+.customerField input::-webkit-list-button,
+.customerField input[list]::-webkit-list-button {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.customerField input {
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 0 0 !important;
+}
