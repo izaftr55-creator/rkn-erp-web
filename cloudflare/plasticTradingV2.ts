@@ -588,6 +588,7 @@ if(view==='CUSTOMERS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT
 /* RKN_PLASTIC_INBOUND_VIEW_V2N */
 /* RKN_PLASTIC_HISTORY_PERIOD_RECOVERY_V2Q9 INBOUND */
 if(view==='INBOUND')return{
+  /* RKN_PLASTIC_INBOUND_HISTORY_RECOVERY_V2R */
   view,
   periodKey:period,
   actor:a,
@@ -596,67 +597,138 @@ if(view==='INBOUND')return{
        i.inbound_id inboundId,
        i.inbound_no inboundNo,
        i.date_key dateKey,
+       i.period_key periodKey,
        i.supplier_name supplierName,
        i.supplier_ref supplierRef,
-       i.note note,
        l.line_id lineId,
-       l.line_id lineId,l.variant_id variantId,
-       v.product_name productName,
-       v.category category,
-       v.color color,
-       v.size size,
-       v.grade grade,
-       v.base_unit baseUnit,
-       v.mid_unit midUnit,
-       v.pack_unit packUnit,
-       v.units_per_mid unitsPerMid,
-       v.units_per_pack unitsPerPack,
-       l.qty_input qtyInput,
-       l.input_unit inputUnit,
-       l.qty_base qtyBase,
-       l.unit_cost_rp unitCostRp,
-       l.line_total_rp lineTotalRp
+       COALESCE(l.variant_id,'') variantId,
+       CASE
+         WHEN l.line_id IS NULL THEN '[HEADER TANPA ITEM]'
+         WHEN v.variant_id IS NULL THEN '[MASTER PRODUK TIDAK TERHUBUNG]'
+         ELSE v.product_name
+       END productName,
+       COALESCE(v.category,'') category,
+       COALESCE(v.color,'') color,
+       COALESCE(v.size,'') size,
+       COALESCE(v.grade,'') grade,
+       COALESCE(v.base_unit,'') baseUnit,
+       COALESCE(v.mid_unit,'') midUnit,
+       COALESCE(v.pack_unit,'') packUnit,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       COALESCE(l.qty_input,0) qtyInput,
+       COALESCE(l.input_unit,'') inputUnit,
+       COALESCE(l.qty_base,0) qtyBase,
+       COALESCE(l.unit_cost_rp,0) unitCostRp,
+       COALESCE(l.line_total_rp,0) lineTotalRp,
+       CASE
+         WHEN l.line_id IS NULL THEN 'HEADER_ONLY'
+         WHEN v.variant_id IS NULL THEN 'MASTER_MISSING'
+         ELSE 'OK'
+       END historyIntegrity,
+       CASE
+         WHEN i.period_key<>substr(i.date_key,1,7) THEN 1
+         ELSE 0
+       END periodMismatch
      FROM plastic_inbound i
-     JOIN plastic_inbound_line l
+     LEFT JOIN plastic_inbound_line l
        ON l.inbound_id=i.inbound_id
-     JOIN plastic_product_variant v
+     LEFT JOIN plastic_product_variant v
        ON v.variant_id=l.variant_id
      WHERE i.business_unit_id='BU-PLASTIC'
-       AND substr(i.date_key,1,7)=?
+       AND (i.period_key=? OR substr(i.date_key,1,7)=?)
      ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
-     LIMIT 500`,
+     LIMIT 1200`,
+    period,
     period
   ).toArray()
 };
-
-/* RKN_PLASTIC_OUTBOUND_LEDGER_VIEW_V2O */
-/* RKN_PLASTIC_HISTORY_PERIOD_RECOVERY_V2Q9 OUTBOUND */
 if(view==='OUTBOUND')return{
+  /* RKN_PLASTIC_OUTBOUND_HISTORY_RECOVERY_V2R */
   view,
   periodKey:period,
   actor:a,
   rows:sql.exec(
-    `SELECT i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,i.period_key periodKey,
-            i.customer_id customerId,COALESCE(c.customer_name,'') customerName,i.status,
-            i.subtotal_rp subtotalRp,i.discount_rp discountRp,i.grand_total_rp grandTotalRp,i.note,
-            COALESCE((SELECT SUM(CASE WHEN p.status='POSTED' THEN p.amount_rp ELSE 0 END) FROM plastic_payment p WHERE p.business_unit_id='BU-PLASTIC' AND p.invoice_id=i.invoice_id),0) paidRp,
-            MAX(i.grand_total_rp-COALESCE((SELECT SUM(CASE WHEN p.status='POSTED' THEN p.amount_rp ELSE 0 END) FROM plastic_payment p WHERE p.business_unit_id='BU-PLASTIC' AND p.invoice_id=i.invoice_id),0),0) outstandingRp,
-            COALESCE((SELECT SUM(x.cogs_total_rp) FROM plastic_sales_line x WHERE x.invoice_id=i.invoice_id),0) cogsRp,
-            l.line_id lineId,l.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,
-            v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,
-            l.qty_input qtyInput,l.input_unit inputUnit,l.qty_base qtyBase,l.unit_price_rp unitPriceRp,
-            l.line_total_rp lineTotalRp,l.unit_cogs_rp unitCogsRp,l.cogs_total_rp lineCogsRp
+    `SELECT
+       i.invoice_id invoiceId,
+       i.invoice_no invoiceNo,
+       i.date_key dateKey,
+       i.period_key periodKey,
+       i.customer_id customerId,
+       COALESCE(c.customer_name,'') customerName,
+       i.status,
+       i.subtotal_rp subtotalRp,
+       i.discount_rp discountRp,
+       i.grand_total_rp grandTotalRp,
+       i.note,
+       COALESCE((
+         SELECT SUM(CASE WHEN p.status='POSTED' THEN p.amount_rp ELSE 0 END)
+         FROM plastic_payment p
+         WHERE p.business_unit_id='BU-PLASTIC'
+           AND p.invoice_id=i.invoice_id
+       ),0) paidRp,
+       MAX(
+         i.grand_total_rp-COALESCE((
+           SELECT SUM(CASE WHEN p.status='POSTED' THEN p.amount_rp ELSE 0 END)
+           FROM plastic_payment p
+           WHERE p.business_unit_id='BU-PLASTIC'
+             AND p.invoice_id=i.invoice_id
+         ),0),
+         0
+       ) outstandingRp,
+       COALESCE((
+         SELECT SUM(x.cogs_total_rp)
+         FROM plastic_sales_line x
+         WHERE x.invoice_id=i.invoice_id
+       ),0) cogsRp,
+       l.line_id lineId,
+       COALESCE(l.variant_id,'') variantId,
+       CASE
+         WHEN l.line_id IS NULL THEN '[HEADER TANPA ITEM]'
+         WHEN v.variant_id IS NULL THEN '[MASTER PRODUK TIDAK TERHUBUNG]'
+         ELSE v.product_name
+       END productName,
+       COALESCE(v.category,'') category,
+       COALESCE(v.color,'') color,
+       COALESCE(v.size,'') size,
+       COALESCE(v.grade,'') grade,
+       COALESCE(v.base_unit,'') baseUnit,
+       COALESCE(v.mid_unit,'') midUnit,
+       COALESCE(v.pack_unit,'') packUnit,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       COALESCE(l.qty_input,0) qtyInput,
+       COALESCE(l.input_unit,'') inputUnit,
+       COALESCE(l.qty_base,0) qtyBase,
+       COALESCE(l.unit_price_rp,0) unitPriceRp,
+       COALESCE(l.line_total_rp,0) lineTotalRp,
+       COALESCE(l.unit_cogs_rp,0) unitCogsRp,
+       COALESCE(l.cogs_total_rp,0) lineCogsRp,
+       CASE
+         WHEN l.line_id IS NULL THEN 'HEADER_ONLY'
+         WHEN v.variant_id IS NULL THEN 'MASTER_MISSING'
+         ELSE 'OK'
+       END historyIntegrity,
+       CASE
+         WHEN i.period_key<>substr(i.date_key,1,7) THEN 1
+         ELSE 0
+       END periodMismatch
      FROM plastic_sales_invoice i
-     JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
-     JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-     LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
-     WHERE i.business_unit_id='BU-PLASTIC' AND substr(i.date_key,1,7)=? AND i.status<>'VOID'
+     LEFT JOIN plastic_sales_line l
+       ON l.invoice_id=i.invoice_id
+     LEFT JOIN plastic_product_variant v
+       ON v.variant_id=l.variant_id
+     LEFT JOIN plastic_customer c
+       ON c.customer_id=i.customer_id
+     WHERE i.business_unit_id='BU-PLASTIC'
+       AND (i.period_key=? OR substr(i.date_key,1,7)=?)
+       AND i.status<>'VOID'
      ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
-     LIMIT 800`,
+     LIMIT 1600`,
+    period,
     period
   ).toArray()
 };
-
 if(view==='INVENTORY')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp,ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1 ORDER BY v.category,v.product_name,v.color,v.size`).toArray()};
 /* RKN_PLASTIC_RECEIVABLE_LEDGER_VIEW_V2O */
 if(view==='RECEIVABLES'){

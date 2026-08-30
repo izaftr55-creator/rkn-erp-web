@@ -2747,20 +2747,38 @@ function Outbound({
   const [editInvoiceNo, setEditInvoiceNo] = useState("");
   const [editReason, setEditReason] = useState("");
 
+  /* RKN_PLASTIC_HISTORY_RECOVERY_UI_V2R */
   const invoices = useMemo(() => {
     const map = new Map<string, Row>();
+
     for (const row of rows) {
       const id = String(row.invoiceId || "");
       if (!id) continue;
+
+      const rowIntegrity = String(
+        row.historyIntegrity || "OK"
+      );
       const current = map.get(id);
+
       if (!current) {
         map.set(id, {
           ...row,
+          historyIntegrity: rowIntegrity,
           grossProfitRp:
-            Number(row.grandTotalRp || 0) - Number(row.cogsRp || 0),
+            Number(row.grandTotalRp || 0) -
+            Number(row.cogsRp || 0),
         });
+        continue;
+      }
+
+      if (
+        String(current.historyIntegrity || "OK") === "OK" &&
+        rowIntegrity !== "OK"
+      ) {
+        current.historyIntegrity = "RECOVERY";
       }
     }
+
     return Array.from(map.values());
   }, [rows]);
 
@@ -3214,15 +3232,18 @@ function Outbound({
               "payment",
               "Status",
               (row) =>
-                Number(row.outstandingRp || 0) > 0
-                  ? "BELUM LUNAS"
-                  : "LUNAS",
+                String(row.historyIntegrity || "OK") !== "OK"
+                  ? "RECOVERY"
+                  : Number(row.outstandingRp || 0) > 0
+                    ? "BELUM LUNAS"
+                    : "LUNAS",
             ],
             [
               "actions",
               "Aksi",
               (row) =>
-                canEdit ? (
+                canEdit &&
+                String(row.historyIntegrity || "OK") === "OK" ? (
                   <div className={styles.tableActions}>
                     <button
                       type="button"
@@ -3715,41 +3736,105 @@ function Opname({
       .join(" / ");
   };
 
+  /* RKN_PLASTIC_SO_MIXED_UOM_V2R */
   const bestEditableValue = (row: Row, totalValue: number) => {
-    const total = Math.max(0, Number(totalValue || 0));
-    const packFactor = Math.max(
-      1,
-      Number(row.unitsPerPack || 1)
-    );
-    const midFactor = Math.max(
-      1,
-      Number(row.unitsPerMid || 1)
-    );
+    const parts = decompose(row, totalValue);
 
-    if (
-      row.packUnit &&
-      total % packFactor === 0
-    ) {
+    if (row.packUnit && parts.pack > 0) {
       return {
-        qty: String(total / packFactor),
+        qty: String(parts.pack),
         unit: String(row.packUnit).toUpperCase(),
       };
     }
 
-    if (
-      row.midUnit &&
-      total % midFactor === 0
-    ) {
+    if (row.midUnit && parts.mid > 0) {
       return {
-        qty: String(total / midFactor),
+        qty: String(parts.mid),
         unit: String(row.midUnit).toUpperCase(),
       };
     }
 
-    return {
-      qty: String(total),
-      unit: String(row.baseUnit || "").toUpperCase(),
-    };
+    if (row.baseUnit) {
+      return {
+        qty: String(parts.base),
+        unit: String(row.baseUnit).toUpperCase(),
+      };
+    }
+
+    if (row.packUnit) {
+      return {
+        qty: String(parts.pack),
+        unit: String(row.packUnit).toUpperCase(),
+      };
+    }
+
+    if (row.midUnit) {
+      return {
+        qty: String(parts.mid),
+        unit: String(row.midUnit).toUpperCase(),
+      };
+    }
+
+    return { qty: String(parts.base), unit: "" };
+  };
+
+  const componentQtyForUnit = (
+    row: Row,
+    totalValue: number,
+    unitValue: string
+  ) => {
+    const parts = decompose(row, totalValue);
+    const unit = String(unitValue || "").toUpperCase();
+
+    if (
+      row.packUnit &&
+      unit === String(row.packUnit).toUpperCase()
+    ) {
+      return parts.pack;
+    }
+
+    if (
+      row.midUnit &&
+      unit === String(row.midUnit).toUpperCase()
+    ) {
+      return parts.mid;
+    }
+
+    return parts.base;
+  };
+
+  const mergePhysicalUnit = (
+    row: Row,
+    currentTotalValue: number,
+    qtyValue: number,
+    unitValue: string
+  ) => {
+    const parts = decompose(row, currentTotalValue);
+    const unit = String(unitValue || "").toUpperCase();
+    const nextQty = Math.max(0, Number(qtyValue || 0));
+    if (
+      row.packUnit &&
+      unit === String(row.packUnit).toUpperCase()
+    ) {
+      parts.pack = nextQty;
+    } else if (
+      row.midUnit &&
+      unit === String(row.midUnit).toUpperCase()
+    ) {
+      parts.mid = nextQty;
+    } else {
+      parts.base = nextQty;
+    }
+
+    return (
+      (row.packUnit
+        ? toBase(row, parts.pack, String(row.packUnit))
+        : 0) +
+      (row.midUnit
+        ? toBase(row, parts.mid, String(row.midUnit))
+        : 0) +
+      toBase(row, parts.base, String(row.baseUnit || ""))
+    );
   };
 
   const statusOf = (row: Row) => {
@@ -3860,8 +3945,14 @@ function Opname({
       return;
     }
 
-    const physicalQtyBase = toBase(
+    const currentPhysicalQtyBase =
+      Number(selected.physicalEntered || 0) === 1
+        ? Number(selected.physicalQtyBase || 0)
+        : 0;
+
+    const physicalQtyBase = mergePhysicalUnit(
       selected,
+      currentPhysicalQtyBase,
       Number(physicalQty),
       physicalUnit
     );
@@ -4078,9 +4169,26 @@ function Opname({
                     <select
                       value={physicalUnit}
                       disabled={!selected}
-                      onChange={(event) =>
-                        setPhysicalUnit(event.target.value)
-                      }
+                      onChange={(event) => {
+                        const nextUnit = event.target.value;
+                        setPhysicalUnit(nextUnit);
+
+                        if (
+                          selected &&
+                          Number(selected.physicalEntered || 0) === 1 &&
+                          nextUnit
+                        ) {
+                          setPhysicalQty(
+                            String(
+                              componentQtyForUnit(
+                                selected,
+                                Number(selected.physicalQtyBase || 0),
+                                nextUnit
+                              )
+                            )
+                          );
+                        }
+                      }}
                     >
                       <option value="">Pilih unit</option>
                       {unitOptions(selected).map((unit) => (
@@ -4122,7 +4230,9 @@ function Opname({
 
                 <div className={styles.soZeroHint}>
                   Stok kosong harus diinput Qty 0. SKU yang belum
-                  diinput tetap berstatus Belum Dihitung.
+                  diinput tetap berstatus belum dihitung. SKU yang sama boleh
+                  diisi lagi dengan UOM berbeda; UOM yang dipilih diperbarui
+                  tanpa menghapus jumlah UOM lainnya.
                 </div>
               </Panel>
 
