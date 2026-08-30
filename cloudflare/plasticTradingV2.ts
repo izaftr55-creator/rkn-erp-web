@@ -1883,7 +1883,7 @@ if(cmd==='DELETE_OPENING_POST'){
   });
 }
 
-/* RKN_PLASTIC_INBOUND_CONTROLLED_DELETE_ENGINE_V2R1 */
+/* RKN_PLASTIC_INBOUND_CONTROLLED_DELETE_ENGINE_V2R11 */
 if(cmd==='DELETE_INBOUND_LINE'){
   mg(a);
 
@@ -1910,39 +1910,179 @@ if(cmd==='DELETE_INBOUND_LINE'){
   if(!row)throw Error('PLASTIC_INBOUND_LINE_NOT_FOUND');
 
   const inboundId=T(row.inboundId,160);
+  const inboundNo=T(row.inboundNo,160);
   const variantId=T(row.variantId,160);
   const date=DK(row.dateKey);
   const period=T(row.periodKey,7)||date.slice(0,7);
-  const qtyBase=N(row.qtyBase);
-  const unitCostRp=I(row.unitCostRp);
-  const lineTotalRp=I(row.lineTotalRp);
+  const qtyBase=Math.max(0,N(row.qtyBase));
+  const unitCostRp=Math.max(0,I(row.unitCostRp));
+  const lineTotalRp=Math.max(0,I(row.lineTotalRp));
+
+  if(qtyBase<=1e-9)throw Error('PLASTIC_INBOUND_DELETE_QTY_INVALID');
 
   open(sql,period);
 
   return atomic(()=>{
-    const movement=sql.exec(
-      `SELECT movement_id movementId
-       FROM plastic_inventory_movement
+    const balance=sql.exec(
+      `SELECT qty_base qtyBase,avg_cost_rp avgCostRp
+       FROM plastic_inventory_balance
        WHERE business_unit_id='BU-PLASTIC'
-         AND source_type='INBOUND'
-         AND source_key=?
          AND variant_id=?
-         AND movement_type='IN'
-         AND ABS(qty_base-?)<0.000001
-       ORDER BY created_at,movement_id
        LIMIT 1`,
-      inboundId,variantId,qtyBase
+      variantId
     ).toArray()[0];
 
-    if(!movement){
-      throw Error('PLASTIC_INBOUND_DELETE_MOVEMENT_NOT_FOUND');
+    const currentQty=Math.max(0,N(balance?.qtyBase));
+    const currentAvg=Math.max(0,I(balance?.avgCostRp));
+
+    const ledgerQty=N(
+      sql.exec(
+        `SELECT COALESCE(SUM(
+           CASE
+             WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN')
+               THEN qty_base
+             WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT')
+               THEN -qty_base
+             ELSE 0
+           END
+         ),0) value
+         FROM plastic_inventory_movement
+         WHERE business_unit_id='BU-PLASTIC'
+           AND variant_id=?`,
+        variantId
+      ).toArray()[0]?.value
+    );
+
+    const exactBasis=N(
+      sql.exec(
+        `SELECT COUNT(*) value
+         FROM plastic_inventory_movement
+         WHERE business_unit_id='BU-PLASTIC'
+           AND variant_id=?
+           AND movement_type='IN'
+           AND source_type='INBOUND'
+           AND source_key IN(?,?)`,
+        variantId,inboundId,inboundNo
+      ).toArray()[0]?.value
+    );
+
+    const sameDateBasis=N(
+      sql.exec(
+        `SELECT COUNT(*) value
+         FROM plastic_inventory_movement
+         WHERE business_unit_id='BU-PLASTIC'
+           AND variant_id=?
+           AND date_key=?
+           AND movement_type='IN'
+           AND source_type='INBOUND'`,
+        variantId,date
+      ).toArray()[0]?.value
+    );
+
+    const hasLedgerBasis=exactBasis>0 || sameDateBasis===1;
+    const balanceGap=currentQty-ledgerQty;
+
+    let inventoryMode:
+      | 'LEDGER_REVERSAL'
+      | 'LEGACY_BALANCE_ONLY'
+      | 'HISTORY_ONLY';
+
+    if(hasLedgerBasis){
+      inventoryMode='LEDGER_REVERSAL';
+    }else if(balanceGap>=qtyBase-1e-9){
+      inventoryMode='LEGACY_BALANCE_ONLY';
+    }else if(Math.abs(balanceGap)<=1e-9){
+      inventoryMode='HISTORY_ONLY';
+    }else{
+      throw Error(
+        'PLASTIC_INBOUND_DELETE_LEGACY_AMBIGUOUS_STOCK:'+
+        variantId+
+        ':BALANCE='+currentQty+
+        ':LEDGER='+ledgerQty+
+        ':LINE='+qtyBase
+      );
     }
 
-    sql.exec(
-      `DELETE FROM plastic_inventory_movement
-       WHERE movement_id=?`,
-      T(movement.movementId,160)
-    ).toArray();
+    if(
+      inventoryMode!=='HISTORY_ONLY' &&
+      currentQty-qtyBase < -1e-9
+    ){
+      throw Error('PLASTIC_INBOUND_DELETE_INSUFFICIENT_BALANCE');
+    }
+
+    const t=now();
+    const deleteId=crypto.randomUUID();
+    const deleteKey=
+      'PIN-DEL-'+
+      date.replaceAll('-','')+'-'+
+      deleteId.replaceAll('-','').slice(0,6).toUpperCase();
+
+    let nextQty=currentQty;
+    let nextAvg=currentAvg;
+
+    if(inventoryMode!=='HISTORY_ONLY'){
+      nextQty=Math.max(0,currentQty-qtyBase);
+
+      const currentValue=Math.round(currentQty*currentAvg);
+      const removeValue=Math.round(qtyBase*unitCostRp);
+      let nextValue=currentValue-removeValue;
+
+      let costFallback=false;
+      if(nextValue<0){
+        nextValue=Math.round(nextQty*currentAvg);
+        costFallback=true;
+      }
+
+      nextAvg=nextQty>0
+        ? Math.max(0,Math.round(nextValue/nextQty))
+        : 0;
+
+      sql.exec(
+        `INSERT INTO plastic_inventory_balance(
+           business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at
+         ) VALUES('BU-PLASTIC',?,?,?,?)
+         ON CONFLICT(business_unit_id,variant_id)
+         DO UPDATE SET
+           qty_base=excluded.qty_base,
+           avg_cost_rp=excluded.avg_cost_rp,
+           updated_at=excluded.updated_at`,
+        variantId,nextQty,nextAvg,t
+      ).toArray();
+
+      if(inventoryMode==='LEDGER_REVERSAL'){
+        sql.exec(
+          `INSERT INTO plastic_inventory_movement(
+             movement_id,business_unit_id,variant_id,period_key,date_key,
+             movement_type,qty_base,unit_cost_rp,source_type,source_key,
+             actor_user_id,note,occurred_at,created_at
+           ) VALUES(?,'BU-PLASTIC',?,?,?,'ADJUSTMENT_OUT',?,?,?,?,?,?,?,?)`,
+          crypto.randomUUID(),variantId,period,date,qtyBase,unitCostRp,
+          'INBOUND_DELETE',deleteKey,a.id,
+          'Hapus item Barang Masuk / '+reason,t,t
+        ).toArray();
+      }
+
+      audit(
+        sql,a,
+        'PLASTIC_INBOUND_DELETE_INVENTORY_EFFECT',
+        'PLASTIC_INBOUND_LINE',
+        lineId,
+        reason,
+        {
+          deleteKey,
+          inventoryMode,
+          currentQty,
+          ledgerQty,
+          balanceGap,
+          removedQtyBase:qtyBase,
+          unitCostRp,
+          nextQty,
+          currentAvgCostRp:currentAvg,
+          nextAvgCostRp:nextAvg,
+          costFallback
+        }
+      );
+    }
 
     sql.exec(
       `DELETE FROM plastic_inbound_line
@@ -1985,63 +2125,6 @@ if(cmd==='DELETE_INBOUND_LINE'){
       ).toArray();
     }
 
-    /*
-      Rebuild this SKU's live balance from the remaining ledger.
-      This is safer than subtracting blindly because the deleted
-      inbound may have affected weighted-average cost.
-    */
-    const movements=sql.exec(
-      `SELECT
-         movement_type movementType,qty_base qtyBase,
-         unit_cost_rp unitCostRp,date_key dateKey,
-         occurred_at occurredAt,created_at createdAt,movement_id movementId
-       FROM plastic_inventory_movement
-       WHERE business_unit_id='BU-PLASTIC'
-         AND variant_id=?
-       ORDER BY date_key,occurred_at,created_at,movement_id`,
-      variantId
-    ).toArray();
-
-    let rebuiltQty=0;
-    let rebuiltAvg=0;
-
-    for(const item of movements as any[]){
-      const type=T(item.movementType,40);
-      const qty=Math.max(0,N(item.qtyBase));
-      const cost=Math.max(0,I(item.unitCostRp));
-
-      if(['OPENING','IN','RETURN_IN','ADJUSTMENT_IN'].includes(type)){
-        const nextQty=rebuiltQty+qty;
-        rebuiltAvg=nextQty>0
-          ? Math.round((rebuiltQty*rebuiltAvg+qty*cost)/nextQty)
-          : 0;
-        rebuiltQty=nextQty;
-        continue;
-      }
-
-      if(['OUT','RETURN_OUT','ADJUSTMENT_OUT'].includes(type)){
-        if(qty>rebuiltQty+1e-9){
-          throw Error('PLASTIC_INBOUND_DELETE_WOULD_BREAK_STOCK_HISTORY');
-        }
-        rebuiltQty=Math.max(0,rebuiltQty-qty);
-        if(rebuiltQty<=1e-9)rebuiltAvg=0;
-      }
-    }
-
-    const t=now();
-
-    sql.exec(
-      `INSERT INTO plastic_inventory_balance(
-         business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at
-       ) VALUES('BU-PLASTIC',?,?,?,?)
-       ON CONFLICT(business_unit_id,variant_id)
-       DO UPDATE SET
-         qty_base=excluded.qty_base,
-         avg_cost_rp=excluded.avg_cost_rp,
-         updated_at=excluded.updated_at`,
-      variantId,rebuiltQty,rebuiltAvg,t
-    ).toArray();
-
     audit(
       sql,a,
       'PLASTIC_INBOUND_LINE_DELETE',
@@ -2049,8 +2132,9 @@ if(cmd==='DELETE_INBOUND_LINE'){
       lineId,
       reason,
       {
+        deleteKey,
         inboundId,
-        inboundNo:T(row.inboundNo,160),
+        inboundNo,
         dateKey:date,
         variantId,
         qtyInput:N(row.qtyInput),
@@ -2058,10 +2142,10 @@ if(cmd==='DELETE_INBOUND_LINE'){
         qtyBase,
         unitCostRp,
         lineTotalRp,
-        movementId:T(movement.movementId,160),
+        inventoryMode,
         headerDeleted:remaining<=0,
-        rebuiltQtyBase:rebuiltQty,
-        rebuiltAvgCostRp:rebuiltAvg
+        nextQtyBase:nextQty,
+        nextAvgCostRp:nextAvg
       }
     );
 
@@ -2069,12 +2153,15 @@ if(cmd==='DELETE_INBOUND_LINE'){
       ok:true,
       lineId,
       inboundId,
+      inboundNo,
+      inventoryMode,
       headerDeleted:remaining<=0,
-      rebuiltQtyBase:rebuiltQty,
-      rebuiltAvgCostRp:rebuiltAvg
+      nextQtyBase:nextQty,
+      nextAvgCostRp:nextAvg
     };
   });
 }
+
 if(cmd==='CREATE_INBOUND'){op(a);const date=DK(p.dateKey),period=date.slice(0,7);open(sql,period);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_INBOUND_LINES_REQUIRED');return atomic(()=>{const id=crypto.randomUUID(),no='PIN-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase(),t=now();let total=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),inputCost=I(r.unitCostRp),baseCost=q.multiplier>0?Math.round(inputCost/q.multiplier):inputCost,sum=Math.round(q.qty*inputCost);total+=sum;return{vid,v,...q,inputCost,baseCost,sum}});sql.exec(`INSERT INTO plastic_inbound(inbound_id,business_unit_id,inbound_no,supplier_name,supplier_ref,period_key,date_key,total_value_rp,note,actor_user_id,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?)`,id,no,T(p.supplierName,160),T(p.supplierRef,160),period,date,total,T(p.note,500),a.id,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_inbound_line(line_id,inbound_id,variant_id,qty_input,input_unit,qty_base,unit_cost_rp,line_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.baseCost,r.sum,t).toArray();const b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,r.vid).toArray()[0];const oq=N(b?.qty_base),oa=N(b?.avg_cost_rp),nq=oq+r.baseQty,na=nq>0?Math.round((oq*oa+r.baseQty*r.baseCost)/nq):0;sql.exec(`INSERT INTO plastic_inventory_balance(business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at) VALUES('BU-PLASTIC',?,?,?,?) ON CONFLICT(business_unit_id,variant_id) DO UPDATE SET qty_base=excluded.qty_base,avg_cost_rp=excluded.avg_cost_rp,updated_at=excluded.updated_at`,r.vid,nq,na,t).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'IN',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.baseCost,'INBOUND',id,a.id,T(p.note,500),t,t).toArray()}
 /* RKN_PLASTIC_INBOUND_MULTILINE_GUARD_V2Q7 */
 const persistedLineCount=N(

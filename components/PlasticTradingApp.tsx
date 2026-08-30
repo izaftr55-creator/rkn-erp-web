@@ -4701,82 +4701,39 @@ function Reports({
   data: Row;
   period: string;
 }) {
-  /* RKN_PLASTIC_REPORT_CENTER_UI_V2Q */
+  /* RKN_PLASTIC_SIMPLE_RECON_REPORT_UI_V2R3 */
   type ReportTab =
-    | "FINAL"
+    | "RECON"
     | "STOCK"
-    | "LEDGER_SO"
-    | "SO_PREP"
-    | "SO_RESULT"
-    | "RECEIVABLES"
     | "INBOUND"
-    | "OUTBOUND";
+    | "OUTBOUND"
+    | "RECEIVABLES"
+    | "AUDIT";
 
-  const [reportTab, setReportTab] =
-    useState<ReportTab>("FINAL");
+  const [reportTab, setReportTab] = useState<ReportTab>("RECON");
 
   const stock = Array.isArray(data.stock) ? data.stock : [];
-  const soPrep = Array.isArray(data.soPrep) ? data.soPrep : [];
-  const soSessions = Array.isArray(data.soSessions)
-    ? data.soSessions
-    : [];
-  const opname = Array.isArray(data.opname) ? data.opname : [];
+  const inbound = Array.isArray(data.inbound) ? data.inbound : [];
+  const outbound = Array.isArray(data.outbound) ? data.outbound : [];
   const receivables = Array.isArray(data.receivables)
     ? data.receivables
     : [];
-  const inbound = Array.isArray(data.inbound) ? data.inbound : [];
-  const outbound = Array.isArray(data.outbound)
-    ? data.outbound
-    : [];
-  const activeSo = data.activeSo || null;
   const auditLedger = Array.isArray(data.auditLedger)
     ? data.auditLedger
     : [];
+
   const auditOpeningDate = String(
     data.auditOpeningDate || "2026-07-28"
   );
   const auditSoDate = String(data.auditSoDate || "2026-08-28");
-  const auditSo = data.auditSo || null;
-  const finalStatus = String(data.finalStatus || "REVIEW");
-  const finalFailCount = Number(data.finalFailCount || 0);
-  const finalChecks = Array.isArray(data.finalChecks)
-    ? data.finalChecks
-    : [];
-  const finalNegativeRows = Array.isArray(data.finalNegativeRows)
-    ? data.finalNegativeRows
-    : [];
-  const finalLiveMismatchRows = Array.isArray(data.finalLiveMismatchRows)
-    ? data.finalLiveMismatchRows
-    : [];
-  const finalSnapshotMismatchRows = Array.isArray(
-    data.finalSnapshotMismatchRows
-  )
-    ? data.finalSnapshotMismatchRows
-    : [];
-
-
-  const polymailer = stock.filter(
-    (row: Row) =>
-      String(row.category || "").toUpperCase() === "POLYMAILER"
-  );
-  const thermal = stock.filter(
-    (row: Row) =>
-      String(row.category || "").toUpperCase() === "THERMAL"
-  );
 
   const qtyText = (value: unknown) =>
     qtyFmt.format(Number(value || 0));
 
   const decompose = (row: Row, totalValue: unknown) => {
     let total = Math.max(0, Number(totalValue || 0));
-    const packFactor = Math.max(
-      1,
-      Number(row.unitsPerPack || 1)
-    );
-    const midFactor = Math.max(
-      1,
-      Number(row.unitsPerMid || 1)
-    );
+    const packFactor = Math.max(1, Number(row.unitsPerPack || 1));
+    const midFactor = Math.max(1, Number(row.unitsPerMid || 1));
 
     let pack = 0;
     let mid = 0;
@@ -4814,28 +4771,62 @@ function Reports({
       .join(" + ");
   };
 
-  const varianceStatus = (value: unknown) => {
-    const variance = Number(value || 0);
-    if (Math.abs(variance) < 0.000001) return "BALANCE";
-    return variance > 0 ? "LEBIH" : "KURANG";
-  };
+  const simpleRows = auditLedger
+    .map((row: Row) => {
+      const expectedQtyBase = Number(row.systemLedgerQtyBase || 0);
+      const counted = Number(row.physicalEntered || 0) === 1;
+      const physicalQtyBase = counted
+        ? Number(row.physicalQtyBase || 0)
+        : null;
+      const differenceQtyBase = counted
+        ? Number(physicalQtyBase || 0) - expectedQtyBase
+        : null;
+      const status = !counted
+        ? "BELUM DIHITUNG"
+        : Math.abs(Number(differenceQtyBase || 0)) < 0.000001
+          ? "BALANCE"
+          : "SELISIH";
 
-  const reportTitle =
-    reportTab === "FINAL"
-      ? "Final Production Check"
-      : reportTab === "STOCK"
-        ? "Laporan Stok"
-        : reportTab === "LEDGER_SO"
-          ? "Audit Opening ke Stock Opname"
-          : reportTab === "SO_PREP"
-            ? "Persiapan Stock Opname"
-            : reportTab === "SO_RESULT"
-              ? "Hasil Stock Opname"
-              : reportTab === "RECEIVABLES"
-                ? "Piutang Belum Bayar"
-                : reportTab === "INBOUND"
-                  ? "Barang Masuk"
-                  : "Barang Keluar";
+      return {
+        ...row,
+        expectedQtyBase,
+        counted,
+        physicalQtyBase,
+        differenceQtyBase,
+        status,
+      };
+    })
+    .filter((row: Row) => {
+      const activity =
+        Math.abs(Number(row.openingQtyBase || 0)) +
+        Math.abs(Number(row.inboundQtyBase || 0)) +
+        Math.abs(Number(row.outboundQtyBase || 0)) +
+        Math.abs(Number(row.correctionQtyBase || 0));
+      return activity > 0.000001 || Boolean(row.counted);
+    });
+
+  const countedRows = simpleRows.filter((row: Row) => row.counted);
+  const balanceRows = simpleRows.filter(
+    (row: Row) => row.status === "BALANCE"
+  );
+  const varianceRows = simpleRows.filter(
+    (row: Row) => row.status === "SELISIH"
+  );
+  const uncountedRows = simpleRows.filter(
+    (row: Row) => row.status === "BELUM DIHITUNG"
+  );
+
+  const reportReady =
+    simpleRows.length > 0 && uncountedRows.length === 0;
+
+  const signedStock = (row: Row, value: unknown) => {
+    const numberValue = Number(value || 0);
+    if (Math.abs(numberValue) < 0.000001) return "0";
+    return `${numberValue > 0 ? "+" : "-"}${stockHuman(
+      row,
+      Math.abs(numberValue)
+    )}`;
+  };
 
   const loadLogoData = async () => {
     const response = await fetch("/rkn-logo.png", {
@@ -4871,26 +4862,31 @@ function Reports({
     });
 
     const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
     const tableWidth = pageWidth - 8;
 
     let logoData = "";
-
     try {
       logoData = await loadLogoData();
     } catch {
       logoData = "";
     }
 
+    const title =
+      reportTab === "RECON"
+        ? `REKONSILIASI STOK ${auditSoDate}`
+        : reportTab === "STOCK"
+          ? "STOK LIVE"
+          : reportTab === "INBOUND"
+            ? "BARANG MASUK"
+            : reportTab === "OUTBOUND"
+              ? "BARANG KELUAR"
+              : reportTab === "RECEIVABLES"
+                ? "PIUTANG"
+                : "AUDIT DETAIL";
+
     const subtitle =
-      reportTab === "FINAL"
-        ? `FINAL CHECK / OPENING ${auditOpeningDate} / SO ${auditSoDate}`
-      : reportTab === "LEDGER_SO"
-        ? `OPENING ${auditOpeningDate} / CUT-OFF SO ${auditSoDate}`
-        : reportTab === "SO_PREP"
-        ? activeSo
-          ? `SO ${activeSo.soNo} / ${activeSo.dateKey} / ${activeSo.status}`
-          : `PERIODE ${period} / BELUM ADA SO AKTIF`
+      reportTab === "RECON"
+        ? `OPENING ${auditOpeningDate} + MASUK - KELUAR = STOCK ${auditSoDate} / VS SO FISIK`
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
@@ -4914,34 +4910,17 @@ function Reports({
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text("RKN ERP", 32, 10);
-
       doc.setFontSize(9);
       doc.text("PLASTIC TRADING", 32, 17);
 
       doc.setFontSize(12);
-      doc.text(
-        reportTitle.toUpperCase(),
-        pageWidth - 6,
-        9.5,
-        { align: "right" }
-      );
-
+      doc.text(title, pageWidth - 6, 9.5, { align: "right" });
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-      doc.text(
-        subtitle.toUpperCase(),
-        pageWidth - 6,
-        16,
-        { align: "right" }
-      );
-
-      doc.text(
-        `HALAMAN ${pageNo}`,
-        pageWidth - 6,
-        22,
-        { align: "right" }
-      );
-
+      doc.text(subtitle, pageWidth - 6, 16, { align: "right" });
+      doc.text(`HALAMAN ${pageNo}`, pageWidth - 6, 22, {
+        align: "right",
+      });
       doc.setTextColor(25, 34, 46);
     };
 
@@ -4964,7 +4943,7 @@ function Reports({
         body,
         styles: {
           font: "helvetica",
-          fontSize: 7.2,
+          fontSize: 7.1,
           textColor: [25, 34, 46],
           cellPadding: 1.45,
           lineColor: [68, 82, 99],
@@ -4985,306 +4964,60 @@ function Reports({
         didDrawPage: (hook: any) =>
           drawHeader(Number(hook.pageNumber || 1)),
       });
-
-      return Number((doc as any).lastAutoTable?.finalY || startY);
     };
 
     drawHeader(1);
 
-    if (reportTab === "FINAL") {
+    if (reportTab === "RECON") {
       table(
-        ["Check", "Status", "Detail"],
-        finalChecks.map((row: Row) => [
-          row.check || "-",
-          row.status || "-",
-          row.detail || "-",
+        [
+          "Produk",
+          "Warna",
+          "Ukuran",
+          `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
+          "Masuk",
+          "Keluar",
+          `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
+          "SO Fisik",
+          "Selisih",
+          "Status",
+        ],
+        simpleRows.map((row: Row) => [
+          row.productName || row.category || "-",
+          row.color || "-",
+          row.size || "-",
+          stockHuman(row, row.openingQtyBase),
+          stockHuman(row, row.inboundQtyBase),
+          stockHuman(row, row.outboundQtyBase),
+          stockHuman(row, row.expectedQtyBase),
+          row.counted
+            ? stockHuman(row, row.physicalQtyBase)
+            : "BELUM DIHITUNG",
+          row.counted
+            ? signedStock(row, row.differenceQtyBase)
+            : "-",
+          row.status,
         ])
       );
     }
 
     if (reportTab === "STOCK") {
-      let y = table(
-        [
-          "Warna",
-          "Ukuran",
-          "Ball",
-          "Sisa Roll",
-          "Isi/Ball",
-          "Total Roll",
-          "Avg HPP/Roll",
-          "Stock Value",
-        ],
-        polymailer.map((row: Row) => {
-          const parts = decompose(row, row.qtyBase);
-
-          return [
-            row.color || "-",
-            row.size || "-",
-            qtyText(parts.pack),
-            qtyText(parts.base),
-            qtyText(row.unitsPerPack),
-            qtyText(row.qtyBase),
-            money.format(Number(row.avgCostRp || 0)),
-            money.format(Number(row.stockValueRp || 0)),
-          ];
-        })
-      );
-
-      y += 5;
-
       table(
-        [
-          "Produk",
-          "Varian",
-          "Dus",
-          "Stack",
-          "Sisa Lembar",
-          "Total Lembar",
-          "Avg HPP/Lembar",
-          "Stock Value",
-        ],
-        thermal.map((row: Row) => {
-          const parts = decompose(row, row.qtyBase);
-
-          return [
-            row.productName || "-",
-            row.size || "-",
-            qtyText(parts.pack),
-            qtyText(parts.mid),
-            qtyText(parts.base),
-            qtyText(row.qtyBase),
-            money.format(Number(row.avgCostRp || 0)),
-            money.format(Number(row.stockValueRp || 0)),
-          ];
-        }),
-        y
-      );
-    }
-
-    if (reportTab === "LEDGER_SO") {
-      table(
-        [
-          "Produk",
-          "Warna",
-          "Ukuran",
-          "Opening",
-          "Masuk",
-          "Keluar",
-          "Koreksi",
-          "System Ledger",
-          "Snapshot SO",
-          "Fisik SO",
-          "Selisih SO",
-          "On Hand Live",
-          "Check",
-        ],
-        auditLedger.map((row: Row) => {
-          const snapshot =
-            row.systemSnapshotQtyBase === null ||
-            row.systemSnapshotQtyBase === undefined
-              ? "-"
-              : stockHuman(row, row.systemSnapshotQtyBase);
-          const physical =
-            Number(row.physicalEntered || 0) === 1
-              ? stockHuman(row, row.physicalQtyBase)
-              : "BELUM DIHITUNG";
-          const variance =
-            row.varianceQtyBase === null ||
-            row.varianceQtyBase === undefined
-              ? "-"
-              : stockHuman(row, Math.abs(Number(row.varianceQtyBase || 0)));
-          const ledgerDiff = Number(row.ledgerVsSnapshotQtyBase || 0);
-
-          return [
-            row.productName || row.category || "-",
-            row.color || "-",
-            row.size || "-",
-            stockHuman(row, row.openingQtyBase),
-            stockHuman(row, row.inboundQtyBase),
-            stockHuman(row, row.outboundQtyBase),
-            stockHuman(row, Math.abs(Number(row.correctionQtyBase || 0))),
-            stockHuman(row, row.systemLedgerQtyBase),
-            snapshot,
-            physical,
-            row.varianceQtyBase === null ||
-            row.varianceQtyBase === undefined
-              ? "-"
-              : `${Number(row.varianceQtyBase || 0) >= 0 ? "+" : "-"}${variance}`,
-            stockHuman(row, row.liveOnHandQtyBase),
-            row.systemSnapshotQtyBase === null ||
-            row.systemSnapshotQtyBase === undefined
-              ? "NO SNAPSHOT"
-              : Math.abs(ledgerDiff) < 0.000001
-                ? "MATCH"
-                : `CHECK ${qtyText(ledgerDiff)}`,
-          ];
-        })
-      );
-    }
-
-    if (reportTab === "SO_PREP") {
-      if (!soPrep.length) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.text(
-          "BELUM ADA SO AKTIF.",
-          pageWidth / 2,
-          pageHeight / 2 - 4,
-          { align: "center" }
-        );
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.text(
-          "Mulai SO dari menu Opname agar snapshot sistem dibekukan terlebih dahulu.",
-          pageWidth / 2,
-          pageHeight / 2 + 4,
-          { align: "center" }
-        );
-      } else {
-        const polyPrep = soPrep.filter(
-          (row: Row) =>
-            String(row.category || "").toUpperCase() ===
-            "POLYMAILER"
-        );
-        const thermalPrep = soPrep.filter(
-          (row: Row) =>
-            String(row.category || "").toUpperCase() ===
-            "THERMAL"
-        );
-
-        let y = table(
-          [
-            "Produk",
-            "Warna",
-            "Ukuran",
-            "Isi/Ball",
-            "System Ball",
-            "System Roll",
-            "Fisik Ball",
-            "Fisik Roll",
-            "Total Fisik Roll",
-            "Selisih Roll",
-            "Catatan",
-          ],
-          polyPrep.map((row: Row) => {
-            const system = decompose(row, row.systemQtyBase);
-
-            return [
-              "Polymailer",
-              row.color || "-",
-              row.size || "-",
-              qtyText(row.unitsPerPack),
-              qtyText(system.pack),
-              qtyText(system.base),
-              "",
-              "",
-              "",
-              "",
-              "",
-            ];
-          })
-        );
-
-        y += 5;
-
-        table(
-          [
-            "Produk",
-            "Varian",
-            "System Dus",
-            "System Stack",
-            "System Lembar",
-            "Fisik Dus",
-            "Fisik Stack",
-            "Fisik Lembar",
-            "Total Fisik Lembar",
-            "Selisih Lembar",
-            "Catatan",
-          ],
-          thermalPrep.map((row: Row) => {
-            const system = decompose(row, row.systemQtyBase);
-
-            return [
-              row.productName || "Thermal",
-              row.size || "-",
-              qtyText(system.pack),
-              qtyText(system.mid),
-              qtyText(system.base),
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-            ];
-          }),
-          y
-        );
-      }
-    }
-
-    if (reportTab === "SO_RESULT") {
-      table(
-        [
-          "Tanggal",
-          "No. SO",
-          "Produk",
-          "Warna",
-          "Ukuran / Varian",
-          "System",
-          "Fisik",
-          "Selisih",
-          "Status",
-        ],
-        opname.map((row: Row) => [
-          row.dateKey || "-",
-          row.opnameNo || "-",
+        ["Produk", "Warna", "Ukuran", "Stok Live", "Avg HPP", "Nilai"],
+        stock.map((row: Row) => [
           row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
-          stockHuman(row, row.systemQtyBase),
-          stockHuman(row, row.physicalQtyBase),
-          `${qtyText(row.varianceQtyBase)} ${
-            row.baseUnit || ""
-          }`,
-          varianceStatus(row.varianceQtyBase),
-        ])
-      );
-    }
-
-    if (reportTab === "RECEIVABLES") {
-      table(
-        [
-          "Tanggal",
-          "Invoice",
-          "Customer",
-          "Total",
-          "Dibayar",
-          "Belum Bayar",
-        ],
-        receivables.map((row: Row) => [
-          row.dateKey || "-",
-          row.invoiceNo || "-",
-          row.customerName || "-",
-          money.format(Number(row.grandTotalRp || 0)),
-          money.format(Number(row.paidRp || 0)),
-          money.format(Number(row.outstandingRp || 0)),
+          stockHuman(row, row.qtyBase),
+          money.format(Number(row.avgCostRp || 0)),
+          money.format(Number(row.stockValueRp || 0)),
         ])
       );
     }
 
     if (reportTab === "INBOUND") {
       table(
-        [
-          "Tanggal",
-          "No. IN",
-          "Produk",
-          "Warna",
-          "Ukuran",
-          "Qty",
-          "HPP",
-          "Nilai",
-        ],
+        ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty", "HPP", "Nilai"],
         inbound.map((row: Row) => [
           row.dateKey || "-",
           row.referenceNo || "-",
@@ -5300,18 +5033,7 @@ function Reports({
 
     if (reportTab === "OUTBOUND") {
       table(
-        [
-          "Tanggal",
-          "Invoice",
-          "Customer",
-          "Produk",
-          "Warna",
-          "Ukuran",
-          "Qty Base",
-          "Sales",
-          "HPP",
-          "Gross Profit",
-        ],
+        ["Tanggal", "Invoice", "Customer", "Produk", "Warna", "Ukuran", "Qty", "Sales"],
         outbound.map((row: Row) => [
           row.dateKey || "-",
           row.referenceNo || "-",
@@ -5321,37 +5043,75 @@ function Reports({
           row.size || "-",
           qtyText(row.qtyBase),
           money.format(Number(row.totalRp || 0)),
-          money.format(Number(row.cogsRp || 0)),
-          money.format(Number(row.grossProfitRp || 0)),
+        ])
+      );
+    }
+
+    if (reportTab === "RECEIVABLES") {
+      table(
+        ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
+        receivables.map((row: Row) => [
+          row.dateKey || "-",
+          row.invoiceNo || "-",
+          row.customerName || "-",
+          money.format(Number(row.grandTotalRp || 0)),
+          money.format(Number(row.paidRp || 0)),
+          money.format(Number(row.outstandingRp || 0)),
+        ])
+      );
+    }
+
+    if (reportTab === "AUDIT") {
+      table(
+        [
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "Opening",
+          "Masuk",
+          "Keluar",
+          "Koreksi",
+          "System",
+          "Snapshot SO",
+          "On Hand Live",
+        ],
+        auditLedger.map((row: Row) => [
+          row.productName || row.category || "-",
+          row.color || "-",
+          row.size || "-",
+          stockHuman(row, row.openingQtyBase),
+          stockHuman(row, row.inboundQtyBase),
+          stockHuman(row, row.outboundQtyBase),
+          signedStock(row, row.correctionQtyBase),
+          stockHuman(row, row.systemLedgerQtyBase),
+          row.systemSnapshotQtyBase === null ||
+          row.systemSnapshotQtyBase === undefined
+            ? "-"
+            : stockHuman(row, row.systemSnapshotQtyBase),
+          stockHuman(row, row.liveOnHandQtyBase),
         ])
       );
     }
 
     const suffix =
-      reportTab === "FINAL"
-        ? `FINAL_${auditOpeningDate}_${auditSoDate}`
-      : reportTab === "LEDGER_SO"
-        ? `${auditOpeningDate}_${auditSoDate}`
-        : reportTab === "SO_PREP" && activeSo
-        ? `${activeSo.dateKey}_${activeSo.soNo}`
-        : period;
+      reportTab === "RECON"
+        ? `REKONSILIASI_${auditOpeningDate}_${auditSoDate}`
+        : `${reportTab}_${period}`;
 
     doc.save(
-      `RKN_${reportTab}_${String(suffix)
+      `RKN_${String(suffix)
         .replace(/[^0-9A-Za-z_-]/g, "_")
         .toUpperCase()}.pdf`
     );
   };
 
   const tabs: [ReportTab, string][] = [
-    ["FINAL", "Final Check"],
-    ["STOCK", "Stok"],
-    ["LEDGER_SO", "Audit 28/07 → 28/08"],
-    ["SO_PREP", "Persiapan SO"],
-    ["SO_RESULT", "Hasil SO"],
-    ["RECEIVABLES", "Piutang Belum Bayar"],
+    ["RECON", "Rekonsiliasi 28/08"],
+    ["STOCK", "Stok Live"],
     ["INBOUND", "Barang Masuk"],
     ["OUTBOUND", "Barang Keluar"],
+    ["RECEIVABLES", "Piutang"],
+    ["AUDIT", "Audit Detail"],
   ];
 
   return (
@@ -5360,7 +5120,8 @@ function Reports({
         <div>
           <strong>Report Center</strong>
           <span>
-            Stok, SO, piutang dan transaksi dari satu sumber data.
+            Report utama dibuat sederhana: Opening + Masuk - Keluar = Stock,
+            lalu dibandingkan dengan SO fisik.
           </span>
         </div>
 
@@ -5390,583 +5151,120 @@ function Reports({
         ))}
       </div>
 
-      {reportTab === "FINAL" ? (
+      {reportTab === "RECON" ? (
         <>
           <div className={styles.reportInfoStrip}>
             <div>
-              <span>Production Readiness</span>
+              <span>Rekonsiliasi Stok {auditSoDate}</span>
               <strong>
-                {finalStatus === "PASS"
-                  ? "PASS / SIAP REPORT"
-                  : `REVIEW / ${finalFailCount} CHECK GAGAL`}
+                {reportReady
+                  ? varianceRows.length === 0
+                    ? "SEMUA BALANCE"
+                    : `${varianceRows.length} SKU SELISIH`
+                  : `${uncountedRows.length} SKU BELUM DIHITUNG`}
               </strong>
             </div>
             <small>
-              Final Check membaca ledger asli: Opening 28/07, kronologi IN/OUT,
-              snapshot SO 28/08, hasil hitung fisik, serta kesesuaian On Hand
-              live dengan movement ledger. Guard stok tidak dibypass.
+              Rumus: Opening {auditOpeningDate} + Barang Masuk - Barang Keluar =
+              Stock Seharusnya {auditSoDate}, lalu dibandingkan dengan SO Fisik.
+              Jika ada koreksi ledger, nilainya otomatis ikut Stock Seharusnya dan
+              detailnya tetap tersedia di Audit Detail.
             </small>
           </div>
 
           <section className={styles.reportMetricGrid}>
             <MetricCard
-              label="Final Status"
-              value={finalStatus}
+              label="SKU Report"
+              value={qtyText(simpleRows.length)}
             />
             <MetricCard
-              label="Fail"
-              value={qtyText(finalFailCount)}
+              label="Sudah Dihitung"
+              value={qtyText(countedRows.length)}
             />
             <MetricCard
-              label="Negative Timeline"
-              value={qtyText(finalNegativeRows.length)}
+              label="Balance"
+              value={qtyText(balanceRows.length)}
             />
             <MetricCard
-              label="On Hand Mismatch"
-              value={qtyText(finalLiveMismatchRows.length)}
+              label="Selisih"
+              value={qtyText(varianceRows.length)}
             />
           </section>
 
           <Panel
-            title="Final Production Check"
-            subtitle="Semua baris wajib PASS kecuali Piutang yang bersifat INFO."
+            title={`Rekonsiliasi Stock ${auditSoDate}`}
+            subtitle={`Opening ${auditOpeningDate} + Masuk - Keluar = Stock ${auditSoDate} → dibandingkan dengan SO Fisik.`}
           >
             <DataTable
-              rows={finalChecks}
-              columns={[
-                ["check", "Check"],
-                ["status", "Status"],
-                ["detail", "Detail"],
-              ]}
-            />
-          </Panel>
-
-          {finalNegativeRows.length ? (
-            <Panel
-              title="Kronologi Stok Negatif"
-              subtitle="Ini penyebab transaksi historis dapat memunculkan PLASTIC_INSUFFICIENT_STOCK. Input / koreksi transaksi harus mengikuti tanggal."
-            >
-              <DataTable
-                rows={finalNegativeRows}
-                columns={[
-                  ["dateKey", "Tanggal"],
-                  ["productName", "Produk"],
-                  ["color", "Warna"],
-                  ["size", "Ukuran"],
-                  ["movementType", "Movement"],
-                  ["sourceType", "Source"],
-                  ["beforeQtyBase", "Sebelum"],
-                  ["movementQtyBase", "Qty"],
-                  ["afterQtyBase", "Sesudah"],
-                ]}
-              />
-            </Panel>
-          ) : null}
-
-          {finalSnapshotMismatchRows.length ? (
-            <Panel
-              title="Ledger vs Snapshot SO"
-              subtitle="System hasil Opening + IN - OUT tidak sama dengan snapshot SO."
-            >
-              <DataTable
-                rows={finalSnapshotMismatchRows}
-                columns={[
-                  ["productName", "Produk"],
-                  ["color", "Warna"],
-                  ["size", "Ukuran"],
-                  ["systemLedgerQtyBase", "Ledger 28/08"],
-                  ["systemSnapshotQtyBase", "Snapshot SO"],
-                  ["ledgerVsSnapshotQtyBase", "Diff"],
-                ]}
-              />
-            </Panel>
-          ) : null}
-
-          {finalLiveMismatchRows.length ? (
-            <Panel
-              title="On Hand Live Mismatch"
-              subtitle="Inventory Balance berbeda dengan full movement ledger."
-            >
-              <DataTable
-                rows={finalLiveMismatchRows}
-                columns={[
-                  ["productName", "Produk"],
-                  ["color", "Warna"],
-                  ["size", "Ukuran"],
-                  ["ledgerQtyBase", "Ledger"],
-                  ["liveQtyBase", "On Hand"],
-                  ["diffQtyBase", "Diff"],
-                ]}
-              />
-            </Panel>
-          ) : null}
-        </>
-      ) : null}
-
-      {reportTab === "STOCK" ? (
-        <>
-          <div className={styles.reportInfoStrip}>
-            <div>
-              <span>Sumber On Hand</span>
-              <strong>Inventory Balance / Live</strong>
-            </div>
-            <small>
-              Angka Stok di tab ini mengikuti plastic_inventory_balance saat ini.
-              Untuk audit 28/07 → 28/08 gunakan tab Audit agar System SO tidak
-              tercampur adjustment setelah opname.
-            </small>
-          </div>
-          <section className={styles.reportMetricGrid}>
-            <MetricCard
-              label="Stock Value"
-              value={money.format(
-                Number(data.metrics?.stockValueRp || 0)
-              )}
-            />
-            <MetricCard
-              label="Piutang"
-              value={money.format(
-                Number(data.metrics?.receivableRp || 0)
-              )}
-            />
-            <MetricCard
-              label="SKU Aktif"
-              value={qtyText(stock.length)}
-            />
-            <MetricCard
-              label="SO Periode"
-              value={qtyText(soSessions.length)}
-            />
-          </section>
-
-          <Panel title="Polymailer">
-            <DataTable
-              rows={polymailer}
-              columns={[
-                ["color", "Warna"],
-                ["size", "Ukuran"],
-                [
-                  "ball",
-                  "Ball",
-                  (row) =>
-                    qtyText(decompose(row, row.qtyBase).pack),
-                ],
-                [
-                  "rollLoose",
-                  "Sisa Roll",
-                  (row) =>
-                    qtyText(decompose(row, row.qtyBase).base),
-                ],
-                [
-                  "unitsPerPack",
-                  "Isi/Ball",
-                  (row) => qtyText(row.unitsPerPack),
-                ],
-                [
-                  "qtyBase",
-                  "Total Roll",
-                  (row) => qtyText(row.qtyBase),
-                ],
-                [
-                  "stockValueRp",
-                  "Stock Value",
-                  (row) =>
-                    money.format(Number(row.stockValueRp || 0)),
-                ],
-              ]}
-            />
-          </Panel>
-
-          <Panel title="Thermal">
-            <DataTable
-              rows={thermal}
-              columns={[
-                ["productName", "Produk"],
-                ["size", "Varian"],
-                [
-                  "dus",
-                  "Dus",
-                  (row) =>
-                    qtyText(decompose(row, row.qtyBase).pack),
-                ],
-                [
-                  "stack",
-                  "Stack",
-                  (row) =>
-                    qtyText(decompose(row, row.qtyBase).mid),
-                ],
-                [
-                  "loose",
-                  "Sisa Lembar",
-                  (row) =>
-                    qtyText(decompose(row, row.qtyBase).base),
-                ],
-                [
-                  "qtyBase",
-                  "Total Lembar",
-                  (row) => qtyText(row.qtyBase),
-                ],
-                [
-                  "stockValueRp",
-                  "Stock Value",
-                  (row) =>
-                    money.format(Number(row.stockValueRp || 0)),
-                ],
-              ]}
-            />
-          </Panel>
-        </>
-      ) : null}
-
-      {reportTab === "LEDGER_SO" ? (
-        <>
-          <div className={styles.reportInfoStrip}>
-            <div>
-              <span>Audit Cut-off</span>
-              <strong>
-                Opening {auditOpeningDate} → SO {auditSoDate}
-              </strong>
-            </div>
-            <small>
-              Formula: Opening + Masuk - Keluar + Koreksi = System sebelum SO.
-              Adjustment dari SO_SESSION / STOCK_OPNAME dikeluarkan agar tidak
-              circular. On Hand Live hanya pembanding kondisi saat ini.
-            </small>
-          </div>
-
-          <section className={styles.reportMetricGrid}>
-            <MetricCard
-              label="Opening"
-              value={qtyText(
-                auditLedger.reduce(
-                  (sum: number, row: Row) =>
-                    sum + Number(row.openingQtyBase || 0),
-                  0
-                )
-              )}
-            />
-            <MetricCard
-              label="Masuk"
-              value={qtyText(
-                auditLedger.reduce(
-                  (sum: number, row: Row) =>
-                    sum + Number(row.inboundQtyBase || 0),
-                  0
-                )
-              )}
-            />
-            <MetricCard
-              label="Keluar"
-              value={qtyText(
-                auditLedger.reduce(
-                  (sum: number, row: Row) =>
-                    sum + Number(row.outboundQtyBase || 0),
-                  0
-                )
-              )}
-            />
-            <MetricCard
-              label="SO Snapshot"
-              value={auditSo ? String(auditSo.soNo || auditSoDate) : "BELUM ADA"}
-            />
-          </section>
-
-          <Panel title="Opening → In / Out → Stock Opname">
-            <DataTable
-              rows={auditLedger}
+              rows={simpleRows}
               columns={[
                 ["productName", "Produk"],
                 ["color", "Warna"],
                 ["size", "Ukuran"],
                 [
-                  "opening",
-                  "Opening 28/07",
+                  "openingQtyBase",
+                  `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
                   (row) => stockHuman(row, row.openingQtyBase),
                 ],
                 [
-                  "inbound",
+                  "inboundQtyBase",
                   "Masuk",
                   (row) => stockHuman(row, row.inboundQtyBase),
                 ],
                 [
-                  "outbound",
+                  "outboundQtyBase",
                   "Keluar",
                   (row) => stockHuman(row, row.outboundQtyBase),
                 ],
                 [
-                  "correction",
-                  "Koreksi",
-                  (row) => {
-                    const value = Number(row.correctionQtyBase || 0);
-                    return `${value >= 0 ? "+" : "-"}${stockHuman(
-                      row,
-                      Math.abs(value)
-                    )}`;
-                  },
+                  "expectedQtyBase",
+                  `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
+                  (row) => stockHuman(row, row.expectedQtyBase),
                 ],
                 [
-                  "systemLedger",
-                  "System 28/08",
-                  (row) => stockHuman(row, row.systemLedgerQtyBase),
-                ],
-                [
-                  "snapshot",
-                  "Snapshot SO",
+                  "physicalQtyBase",
+                  "SO Fisik",
                   (row) =>
-                    row.systemSnapshotQtyBase === null ||
-                    row.systemSnapshotQtyBase === undefined
-                      ? "-"
-                      : stockHuman(row, row.systemSnapshotQtyBase),
-                ],
-                [
-                  "physical",
-                  "Fisik SO",
-                  (row) =>
-                    Number(row.physicalEntered || 0) === 1
+                    row.counted
                       ? stockHuman(row, row.physicalQtyBase)
                       : "BELUM DIHITUNG",
                 ],
                 [
-                  "variance",
+                  "differenceQtyBase",
                   "Selisih",
-                  (row) => {
-                    if (
-                      row.varianceQtyBase === null ||
-                      row.varianceQtyBase === undefined
-                    ) {
-                      return "-";
-                    }
-                    const value = Number(row.varianceQtyBase || 0);
-                    return `${value >= 0 ? "+" : "-"}${stockHuman(
-                      row,
-                      Math.abs(value)
-                    )}`;
-                  },
+                  (row) =>
+                    row.counted
+                      ? signedStock(row, row.differenceQtyBase)
+                      : "-",
                 ],
-                [
-                  "live",
-                  "On Hand Live",
-                  (row) => stockHuman(row, row.liveOnHandQtyBase),
-                ],
-                [
-                  "ledgerCheck",
-                  "Check",
-                  (row) => {
-                    if (
-                      row.systemSnapshotQtyBase === null ||
-                      row.systemSnapshotQtyBase === undefined
-                    ) {
-                      return "NO SNAPSHOT";
-                    }
-                    const diff = Number(row.ledgerVsSnapshotQtyBase || 0);
-                    return Math.abs(diff) < 0.000001
-                      ? "MATCH"
-                      : `CHECK ${qtyText(diff)}`;
-                  },
-                ],
-              ]}
-            />
-          </Panel>
-        </>
-      ) : null}
-
-      {reportTab === "SO_PREP" ? (
-        <>
-          <div className={styles.reportInfoStrip}>
-            <div>
-              <span>Snapshot SO</span>
-              <strong>
-                {activeSo
-                  ? `${activeSo.soNo} / ${activeSo.dateKey}`
-                  : "Belum ada SO aktif"}
-              </strong>
-            </div>
-            <small>
-              Persiapan SO mengikuti snapshot sistem, bukan stok live
-              setelah snapshot.
-            </small>
-          </div>
-
-          {soPrep.length ? (
-            <>
-              <Panel title="Persiapan SO / Polymailer">
-                <DataTable
-                  rows={soPrep.filter(
-                    (row: Row) =>
-                      String(row.category || "").toUpperCase() ===
-                      "POLYMAILER"
-                  )}
-                  columns={[
-                    ["color", "Warna"],
-                    ["size", "Ukuran"],
-                    [
-                      "unitsPerPack",
-                      "Isi/Ball",
-                      (row) => qtyText(row.unitsPerPack),
-                    ],
-                    [
-                      "systemBall",
-                      "System Ball",
-                      (row) =>
-                        qtyText(
-                          decompose(row, row.systemQtyBase).pack
-                        ),
-                    ],
-                    [
-                      "systemRoll",
-                      "System Roll",
-                      (row) =>
-                        qtyText(
-                          decompose(row, row.systemQtyBase).base
-                        ),
-                    ],
-                    ["physicalBall", "Fisik Ball", () => ""],
-                    ["physicalRoll", "Fisik Roll", () => ""],
-                    ["variance", "Selisih", () => ""],
-                    ["note", "Catatan", () => ""],
-                  ]}
-                />
-              </Panel>
-
-              <Panel title="Persiapan SO / Thermal">
-                <DataTable
-                  rows={soPrep.filter(
-                    (row: Row) =>
-                      String(row.category || "").toUpperCase() ===
-                      "THERMAL"
-                  )}
-                  columns={[
-                    ["productName", "Produk"],
-                    ["size", "Varian"],
-                    [
-                      "systemDus",
-                      "System Dus",
-                      (row) =>
-                        qtyText(
-                          decompose(row, row.systemQtyBase).pack
-                        ),
-                    ],
-                    [
-                      "systemStack",
-                      "System Stack",
-                      (row) =>
-                        qtyText(
-                          decompose(row, row.systemQtyBase).mid
-                        ),
-                    ],
-                    [
-                      "systemLembar",
-                      "System Lembar",
-                      (row) =>
-                        qtyText(
-                          decompose(row, row.systemQtyBase).base
-                        ),
-                    ],
-                    ["physicalDus", "Fisik Dus", () => ""],
-                    ["physicalStack", "Fisik Stack", () => ""],
-                    ["physicalLembar", "Fisik Lembar", () => ""],
-                    ["variance", "Selisih", () => ""],
-                    ["note", "Catatan", () => ""],
-                  ]}
-                />
-              </Panel>
-            </>
-          ) : (
-            <div className={styles.reportEmptyAction}>
-              <strong>Belum ada snapshot SO aktif.</strong>
-              <span>
-                Buka menu Opname lalu klik Mulai SO. Setelah itu
-                Persiapan SO otomatis muncul di sini.
-              </span>
-            </div>
-          )}
-        </>
-      ) : null}
-
-      {reportTab === "SO_RESULT" ? (
-        <>
-          <Panel title="Riwayat SO">
-            <DataTable
-              rows={soSessions}
-              columns={[
-                ["dateKey", "Tanggal"],
-                ["soNo", "No. SO"],
                 ["status", "Status"],
-                ["totalSku", "SKU"],
-                ["countedSku", "Dihitung"],
-                ["balanceSku", "Balance"],
-                ["lessSku", "Kurang"],
-                ["moreSku", "Lebih"],
-              ]}
-            />
-          </Panel>
-
-          <Panel title="Hasil SO">
-            <DataTable
-              rows={opname}
-              columns={[
-                ["dateKey", "Tanggal"],
-                ["opnameNo", "No. SO"],
-                ["productName", "Produk"],
-                ["color", "Warna"],
-                ["size", "Ukuran / Varian"],
-                [
-                  "system",
-                  "System",
-                  (row) =>
-                    stockHuman(row, row.systemQtyBase),
-                ],
-                [
-                  "physical",
-                  "Fisik",
-                  (row) =>
-                    stockHuman(row, row.physicalQtyBase),
-                ],
-                [
-                  "variance",
-                  "Selisih",
-                  (row) =>
-                    `${qtyText(row.varianceQtyBase)} ${
-                      row.baseUnit || ""
-                    }`,
-                ],
-                [
-                  "status",
-                  "Status",
-                  (row) =>
-                    varianceStatus(row.varianceQtyBase),
-                ],
               ]}
             />
           </Panel>
         </>
       ) : null}
 
-      {reportTab === "RECEIVABLES" ? (
-        <Panel title="Piutang Belum Bayar">
+      {reportTab === "STOCK" ? (
+        <Panel
+          title="Stok Live"
+          subtitle="Saldo inventory live saat ini. Bukan cut-off SO 28/08."
+        >
           <DataTable
-            rows={receivables}
+            rows={stock}
             columns={[
-              ["dateKey", "Tanggal"],
-              ["invoiceNo", "Invoice"],
-              ["customerName", "Customer"],
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
               [
-                "grandTotalRp",
-                "Total",
-                (row) =>
-                  money.format(Number(row.grandTotalRp || 0)),
+                "avgCostRp",
+                "Avg HPP",
+                (row) => money.format(Number(row.avgCostRp || 0)),
               ],
               [
-                "paidRp",
-                "Dibayar",
-                (row) =>
-                  money.format(Number(row.paidRp || 0)),
-              ],
-              [
-                "outstandingRp",
-                "Belum Bayar",
-                (row) =>
-                  money.format(Number(row.outstandingRp || 0)),
+                "stockValueRp",
+                "Nilai",
+                (row) => money.format(Number(row.stockValueRp || 0)),
               ],
             ]}
           />
@@ -5974,7 +5272,7 @@ function Reports({
       ) : null}
 
       {reportTab === "INBOUND" ? (
-        <Panel title="Barang Masuk">
+        <Panel title="Barang Masuk" subtitle={`Periode aktif ${period}.`}>
           <DataTable
             rows={inbound}
             columns={[
@@ -5986,20 +5284,12 @@ function Reports({
               [
                 "qty",
                 "Qty",
-                (row) =>
-                  `${qtyText(row.qty)} ${row.unit || ""}`,
+                (row) => `${qtyText(row.qty)} ${row.unit || ""}`,
               ],
               [
                 "unitCostRp",
                 "HPP",
-                (row) =>
-                  money.format(Number(row.unitCostRp || 0)),
-              ],
-              [
-                "totalRp",
-                "Nilai",
-                (row) =>
-                  money.format(Number(row.totalRp || 0)),
+                (row) => money.format(Number(row.unitCostRp || 0)),
               ],
             ]}
           />
@@ -6007,7 +5297,7 @@ function Reports({
       ) : null}
 
       {reportTab === "OUTBOUND" ? (
-        <Panel title="Barang Keluar">
+        <Panel title="Barang Keluar" subtitle={`Periode aktif ${period}.`}>
           <DataTable
             rows={outbound}
             columns={[
@@ -6017,24 +5307,94 @@ function Reports({
               ["productName", "Produk"],
               ["color", "Warna"],
               ["size", "Ukuran"],
-              ["qtyBase", "Qty Base", (row) => qtyText(row.qtyBase)],
+              ["qtyBase", "Qty Base"],
               [
                 "totalRp",
                 "Sales",
-                (row) =>
-                  money.format(Number(row.totalRp || 0)),
+                (row) => money.format(Number(row.totalRp || 0)),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "RECEIVABLES" ? (
+        <Panel title="Piutang" subtitle="Invoice yang masih memiliki saldo.">
+          <DataTable
+            rows={receivables}
+            columns={[
+              ["dateKey", "Tanggal"],
+              ["invoiceNo", "Invoice"],
+              ["customerName", "Customer"],
+              [
+                "grandTotalRp",
+                "Total",
+                (row) => money.format(Number(row.grandTotalRp || 0)),
               ],
               [
-                "cogsRp",
-                "HPP",
-                (row) =>
-                  money.format(Number(row.cogsRp || 0)),
+                "paidRp",
+                "Dibayar",
+                (row) => money.format(Number(row.paidRp || 0)),
               ],
               [
-                "grossProfitRp",
-                "Gross Profit",
+                "outstandingRp",
+                "Sisa",
+                (row) => money.format(Number(row.outstandingRp || 0)),
+              ],
+            ]}
+          />
+        </Panel>
+      ) : null}
+
+      {reportTab === "AUDIT" ? (
+        <Panel
+          title="Audit Detail"
+          subtitle="Detail teknis disimpan di sini agar report utama tetap sederhana."
+        >
+          <DataTable
+            rows={auditLedger}
+            columns={[
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              [
+                "openingQtyBase",
+                "Opening",
+                (row) => stockHuman(row, row.openingQtyBase),
+              ],
+              [
+                "inboundQtyBase",
+                "Masuk",
+                (row) => stockHuman(row, row.inboundQtyBase),
+              ],
+              [
+                "outboundQtyBase",
+                "Keluar",
+                (row) => stockHuman(row, row.outboundQtyBase),
+              ],
+              [
+                "correctionQtyBase",
+                "Koreksi",
+                (row) => signedStock(row, row.correctionQtyBase),
+              ],
+              [
+                "systemLedgerQtyBase",
+                "System",
+                (row) => stockHuman(row, row.systemLedgerQtyBase),
+              ],
+              [
+                "systemSnapshotQtyBase",
+                "Snapshot SO",
                 (row) =>
-                  money.format(Number(row.grossProfitRp || 0)),
+                  row.systemSnapshotQtyBase === null ||
+                  row.systemSnapshotQtyBase === undefined
+                    ? "-"
+                    : stockHuman(row, row.systemSnapshotQtyBase),
+              ],
+              [
+                "liveOnHandQtyBase",
+                "On Hand Live",
+                (row) => stockHuman(row, row.liveOnHandQtyBase),
               ],
             ]}
           />
