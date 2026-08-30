@@ -17,11 +17,62 @@ import styles from "./PlasticTradingApp.module.css";
 type Row = Record<string, any>;
 type Column = [string, string, ((row: Row) => ReactNode)?];
 
-const money = new Intl.NumberFormat("id-ID", {
-  style: "currency",
-  currency: "IDR",
+/* RKN_PLASTIC_RUPIAH_INPUT_V2R15 */
+const rupiahNumber = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 });
+
+const money = {
+  format(value: unknown) {
+    const numberValue = Number(value || 0);
+    const safeValue = Number.isFinite(numberValue)
+      ? Math.round(numberValue)
+      : 0;
+
+    return `Rp. ${rupiahNumber.format(safeValue)}`;
+  },
+};
+
+function rupiahDigits(value: unknown) {
+  return String(value ?? "")
+    .replace(/[^0-9]/g, "")
+    .replace(/^0+(?=\d)/, "");
+}
+
+function formatRupiahInput(value: unknown) {
+  const digits = rupiahDigits(value);
+  if (!digits) return "";
+  return `Rp. ${rupiahNumber.format(Number(digits))}`;
+}
+
+function RupiahInput({
+  value,
+  onChange,
+  required = false,
+  placeholder = "Rp. 0",
+  disabled = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      required={required}
+      disabled={disabled}
+      placeholder={placeholder}
+      value={formatRupiahInput(value)}
+      onChange={(event) =>
+        onChange(rupiahDigits(event.target.value))
+      }
+    />
+  );
+}
 
 const qtyFmt = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 2,
@@ -2422,15 +2473,16 @@ function OpeningStock({
                       hint="Bukan harga jual. Isi HPP aktual jika tersedia."
                     >
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         min="0"
-                        value={line.unitCostRp}
+                        value={formatRupiahInput(line.unitCostRp)}
                         placeholder="0 jika belum diketahui"
                         onChange={(event) => {
                           const next = [...lines];
                           next[index] = {
                             ...line,
-                            unitCostRp: event.target.value,
+                            unitCostRp: rupiahDigits(event.target.value),
                           };
                           setLines(next);
                         }}
@@ -2922,15 +2974,16 @@ function Inbound({
                       className={styles.moneyField}
                     >
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         min="0"
                         disabled={!product}
-                        value={line.unitCostRp}
+                        value={formatRupiahInput(line.unitCostRp)}
                         onChange={(event) => {
                           const next = [...lines];
                           next[index] = {
                             ...line,
-                            unitCostRp: event.target.value,
+                            unitCostRp: rupiahDigits(event.target.value),
                           };
                           setLines(next);
                         }}
@@ -3458,14 +3511,15 @@ function Outbound({
                       <input
                         required
                         disabled={!selected}
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         min="0"
-                        value={line.unitPriceRp}
+                        value={formatRupiahInput(line.unitPriceRp)}
                         onChange={(event) => {
                           const next = [...lines];
                           next[index] = {
                             ...line,
-                            unitPriceRp: event.target.value,
+                            unitPriceRp: rupiahDigits(event.target.value),
                           };
                           setLines(next);
                         }}
@@ -3501,11 +3555,12 @@ function Outbound({
               </div>
               <Field label="Diskon">
                 <input
-                  type="number"
+                  type="text"
+                        inputMode="numeric"
                   min="0"
-                  value={discountRp}
+                  value={formatRupiahInput(discountRp)}
                   onChange={(event) =>
-                    setDiscountRp(event.target.value)
+                    setDiscountRp(rupiahDigits(event.target.value))
                   }
                 />
               </Field>
@@ -3648,6 +3703,7 @@ function Receivables({
   run: any;
 }) {
   /* RKN_PLASTIC_RECEIVABLE_LEDGER_UI_V2O */
+  /* RKN_PLASTIC_RECEIVABLE_SMART_INVOICE_V2R15 */
   const rows = Array.isArray(data.rows) ? data.rows : [];
   const customers = Array.isArray(data.customers)
     ? data.customers
@@ -3658,6 +3714,7 @@ function Receivables({
   const ledger = Array.isArray(data.ledger) ? data.ledger : [];
 
   const [invoiceId, setInvoiceId] = useState("");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("TRANSFER");
   const [customerId, setCustomerId] = useState("");
@@ -3667,6 +3724,40 @@ function Receivables({
       sum + Number(row.outstandingRp || 0),
     0
   );
+
+  const filteredInvoices = useMemo(() => {
+    const query = invoiceSearch
+      .trim()
+      .toLocaleLowerCase("id-ID");
+
+    if (!query) return rows;
+
+    return rows.filter((row: Row) => {
+      const text = [
+        row.invoiceNo,
+        row.customerName,
+        row.dateKey,
+        money.format(Number(row.outstandingRp || 0)),
+      ]
+        .join(" ")
+        .toLocaleLowerCase("id-ID");
+
+      return text.includes(query);
+    });
+  }, [rows, invoiceSearch]);
+
+  const selectedInvoice = useMemo(
+    () =>
+      rows.find(
+        (row: Row) =>
+          String(row.invoiceId || "") === invoiceId
+      ) || null,
+    [rows, invoiceId]
+  );
+
+  const selectedItems = Array.isArray(selectedInvoice?.items)
+    ? selectedInvoice.items
+    : [];
 
   const customerLedger = useMemo(() => {
     if (!customerId) return [];
@@ -3697,16 +3788,40 @@ function Receivables({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+
+    const amountRp = Number(amount || 0);
+    const outstandingRp = Number(
+      selectedInvoice?.outstandingRp || 0
+    );
+
+    if (!invoiceId || !selectedInvoice) {
+      window.alert("Pilih transaksi terlebih dahulu.");
+      return;
+    }
+
+    if (amountRp <= 0) {
+      window.alert("Nominal pembayaran harus lebih dari Rp. 0.");
+      return;
+    }
+
+    if (amountRp > outstandingRp) {
+      window.alert(
+        `Nominal melebihi sisa piutang ${money.format(outstandingRp)}.`
+      );
+      return;
+    }
+
     await run(
       "ADD_PAYMENT",
       {
         invoiceId,
-        amountRp: Number(amount || 0),
+        amountRp,
         paymentMethod: method,
         dateKey: today(),
       },
       "RECEIVABLES"
     );
+
     setAmount("");
   };
 
@@ -3759,19 +3874,34 @@ function Receivables({
       </Panel>
 
       {canWrite && rows.length ? (
-        <Panel title="Pembayaran">
+        <Panel
+          title="Pembayaran"
+          subtitle="Cari invoice, cek barang pada invoice, lalu catat pembayaran."
+        >
           <form onSubmit={submit} className={styles.formStack}>
-            <div className={`${styles.formGrid3} ${styles.paymentCompactGrid}`}>
+            <div className={styles.receivableInvoicePicker}>
+              <Field label="Cari Invoice">
+                <input
+                  type="search"
+                  placeholder="No. invoice / customer / tanggal"
+                  value={invoiceSearch}
+                  onChange={(event) =>
+                    setInvoiceSearch(event.target.value)
+                  }
+                />
+              </Field>
+
               <Field label="Transaksi">
                 <select
                   required
                   value={invoiceId}
-                  onChange={(event) =>
-                    setInvoiceId(event.target.value)
-                  }
+                  onChange={(event) => {
+                    setInvoiceId(event.target.value);
+                    setAmount("");
+                  }}
                 >
                   <option value="">Pilih transaksi</option>
-                  {rows.map((row: Row) => (
+                  {filteredInvoices.map((row: Row) => (
                     <option
                       key={row.invoiceId}
                       value={row.invoiceId}
@@ -3785,15 +3915,12 @@ function Receivables({
                 </select>
               </Field>
 
-              <Field label="Nominal" className={styles.moneyCompactField}>
-                <input
+              <Field label="Nominal">
+                <RupiahInput
                   required
-                  type="number"
-                  min="1"
                   value={amount}
-                  onChange={(event) =>
-                    setAmount(event.target.value)
-                  }
+                  placeholder="Rp. 0"
+                  onChange={setAmount}
                 />
               </Field>
 
@@ -3811,8 +3938,125 @@ function Receivables({
               </Field>
             </div>
 
+            {selectedInvoice ? (
+              <div className={styles.receivableInvoiceDetail}>
+                <div className={styles.receivableInvoiceHead}>
+                  <div>
+                    <span>INVOICE</span>
+                    <strong>{selectedInvoice.invoiceNo}</strong>
+                    <small>
+                      {selectedInvoice.customerName || "-"} ·{" "}
+                      {selectedInvoice.dateKey || "-"}
+                    </small>
+                  </div>
+
+                  <div>
+                    <span>TOTAL</span>
+                    <strong>
+                      {money.format(
+                        Number(selectedInvoice.grandTotalRp || 0)
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>SUDAH DIBAYAR</span>
+                    <strong>
+                      {money.format(
+                        Number(selectedInvoice.paidRp || 0)
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>SISA HUTANG</span>
+                    <strong>
+                      {money.format(
+                        Number(selectedInvoice.outstandingRp || 0)
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className={styles.receivableItemTitle}>
+                  Barang pada invoice
+                </div>
+
+                {selectedItems.length ? (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.dataTable}>
+                      <thead>
+                        <tr>
+                          <th>Produk</th>
+                          <th>Warna</th>
+                          <th>Ukuran</th>
+                          <th>Qty</th>
+                          <th>Harga</th>
+                          <th>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedItems.map((item: Row) => (
+                          <tr key={item.lineId || item.variantId}>
+                            <td>{item.productName || "-"}</td>
+                            <td>{item.color || "-"}</td>
+                            <td>{item.size || "-"}</td>
+                            <td>
+                              {qtyFmt.format(
+                                Number(item.qtyInput || 0)
+                              )}{" "}
+                              {item.inputUnit || ""}
+                            </td>
+                            <td>
+                              {money.format(
+                                Number(item.unitPriceRp || 0)
+                              )}
+                            </td>
+                            <td>
+                              {money.format(
+                                Number(item.lineTotalRp || 0)
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className={styles.emptyState}>
+                    <strong>Detail item tidak tersedia</strong>
+                    <span>
+                      Header invoice tetap dapat dibayar sesuai sisa piutang.
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div className={styles.actions}>
-              <button className={styles.primaryButton} disabled={busy}>
+              {selectedInvoice ? (
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() =>
+                    setAmount(
+                      String(
+                        Math.max(
+                          0,
+                          Number(selectedInvoice.outstandingRp || 0)
+                        )
+                      )
+                    )
+                  }
+                >
+                  Isi Sisa Piutang
+                </button>
+              ) : null}
+
+              <button
+                className={styles.primaryButton}
+                disabled={busy || !selectedInvoice}
+              >
                 Simpan
               </button>
             </div>
@@ -3940,6 +4184,7 @@ function Receivables({
     </>
   );
 }
+
 
 function Opname({
   data,
@@ -5182,7 +5427,9 @@ function Reports({
     </span>
   );
 
+  /* RKN_PLASTIC_AUTHORITATIVE_RECON_UI_V2R15 */
   const simpleRows = auditLedger
+    .filter((row: Row) => Number(row.soScope ?? 1) === 1)
     .map((row: Row) => {
       const expectedQtyBase = Number(row.systemLedgerQtyBase || 0);
       const counted = Number(row.physicalEntered || 0) === 1;
@@ -5648,8 +5895,8 @@ function Reports({
             <small>
               Rumus: Opening {auditOpeningDate} + Barang Masuk - Barang Keluar =
               Stock Seharusnya {auditSoDate}, lalu dibandingkan dengan SO Fisik.
-              Jika ada koreksi ledger, nilainya otomatis ikut Stock Seharusnya dan
-              detailnya tetap tersedia di Audit Detail.
+              Barang Masuk dan Barang Keluar memakai dokumen transaksi resmi.
+              Raw movement lama hanya menjadi audit dan tidak boleh membuat angka transaksi hantu.
             </small>
           </div>
 
@@ -5830,13 +6077,33 @@ function Reports({
               ],
               [
                 "inboundQtyBase",
-                "Masuk",
+                "Masuk Resmi",
                 (row) => stockHuman(row, row.inboundQtyBase),
               ],
               [
+                "rawInboundQtyBase",
+                "Raw IN",
+                (row) => stockHuman(row, row.rawInboundQtyBase),
+              ],
+              [
+                "inboundLedgerDiffQtyBase",
+                "Beda IN",
+                (row) => signedStock(row, row.inboundLedgerDiffQtyBase),
+              ],
+              [
                 "outboundQtyBase",
-                "Keluar",
+                "Keluar Resmi",
                 (row) => stockHuman(row, row.outboundQtyBase),
+              ],
+              [
+                "rawOutboundQtyBase",
+                "Raw OUT",
+                (row) => stockHuman(row, row.rawOutboundQtyBase),
+              ],
+              [
+                "outboundLedgerDiffQtyBase",
+                "Beda OUT",
+                (row) => signedStock(row, row.outboundLedgerDiffQtyBase),
               ],
               [
                 "correctionQtyBase",
@@ -5861,6 +6128,14 @@ function Reports({
                 "liveOnHandQtyBase",
                 "On Hand Live",
                 (row) => stockHuman(row, row.liveOnHandQtyBase),
+              ],
+              [
+                "soScopeReason",
+                "Scope SO",
+                (row) =>
+                  row.soScopeReason === "IN_SCOPE"
+                    ? "SO 28/08"
+                    : "DI LUAR SO FISIK",
               ],
             ]}
           />

@@ -731,6 +731,7 @@ if(view==='OUTBOUND')return{
 };
 if(view==='INVENTORY')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp,ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1 ORDER BY v.category,v.product_name,v.color,v.size`).toArray()};
 /* RKN_PLASTIC_RECEIVABLE_LEDGER_VIEW_V2O */
+/* RKN_PLASTIC_RECEIVABLE_INVOICE_DETAIL_V2R15 */
 if(view==='RECEIVABLES'){
   const rows=sql.exec(
     `SELECT i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,i.customer_id customerId,
@@ -743,6 +744,26 @@ if(view==='RECEIVABLES'){
     const p=paid(sql,String(r.invoiceId));
     return{...r,paidRp:p,outstandingRp:Math.max(0,N(r.grandTotalRp)-p)};
   }).filter((r:any)=>r.outstandingRp>0);
+
+  for(const row of rows as any[]){
+    row.items=sql.exec(
+      `SELECT
+         l.line_id lineId,l.variant_id variantId,
+         COALESCE(v.product_name,'') productName,
+         COALESCE(v.color,'') color,
+         COALESCE(v.size,'') size,
+         COALESCE(l.qty_input,l.qty_base) qtyInput,
+         COALESCE(l.input_unit,v.base_unit,'') inputUnit,
+         l.qty_base qtyBase,
+         l.unit_price_rp unitPriceRp,
+         l.line_total_rp lineTotalRp
+       FROM plastic_sales_line l
+       LEFT JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+       WHERE l.invoice_id=?
+       ORDER BY l.created_at,l.line_id`,
+      String(row.invoiceId)
+    ).toArray();
+  }
 
   return{
     view,
@@ -803,10 +824,6 @@ if(view==='RECEIVABLES'){
   };
 }
 
-/* RKN_PLASTIC_REPORTS_PRO_V2O */
-/* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
-/* RKN_PLASTIC_REPORT_DATE_CUTOFF_V2Q9 */
-/* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 if(view==='REPORTS'){
   const stock=sql.exec(
@@ -949,8 +966,10 @@ if(view==='REPORTS'){
   ).toArray();
 
   /* RKN_PLASTIC_OPENING_TO_SO_AUDIT_MODEL_V2R1 */
+  /* RKN_PLASTIC_AUTHORITATIVE_RECON_V2R15 */
   const auditOpeningDate='2026-07-28';
   const auditSoDate='2026-08-28';
+  const auditGoldwinVariantId='PL-THERMAL-THERMAL-GOLDWIN';
 
   const auditProducts=sql.exec(
     `SELECT
@@ -975,6 +994,31 @@ if(view==='REPORTS'){
      WHERE business_unit_id='BU-PLASTIC'
        AND date_key>=? AND date_key<=?
      ORDER BY date_key,created_at,movement_id`,
+    auditOpeningDate,auditSoDate
+  ).toArray();
+
+  /*
+    Owner-facing reconciliation uses business documents as truth.
+    Raw inventory movement stays audit-only.
+  */
+  const auditInboundAuthoritative=sql.exec(
+    `SELECT l.variant_id variantId,COALESCE(SUM(l.qty_base),0) qtyBase
+     FROM plastic_inbound i
+     JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
+     WHERE i.business_unit_id='BU-PLASTIC'
+       AND i.date_key>? AND i.date_key<=?
+     GROUP BY l.variant_id`,
+    auditOpeningDate,auditSoDate
+  ).toArray();
+
+  const auditOutboundAuthoritative=sql.exec(
+    `SELECT l.variant_id variantId,COALESCE(SUM(l.qty_base),0) qtyBase
+     FROM plastic_sales_invoice i
+     JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
+     WHERE i.business_unit_id='BU-PLASTIC'
+       AND i.status<>'VOID'
+       AND i.date_key>? AND i.date_key<=?
+     GROUP BY l.variant_id`,
     auditOpeningDate,auditSoDate
   ).toArray();
 
@@ -1028,6 +1072,16 @@ if(view==='REPORTS'){
     movementByVariant.set(key,list);
   }
 
+  const authoritativeInboundByVariant=new Map<string,number>();
+  for(const row of auditInboundAuthoritative as any[]){
+    authoritativeInboundByVariant.set(T(row.variantId,120),N(row.qtyBase));
+  }
+
+  const authoritativeOutboundByVariant=new Map<string,number>();
+  for(const row of auditOutboundAuthoritative as any[]){
+    authoritativeOutboundByVariant.set(T(row.variantId,120),N(row.qtyBase));
+  }
+
   const physicalByVariant=new Map<string,any>();
   for(const row of auditPhysicalRows as any[]){
     physicalByVariant.set(T(row.variantId,120),row);
@@ -1036,11 +1090,15 @@ if(view==='REPORTS'){
   const auditLedger=(auditProducts as any[]).map((product:any)=>{
     const variantId=T(product.variantId,120);
     const movements=movementByVariant.get(variantId)??[];
+
     let openingQtyBase=0;
-    let inboundQtyBase=0;
-    let outboundQtyBase=0;
+    const inboundQtyBase=N(authoritativeInboundByVariant.get(variantId));
+    const outboundQtyBase=N(authoritativeOutboundByVariant.get(variantId));
+
     let correctionQtyBase=0;
     let excludedSoAdjustmentQtyBase=0;
+    let rawInboundQtyBase=0;
+    let rawOutboundQtyBase=0;
 
     for(const movement of movements){
       const dateKey=T(movement.dateKey,10);
@@ -1056,44 +1114,70 @@ if(view==='REPORTS'){
         continue;
       }
 
-      if(dateKey===auditOpeningDate && (
-        type==='OPENING' ||
-        ['OPENING_REVISION','OPENING_VOID'].includes(sourceType)
-      )){
+      if(
+        dateKey===auditOpeningDate &&
+        (
+          type==='OPENING' ||
+          ['OPENING_REVISION','OPENING_VOID','OPENING_RESET'].includes(sourceType)
+        )
+      ){
         openingQtyBase+=signed;
         continue;
       }
 
       if(dateKey>auditOpeningDate && dateKey<=auditSoDate){
-        if(['IN','RETURN_IN'].includes(type)){
-          inboundQtyBase+=qty;
-        }else if(['OUT','RETURN_OUT'].includes(type)){
-          outboundQtyBase+=qty;
-        }else if(['ADJUSTMENT_IN','ADJUSTMENT_OUT'].includes(type)){
-          correctionQtyBase+=signed;
-        }else if(type==='OPENING'){
-          correctionQtyBase+=signed;
+        if(type==='IN' && sourceType==='INBOUND'){
+          rawInboundQtyBase+=qty;
+          continue;
+        }
+
+        if(type==='OUT' && sourceType==='SALE'){
+          rawOutboundQtyBase+=qty;
+          continue;
+        }
+
+        if(['ADJUSTMENT_IN','ADJUSTMENT_OUT'].includes(type)){
+          const transactionLifecycle=
+            sourceType.startsWith('INBOUND') ||
+            sourceType.startsWith('SALE') ||
+            sourceType.startsWith('OPENING');
+
+          if(!transactionLifecycle){
+            correctionQtyBase+=signed;
+          }
         }
       }
     }
 
     const systemLedgerQtyBase=
-      openingQtyBase+inboundQtyBase-outboundQtyBase+correctionQtyBase;
+      openingQtyBase+
+      inboundQtyBase-
+      outboundQtyBase+
+      correctionQtyBase;
+
     const physical=physicalByVariant.get(variantId)??null;
     const hasSnapshot=Boolean(physical);
     const physicalEntered=Number(physical?.physicalEntered||0)===1;
     const systemSnapshotQtyBase=hasSnapshot?N(physical?.systemQtyBase):null;
     const physicalQtyBase=physicalEntered?N(physical?.physicalQtyBase):null;
+
     const varianceQtyBase=
       physicalEntered &&
       physicalQtyBase!==null &&
       systemSnapshotQtyBase!==null
         ? physicalQtyBase-systemSnapshotQtyBase
         : null;
+
     const ledgerVsSnapshotQtyBase=
       systemSnapshotQtyBase!==null
         ? systemSnapshotQtyBase-systemLedgerQtyBase
         : null;
+
+    const soScope=
+      !(
+        auditSoDate==='2026-08-28' &&
+        variantId===auditGoldwinVariantId
+      );
 
     return{
       ...product,
@@ -1107,10 +1191,17 @@ if(view==='REPORTS'){
       varianceQtyBase,
       ledgerVsSnapshotQtyBase,
       excludedSoAdjustmentQtyBase,
+      rawInboundQtyBase,
+      rawOutboundQtyBase,
+      inboundLedgerDiffQtyBase:rawInboundQtyBase-inboundQtyBase,
+      outboundLedgerDiffQtyBase:rawOutboundQtyBase-outboundQtyBase,
+      soScope:soScope?1:0,
+      soScopeReason:soScope
+        ? 'IN_SCOPE'
+        : 'GOLDWIN_NOT_IN_PHYSICAL_SO_2026_08_28',
       physicalEntered:physicalEntered?1:0
     };
   });
-
 
   /* RKN_PLASTIC_FINAL_PRODUCTION_CHECK_MODEL_V2R2 */
   const finalTimelineMovements=sql.exec(
@@ -1200,21 +1291,26 @@ if(view==='REPORTS'){
 
   const finalSnapshotMismatchRows=(auditLedger as any[])
     .filter((row:any)=>
+      Number(row.soScope||0)===1 &&
       row.systemSnapshotQtyBase!==null &&
       row.systemSnapshotQtyBase!==undefined &&
       Math.abs(N(row.ledgerVsSnapshotQtyBase))>0.000001
     );
 
   const finalCountedSku=(auditLedger as any[])
-    .filter((row:any)=>Number(row.physicalEntered||0)===1).length;
+    .filter((row:any)=>
+      Number(row.soScope||0)===1 &&
+      Number(row.physicalEntered||0)===1
+    ).length;
 
-  const finalActiveSku=(auditProducts as any[]).length;
+  const finalActiveSku=(auditLedger as any[])
+    .filter((row:any)=>Number(row.soScope||0)===1).length;
   const finalOpeningMovementCount=(auditMovements as any[])
     .filter((row:any)=>
       T(row.dateKey,10)===auditOpeningDate &&
       (
         T(row.movementType,40)==='OPENING' ||
-        ['OPENING_REVISION','OPENING_VOID'].includes(T(row.sourceType,80))
+        ['OPENING_REVISION','OPENING_VOID','OPENING_RESET'].includes(T(row.sourceType,80))
       )
     ).length;
 
@@ -1311,6 +1407,79 @@ if(view==='REPORTS'){
 if(view==='CLOSING')return{view,periodKey:period,actor:a,current:sql.exec(`SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]??{period_key:period,status:'OPEN'},history:sql.exec(`SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' ORDER BY period_key DESC LIMIT 24`).toArray()};
 if(view==='AUDIT')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT id,actor_user_id actorUserId,action,entity_type entityType,entity_id entityId,reason,created_at createdAt FROM audit_log WHERE business_unit_id='BU-PLASTIC' ORDER BY created_at DESC LIMIT 300`).toArray()};
 /* RKN_PLASTIC_SO_SESSION_VIEW_V2P */
+if(view==='OPNAME'){
+  const active=sql.exec(
+    `SELECT so_id soId,so_no soNo,period_key periodKey,date_key dateKey,status,reason,
+            actor_user_id actorUserId,created_at createdAt,updated_at updatedAt
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC'
+       AND period_key=?
+       AND status IN('DRAFT','REVIEW')
+     ORDER BY date_key DESC,created_at DESC
+     LIMIT 1`,
+    period
+  ).toArray()[0]??null;
+
+  const activeLines=active
+    ? sql.exec(
+        `SELECT
+           l.line_id lineId,l.so_id soId,l.variant_id variantId,
+           l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
+           l.physical_entered physicalEntered,l.snapshot_unit_cost_rp snapshotUnitCostRp,l.note,
+           v.product_name productName,v.category,v.color,v.size,v.grade,
+           v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+           COALESCE(v.units_per_mid,1) unitsPerMid,
+           COALESCE(v.units_per_pack,1) unitsPerPack
+         FROM plastic_so_session_line l
+         JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+         WHERE l.so_id=?
+           AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+         ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`,
+        String(active.soId),String(active.dateKey || '')
+      ).toArray()
+    : [];
+
+  return{
+    view,
+    periodKey:period,
+    actor:a,
+    active,
+    activeLines,
+    sessions:sql.exec(
+      `SELECT s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
+              COUNT(l.line_id) totalSku,
+              SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) countedSku,
+              SUM(CASE WHEN l.physical_entered=1 AND ABS(l.physical_qty_base-l.system_qty_base)<0.000001 THEN 1 ELSE 0 END) balanceSku,
+              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base<l.system_qty_base-0.000001 THEN 1 ELSE 0 END) lessSku,
+              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
+       FROM plastic_so_session s
+       LEFT JOIN plastic_so_session_line l
+         ON l.so_id=s.so_id
+        AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')
+       WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
+       GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+       ORDER BY s.date_key DESC,s.created_at DESC
+       LIMIT 24`,
+      period
+    ).toArray(),
+    rows:sql.exec(
+      `SELECT o.opname_no opnameNo,o.date_key dateKey,o.reason,l.variant_id variantId,
+              v.product_name productName,v.category,v.color,v.size,
+              v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+              v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,
+              l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
+              l.variance_qty_base varianceQtyBase
+       FROM plastic_stock_opname o
+       JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
+       JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+       WHERE o.business_unit_id='BU-PLASTIC' AND o.period_key=?
+       ORDER BY o.date_key DESC,o.created_at DESC
+       LIMIT 600`,
+      period
+    ).toArray()
+  };
+}
+
 if(view==='OPNAME'){
   const active=sql.exec(
     `SELECT so_id soId,so_no soNo,period_key periodKey,date_key dateKey,status,reason,
@@ -2629,9 +2798,10 @@ if(cmd==='START_SO_SESSION'){
        ON b.business_unit_id=v.business_unit_id
       AND b.variant_id=v.variant_id
      WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
+       AND NOT (v.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
      GROUP BY v.variant_id,b.avg_cost_rp
      ORDER BY v.variant_id`,
-    date
+    date,date
   ).toArray();
 
   if(!snapshot.length)throw Error('PLASTIC_SO_NO_PRODUCTS');
@@ -2747,8 +2917,11 @@ if(cmd==='REVIEW_SO_SESSION'){
   }
 
   const counts=sql.exec(
-    `SELECT COUNT(*) total,SUM(CASE WHEN physical_entered=1 THEN 1 ELSE 0 END) entered
-     FROM plastic_so_session_line WHERE so_id=?`,
+    `SELECT COUNT(*) total,SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) entered
+     FROM plastic_so_session_line l
+     JOIN plastic_so_session s ON s.so_id=l.so_id
+     WHERE l.so_id=?
+       AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')`,
     soId
   ).toArray()[0]??{};
 
@@ -2790,8 +2963,9 @@ if(cmd==='POST_SO_ADJUSTMENT'){
             snapshot_unit_cost_rp snapshotUnitCostRp,note
      FROM plastic_so_session_line
      WHERE so_id=?
+       AND NOT (variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
      ORDER BY variant_id`,
-    soId
+    soId,date
   ).toArray();
 
   if(!lines.length)throw Error('PLASTIC_SO_LINES_REQUIRED');
@@ -2915,6 +3089,7 @@ if(cmd==='POST_SO_ADJUSTMENT'){
     };
   });
 }
+
 
 if(cmd==='POST_OPNAME'){mg(a);const date=DK(p.dateKey),period=date.slice(0,7),reason=T(p.reason,500);open(sql,period);if(!reason)throw Error('PLASTIC_REASON_REQUIRED');const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_OPNAME_LINES_REQUIRED');return atomic(()=>{const id=crypto.randomUUID(),no='SO-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase(),t=now();sql.exec(`INSERT INTO plastic_stock_opname(opname_id,business_unit_id,opname_no,period_key,date_key,reason,actor_user_id,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?)`,id,no,period,date,reason,a.id,t).toArray();for(const r of lines){const vid=T(r.variantId,120);variant(sql,vid);const b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],sys=N(b?.qty_base),phy=Math.max(0,N(r.physicalQtyBase)),diff=phy-sys;sql.exec(`INSERT INTO plastic_stock_opname_line(line_id,opname_id,variant_id,system_qty_base,physical_qty_base,variance_qty_base,created_at) VALUES(?,?,?,?,?,?,?)`,crypto.randomUUID(),id,vid,sys,phy,diff,t).toArray();sql.exec(`INSERT INTO plastic_inventory_balance(business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at) VALUES('BU-PLASTIC',?,?,?,?) ON CONFLICT(business_unit_id,variant_id) DO UPDATE SET qty_base=excluded.qty_base,updated_at=excluded.updated_at`,vid,phy,I(b?.avg_cost_rp),t).toArray();if(Math.abs(diff)>1e-9)sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,? ,?,?,?,?,?)`,crypto.randomUUID(),vid,period,date,diff>0?'ADJUSTMENT_IN':'ADJUSTMENT_OUT',Math.abs(diff),I(b?.avg_cost_rp),'STOCK_OPNAME',id,a.id,reason,t,t).toArray()}audit(sql,a,'PLASTIC_STOCK_OPNAME_CLOSE','PLASTIC_STOCK_OPNAME',id,reason,{no});return{ok:true,opnameId:id,opnameNo:no}})}
 if(cmd==='CLOSE_PERIOD'){ow(a);const period=PK(p.periodKey);open(sql,period);const start=period+'-01';const [y,m]=period.split('-').map(Number),next=new Date(Date.UTC(y,m,1)),end=`${next.getUTCFullYear()}-${String(next.getUTCMonth()+1).padStart(2,'0')}-01`;const mov=sql.exec(`SELECT movement_type,qty_base,unit_cost_rp,date_key FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,end).toArray();let opening=0,inn=0,out=0,adj=0,val=0;for(const r of mov){const type=String(r.movement_type),q=N(r.qty_base),sg=['OPENING','IN','RETURN_IN','ADJUSTMENT_IN'].includes(type)?1:-1;val+=Math.round(sg*q*N(r.unit_cost_rp));if(String(r.date_key)<start){opening+=sg*q;continue}if(['IN','RETURN_IN'].includes(type))inn+=q;else if(['OUT','RETURN_OUT'].includes(type))out+=q;else if(type==='ADJUSTMENT_IN')adj+=q;else if(type==='ADJUSTMENT_OUT')adj-=q}const closing=opening+inn-out+adj,sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period),cogs=scalar(sql,`SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,period);let rec=0;for(const inv of sql.exec(`SELECT invoice_id,grand_total_rp FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period).toArray())rec+=Math.max(0,N(inv.grand_total_rp)-paid(sql,String(inv.invoice_id)));const t=now();sql.exec(`INSERT INTO plastic_month_close(business_unit_id,period_key,status,opening_stock_qty,inbound_qty,outbound_qty,adjustment_qty,closing_stock_qty,sales_rp,cogs_rp,gross_profit_rp,receivable_rp,closing_inventory_value_rp,closed_at,closed_by,reopen_reason,updated_at) VALUES('BU-PLASTIC',?,'CLOSED',?,?,?,?,?,?,?,?,?,?,?,?,'',?) ON CONFLICT(business_unit_id,period_key) DO UPDATE SET status='CLOSED',opening_stock_qty=excluded.opening_stock_qty,inbound_qty=excluded.inbound_qty,outbound_qty=excluded.outbound_qty,adjustment_qty=excluded.adjustment_qty,closing_stock_qty=excluded.closing_stock_qty,sales_rp=excluded.sales_rp,cogs_rp=excluded.cogs_rp,gross_profit_rp=excluded.gross_profit_rp,receivable_rp=excluded.receivable_rp,closing_inventory_value_rp=excluded.closing_inventory_value_rp,closed_at=excluded.closed_at,closed_by=excluded.closed_by,reopen_reason='',updated_at=excluded.updated_at`,period,opening,inn,out,adj,closing,sales,cogs,sales-cogs,rec,Math.max(0,val),t,a.id,t).toArray();audit(sql,a,'PLASTIC_MONTH_CLOSE','PLASTIC_MONTH_CLOSE',period,T(p.reason,500),{opening,inn,out,adj,closing,sales,cogs,rec});return{ok:true,periodKey:period,status:'CLOSED'}}
