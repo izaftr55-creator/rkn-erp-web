@@ -4742,6 +4742,7 @@ function Reports({
   period: string;
 }) {
   /* RKN_PLASTIC_SIMPLE_RECON_REPORT_UI_V2R3 */
+  /* RKN_PLASTIC_RECON_READABILITY_V2R7 */
   type ReportTab =
     | "RECON"
     | "STOCK"
@@ -4811,6 +4812,57 @@ function Reports({
       .join(" + ");
   };
 
+
+  const reportQtyFmt = new Intl.NumberFormat("id-ID", {
+    maximumFractionDigits: 2,
+  });
+
+  const isThermalRow = (row: Row) =>
+    String(row.category || "").toUpperCase() === "THERMAL" ||
+    String(row.productName || "").toUpperCase().startsWith("THERMAL");
+
+  /*
+    Report utama:
+    - Polymailer: BALL dan ROLL dipisahkan per baris di dalam sel.
+    - Thermal: satuan report hanya DUS. Penjualan eceran tetap masuk
+      sebagai pecahan DUS agar kuantitas tidak hilang.
+  */
+  const reportQtyString = (row: Row, totalValue: unknown) => {
+    const raw = Number(totalValue || 0);
+
+    if (isThermalRow(row)) {
+      const factor = Math.max(1, Number(row.unitsPerPack || 1));
+      return `${reportQtyFmt.format(raw / factor)} DUS`;
+    }
+
+    const factor = Math.max(1, Number(row.unitsPerPack || 1));
+    const sign = raw < 0 ? -1 : 1;
+    let total = Math.abs(raw);
+    const ball = Math.floor((total + 1e-9) / factor);
+    total -= ball * factor;
+    const roll = Math.max(0, total);
+
+    const signedBall = ball === 0 ? 0 : ball * sign;
+    const signedRoll = roll === 0 ? 0 : roll * sign;
+
+    return [
+      `BALL  ${reportQtyFmt.format(signedBall)}`,
+      `ROLL  ${reportQtyFmt.format(signedRoll)}`,
+    ].join("\\n");
+  };
+
+  const reportQtyCell = (row: Row, totalValue: unknown) => (
+    <span
+      style={{
+        whiteSpace: "pre-line",
+        lineHeight: 1.45,
+        display: "inline-block",
+      }}
+    >
+      {reportQtyString(row, totalValue)}
+    </span>
+  );
+
   const simpleRows = auditLedger
     .map((row: Row) => {
       const expectedQtyBase = Number(row.systemLedgerQtyBase || 0);
@@ -4867,6 +4919,49 @@ function Reports({
       Math.abs(numberValue)
     )}`;
   };
+
+
+  const reconColumns: Column[] = [
+    ["productName", "Produk"],
+    ["color", "Warna"],
+    ["size", "Ukuran"],
+    [
+      "openingQtyBase",
+      `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
+      (row) => reportQtyCell(row, row.openingQtyBase),
+    ],
+    [
+      "inboundQtyBase",
+      "Masuk",
+      (row) => reportQtyCell(row, row.inboundQtyBase),
+    ],
+    [
+      "outboundQtyBase",
+      "Keluar",
+      (row) => reportQtyCell(row, row.outboundQtyBase),
+    ],
+    [
+      "expectedQtyBase",
+      `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
+      (row) => reportQtyCell(row, row.expectedQtyBase),
+    ],
+    [
+      "physicalQtyBase",
+      "SO Fisik",
+      (row) =>
+        row.counted
+          ? reportQtyCell(row, row.physicalQtyBase)
+          : "BELUM DIHITUNG",
+    ],
+    [
+      "differenceQtyBase",
+      "Selisih",
+      (row) =>
+        row.counted
+          ? reportQtyCell(row, row.differenceQtyBase)
+          : "-",
+    ],
+  ];
 
   const loadLogoData = async () => {
     const response = await fetch("/rkn-logo.png", {
@@ -5009,36 +5104,70 @@ function Reports({
     drawHeader(1);
 
     if (reportTab === "RECON") {
-      table(
-        [
-          "Produk",
-          "Warna",
-          "Ukuran",
-          `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
-          "Masuk",
-          "Keluar",
-          `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
-          "SO Fisik",
-          "Selisih",
-          "Status",
-        ],
-        simpleRows.map((row: Row) => [
+      const reconHead = [
+        "Produk",
+        "Warna",
+        "Ukuran",
+        `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
+        "Masuk",
+        "Keluar",
+        `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
+        "SO Fisik",
+        "Selisih",
+      ];
+
+      const bodyFor = (rows: Row[]) =>
+        rows.map((row: Row) => [
           row.productName || row.category || "-",
           row.color || "-",
           row.size || "-",
-          stockHuman(row, row.openingQtyBase),
-          stockHuman(row, row.inboundQtyBase),
-          stockHuman(row, row.outboundQtyBase),
-          stockHuman(row, row.expectedQtyBase),
+          reportQtyString(row, row.openingQtyBase),
+          reportQtyString(row, row.inboundQtyBase),
+          reportQtyString(row, row.outboundQtyBase),
+          reportQtyString(row, row.expectedQtyBase),
           row.counted
-            ? stockHuman(row, row.physicalQtyBase)
+            ? reportQtyString(row, row.physicalQtyBase)
             : "BELUM DIHITUNG",
           row.counted
-            ? signedStock(row, row.differenceQtyBase)
+            ? reportQtyString(row, row.differenceQtyBase)
             : "-",
-          row.status,
-        ])
-      );
+        ]);
+
+      const sections: Array<{
+        title: string;
+        rows: Row[];
+      }> = [
+        {
+          title: `MASIH SELISIH (${varianceRows.length} SKU)`,
+          rows: varianceRows,
+        },
+        {
+          title: `SUDAH BALANCE (${balanceRows.length} SKU)`,
+          rows: balanceRows,
+        },
+        {
+          title: `BELUM DIHITUNG (${uncountedRows.length} SKU)`,
+          rows: uncountedRows,
+        },
+      ].filter((section) => section.rows.length > 0);
+
+      sections.forEach((section, index) => {
+        if (index > 0) {
+          doc.addPage();
+        }
+
+        drawHeader(doc.getNumberOfPages());
+        doc.setTextColor(25, 34, 46);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(section.title, 4, 34);
+
+        table(
+          reconHead,
+          bodyFor(section.rows),
+          38
+        );
+      });
     }
 
     if (reportTab === "STOCK") {
@@ -5231,56 +5360,41 @@ function Reports({
             />
           </section>
 
-          <Panel
-            title={`Rekonsiliasi Stock ${auditSoDate}`}
-            subtitle={`Opening ${auditOpeningDate} + Masuk - Keluar = Stock ${auditSoDate} → dibandingkan dengan SO Fisik.`}
-          >
-            <DataTable
-              rows={simpleRows}
-              columns={[
-                ["productName", "Produk"],
-                ["color", "Warna"],
-                ["size", "Ukuran"],
-                [
-                  "openingQtyBase",
-                  `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
-                  (row) => stockHuman(row, row.openingQtyBase),
-                ],
-                [
-                  "inboundQtyBase",
-                  "Masuk",
-                  (row) => stockHuman(row, row.inboundQtyBase),
-                ],
-                [
-                  "outboundQtyBase",
-                  "Keluar",
-                  (row) => stockHuman(row, row.outboundQtyBase),
-                ],
-                [
-                  "expectedQtyBase",
-                  `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
-                  (row) => stockHuman(row, row.expectedQtyBase),
-                ],
-                [
-                  "physicalQtyBase",
-                  "SO Fisik",
-                  (row) =>
-                    row.counted
-                      ? stockHuman(row, row.physicalQtyBase)
-                      : "BELUM DIHITUNG",
-                ],
-                [
-                  "differenceQtyBase",
-                  "Selisih",
-                  (row) =>
-                    row.counted
-                      ? signedStock(row, row.differenceQtyBase)
-                      : "-",
-                ],
-                ["status", "Status"],
-              ]}
-            />
-          </Panel>
+          {varianceRows.length ? (
+            <Panel
+              title={`Masih Selisih · ${varianceRows.length} SKU`}
+              subtitle="Prioritas pengecekan. Angka minus/plus menunjukkan beda antara Stock Seharusnya dan SO Fisik."
+            >
+              <DataTable
+                rows={varianceRows}
+                columns={reconColumns}
+              />
+            </Panel>
+          ) : null}
+
+          {balanceRows.length ? (
+            <Panel
+              title={`Sudah Balance · ${balanceRows.length} SKU`}
+              subtitle="Stock Seharusnya sama dengan hasil SO Fisik."
+            >
+              <DataTable
+                rows={balanceRows}
+                columns={reconColumns}
+              />
+            </Panel>
+          ) : null}
+
+          {uncountedRows.length ? (
+            <Panel
+              title={`Belum Dihitung · ${uncountedRows.length} SKU`}
+              subtitle="SKU ini belum memiliki input SO fisik."
+            >
+              <DataTable
+                rows={uncountedRows}
+                columns={reconColumns}
+              />
+            </Panel>
+          ) : null}
         </>
       ) : null}
 
