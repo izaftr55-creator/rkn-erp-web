@@ -4828,3 +4828,107 @@
   min-height: 100vh !important;
   background: #050d18 !important;
 }
+
+
+
+/* =========================================================
+   RKN_PLASTIC_GLOBAL_OPERATIONAL_REPAIR_UI_V2Q9
+   ========================================================= */
+
+.paymentCompactGrid {
+  grid-template-columns:
+    minmax(300px, 1fr)
+    minmax(180px, 220px)
+    minmax(180px, 220px) !important;
+  align-items: end !important;
+}
+
+.moneyCompactField {
+  width: 100% !important;
+  max-width: 220px !important;
+  justify-self: start !important;
+}
+
+.moneyCompactField input {
+  width: 100% !important;
+  max-width: 220px !important;
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.ledgerFilter select,
+.ledgerFilter input,
+.ledgerFilter input[list],
+.ledgerFilter [role="combobox"] {
+  box-sizing: border-box !important;
+  width: 280px !important;
+  max-width: 100% !important;
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 32px 0 11px !important;
+  border: 1px solid #27486f !important;
+  border-radius: 9px !important;
+  background: #071522 !important;
+  background-color: #071522 !important;
+  color: #f4f8ff !important;
+  -webkit-text-fill-color: #f4f8ff !important;
+  color-scheme: dark !important;
+  box-shadow: none !important;
+  outline: none !important;
+  opacity: 1 !important;
+}
+
+.ledgerFilter select:hover,
+.ledgerFilter input:hover,
+.ledgerFilter [role="combobox"]:hover {
+  border-color: #376a9f !important;
+  background: #0a1a2b !important;
+  background-color: #0a1a2b !important;
+}
+
+.ledgerFilter select:focus,
+.ledgerFilter input:focus,
+.ledgerFilter [role="combobox"]:focus {
+  border-color: #4b8bd1 !important;
+  background: #071522 !important;
+  background-color: #071522 !important;
+  box-shadow: 0 0 0 2px rgba(75, 139, 209, .14) !important;
+}
+
+.ledgerFilter select option {
+  background: #071522 !important;
+  background-color: #071522 !important;
+  color: #f4f8ff !important;
+}
+
+.ledgerFilter input:-webkit-autofill,
+.ledgerFilter input:-webkit-autofill:hover,
+.ledgerFilter input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f4f8ff !important;
+  -webkit-box-shadow:
+    0 0 0 1000px #071522 inset !important;
+  box-shadow:
+    0 0 0 1000px #071522 inset !important;
+}
+
+.formStack .moneyField input[type="number"],
+.formStack .moneyCompactField input[type="number"] {
+  font-variant-numeric: tabular-nums !important;
+  text-align: right !important;
+}
+
+@media (max-width: 820px) {
+  .paymentCompactGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .moneyCompactField,
+  .moneyCompactField input,
+  .ledgerFilter select,
+  .ledgerFilter input,
+  .ledgerFilter input[list],
+  .ledgerFilter [role="combobox"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}

@@ -586,6 +586,7 @@ if(view==='RECONCILIATION'){
 if(view==='PRODUCTS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' ORDER BY v.active DESC,v.category,v.product_name,v.color,v.size`).toArray()};
 if(view==='CUSTOMERS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT c.customer_id customerId,c.customer_name customerName,c.phone,c.address,c.notes,c.active,COUNT(DISTINCT i.invoice_id) invoiceCount,COALESCE(SUM(i.grand_total_rp),0) totalSalesRp,MAX(i.date_key) lastPurchaseDate FROM plastic_customer c LEFT JOIN plastic_sales_invoice i ON i.customer_id=c.customer_id AND i.status<>'VOID' WHERE c.business_unit_id='BU-PLASTIC' GROUP BY c.customer_id ORDER BY c.active DESC,c.customer_name`).toArray()};
 /* RKN_PLASTIC_INBOUND_VIEW_V2N */
+/* RKN_PLASTIC_HISTORY_PERIOD_RECOVERY_V2Q9 INBOUND */
 if(view==='INBOUND')return{
   view,
   periodKey:period,
@@ -621,7 +622,7 @@ if(view==='INBOUND')return{
      JOIN plastic_product_variant v
        ON v.variant_id=l.variant_id
      WHERE i.business_unit_id='BU-PLASTIC'
-       AND i.period_key=?
+       AND substr(i.date_key,1,7)=?
      ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
      LIMIT 500`,
     period
@@ -629,6 +630,7 @@ if(view==='INBOUND')return{
 };
 
 /* RKN_PLASTIC_OUTBOUND_LEDGER_VIEW_V2O */
+/* RKN_PLASTIC_HISTORY_PERIOD_RECOVERY_V2Q9 OUTBOUND */
 if(view==='OUTBOUND')return{
   view,
   periodKey:period,
@@ -648,7 +650,7 @@ if(view==='OUTBOUND')return{
      JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
      JOIN plastic_product_variant v ON v.variant_id=l.variant_id
      LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
-     WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'
+     WHERE i.business_unit_id='BU-PLASTIC' AND substr(i.date_key,1,7)=? AND i.status<>'VOID'
      ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
      LIMIT 800`,
     period
@@ -731,6 +733,7 @@ if(view==='RECEIVABLES'){
 
 /* RKN_PLASTIC_REPORTS_PRO_V2O */
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
+/* RKN_PLASTIC_REPORT_DATE_CUTOFF_V2Q9 */
 if(view==='REPORTS'){
   const stock=sql.exec(
     `SELECT
@@ -847,7 +850,7 @@ if(view==='REPORTS'){
      FROM plastic_inbound i
      JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
      JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-     WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=?
+     WHERE i.business_unit_id='BU-PLASTIC' AND substr(i.date_key,1,7)=?
      ORDER BY i.date_key,i.created_at`,
     period
   ).toArray();
@@ -864,7 +867,7 @@ if(view==='REPORTS'){
      JOIN plastic_product_variant v ON v.variant_id=l.variant_id
      LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
      WHERE i.business_unit_id='BU-PLASTIC'
-       AND i.period_key=?
+       AND substr(i.date_key,1,7)=?
        AND i.status<>'VOID'
      ORDER BY i.date_key,i.created_at`,
     period

@@ -935,9 +935,35 @@ const loadMasters = useCallback(async () => {
 
       await loadMasters();
 
-      const [nextView, nextDashboard] = await Promise.all([
-        read(view, period),
-        read("DASHBOARD", period),
+
+      /* RKN_PLASTIC_TRANSACTION_PERIOD_SYNC_V2Q9 */
+      const payloadDate =
+        typeof payload?.dateKey === "string"
+          ? payload.dateKey
+          : "";
+
+      const transactionPeriod =
+        /^\d{4}-\d{2}-\d{2}$/.test(payloadDate) &&
+        (view === "INBOUND" || view === "OUTBOUND")
+          ? payloadDate.slice(0, 7)
+          : period;
+
+      if (
+        transactionPeriod !== period &&
+        (view === "INBOUND" || view === "OUTBOUND")
+      ) {
+        setPeriod(transactionPeriod);
+
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            "rkn-plastic-active-period",
+            transactionPeriod
+          );
+        }
+      }
+const [nextView, nextDashboard] = await Promise.all([
+        read(view, transactionPeriod),
+        read("DASHBOARD", transactionPeriod),
       ]);
       setData(nextView);
       setDashboard(nextDashboard);
@@ -3254,6 +3280,7 @@ function Inventory({ rows }: { rows: Row[] }) {
   );
 }
 
+/* RKN_PLASTIC_PAYMENT_COMPACT_V2Q9 */
 function Receivables({
   data,
   canWrite,
@@ -3381,7 +3408,7 @@ function Receivables({
       {canWrite && rows.length ? (
         <Panel title="Pembayaran">
           <form onSubmit={submit} className={styles.formStack}>
-            <div className={styles.formGrid3}>
+            <div className={`${styles.formGrid3} ${styles.paymentCompactGrid}`}>
               <Field label="Transaksi">
                 <select
                   required
@@ -3405,7 +3432,7 @@ function Receivables({
                 </select>
               </Field>
 
-              <Field label="Nominal">
+              <Field label="Nominal" className={styles.moneyCompactField}>
                 <input
                   required
                   type="number"
