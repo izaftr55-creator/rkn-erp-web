@@ -702,6 +702,7 @@ function Panel({
   );
 }
 
+/* RKN_PLASTIC_GLOBAL_SMART_TABLE_FILTER_V2R10 */
 function DataTable({
   rows,
   columns,
@@ -709,6 +710,136 @@ function DataTable({
   rows: Row[];
   columns: Column[];
 }) {
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const dateField = useMemo(() => {
+    const candidates = [
+      "dateKey",
+      "createdAt",
+      "lastPurchaseDate",
+      "dueDateKey",
+      "occurredAt",
+      "updatedAt",
+    ];
+
+    return candidates.find((key) =>
+      rows.some((row) => Boolean(row?.[key]))
+    );
+  }, [rows]);
+
+  const statusField = useMemo(() => {
+    const candidates = [
+      "paymentLabel",
+      "status",
+      "historyIntegrity",
+      "mappingStatus",
+      "periodStatus",
+    ];
+
+    return candidates.find((key) =>
+      rows.some((row) => Boolean(row?.[key]))
+    );
+  }, [rows]);
+
+  const statusOptions = useMemo(() => {
+    if (!statusField) return [];
+
+    return Array.from(
+      new Set(
+        rows
+          .map((row) =>
+            String(row?.[statusField] || "").trim()
+          )
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b, "id-ID"));
+  }, [rows, statusField]);
+
+  const normalizeSearch = (value: unknown) =>
+    String(value ?? "")
+      .toLocaleLowerCase("id-ID")
+      .replace(/_/g, " ")
+      .replace(/s+/g, " ")
+      .trim();
+
+  const filteredRows = useMemo(() => {
+    const search = normalizeSearch(filterSearch);
+
+    return rows.filter((row) => {
+      if (search) {
+        const haystack = Object.values(row || {})
+          .filter(
+            (value) =>
+              value === null ||
+              value === undefined ||
+              ["string", "number", "boolean"].includes(
+                typeof value
+              )
+          )
+          .map(normalizeSearch)
+          .join(" ");
+
+        if (!haystack.includes(search)) {
+          return false;
+        }
+      }
+
+      if (dateField) {
+        const rawDate = String(
+          row?.[dateField] || ""
+        ).slice(0, 10);
+
+        if (
+          filterDateFrom &&
+          (!rawDate || rawDate < filterDateFrom)
+        ) {
+          return false;
+        }
+
+        if (
+          filterDateTo &&
+          (!rawDate || rawDate > filterDateTo)
+        ) {
+          return false;
+        }
+      }
+
+      if (
+        statusField &&
+        filterStatus &&
+        String(row?.[statusField] || "") !== filterStatus
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    rows,
+    filterSearch,
+    filterDateFrom,
+    filterDateTo,
+    filterStatus,
+    dateField,
+    statusField,
+  ]);
+
+  const hasActiveFilter =
+    Boolean(filterSearch) ||
+    Boolean(filterDateFrom) ||
+    Boolean(filterDateTo) ||
+    Boolean(filterStatus);
+
+  const resetFilters = () => {
+    setFilterSearch("");
+    setFilterDateFrom("");
+    setFilterDateTo("");
+    setFilterStatus("");
+  };
+
   if (!rows.length) {
     return (
       <div className={styles.emptyState}>
@@ -719,43 +850,138 @@ function DataTable({
   }
 
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            {columns.map(([key, label]) => (
-              <th key={key}>{label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr
-              key={`${
-                row.lineId ||
-                row.paymentId ||
-                row.movementId ||
-                row.opnameLineId ||
-                row.variantId ||
-                row.customerId ||
-                row.invoiceId ||
-                row.inboundId ||
-                row.id ||
-                "row"
-              }-${index}`}
+    <>
+      <div className={styles.smartFilterBar}>
+        <div className={styles.smartFilterSearch}>
+          <span className={styles.smartFilterLabel}>CARI</span>
+          <input
+            type="search"
+            value={filterSearch}
+            placeholder="Nama / SKU / invoice / warna / ukuran..."
+            onChange={(event) =>
+              setFilterSearch(event.target.value)
+            }
+          />
+        </div>
+
+        {dateField ? (
+          <>
+            <label className={styles.smartFilterDate}>
+              <span className={styles.smartFilterLabel}>
+                DARI
+              </span>
+              <input
+                type="date"
+                value={filterDateFrom}
+                onChange={(event) =>
+                  setFilterDateFrom(event.target.value)
+                }
+              />
+            </label>
+
+            <label className={styles.smartFilterDate}>
+              <span className={styles.smartFilterLabel}>
+                SAMPAI
+              </span>
+              <input
+                type="date"
+                value={filterDateTo}
+                onChange={(event) =>
+                  setFilterDateTo(event.target.value)
+                }
+              />
+            </label>
+          </>
+        ) : null}
+
+        {statusField && statusOptions.length > 1 ? (
+          <label className={styles.smartFilterStatus}>
+            <span className={styles.smartFilterLabel}>
+              STATUS
+            </span>
+            <select
+              value={filterStatus}
+              onChange={(event) =>
+                setFilterStatus(event.target.value)
+              }
             >
-              {columns.map(([key, , render]) => (
-                <td key={key}>
-                  {render
-                    ? render(row)
-                    : humanizeDisplay(row[key])}
-                </td>
+              <option value="">Semua</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {String(status)
+                    .replace(/_/g, " ")
+                    .trim()}
+                </option>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+            </select>
+          </label>
+        ) : null}
+
+        <div className={styles.smartFilterActions}>
+          <span className={styles.smartFilterCount}>
+            {filteredRows.length} / {rows.length}
+          </span>
+
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            disabled={!hasActiveFilter}
+            onClick={resetFilters}
+          >
+            RESET
+          </button>
+        </div>
+      </div>
+
+      {!filteredRows.length ? (
+        <div className={styles.emptyState}>
+          <strong>Tidak ada hasil</strong>
+          <span>
+            Ubah kata pencarian atau rentang tanggal.
+          </span>
+        </div>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                {columns.map(([key, label]) => (
+                  <th key={key}>{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row, index) => (
+                <tr
+                  key={`${
+                    row.lineId ||
+                    row.paymentId ||
+                    row.movementId ||
+                    row.opnameLineId ||
+                    row.variantId ||
+                    row.customerId ||
+                    row.invoiceId ||
+                    row.inboundId ||
+                    row.id ||
+                    "row"
+                  }-${index}`}
+                >
+                  {columns.map(([key, , render]) => (
+                    <td key={key}>
+                      {render
+                        ? render(row)
+                        : typeof humanizeDisplay === "function"
+                        ? humanizeDisplay(row[key])
+                        : String(row[key] ?? "-")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 
