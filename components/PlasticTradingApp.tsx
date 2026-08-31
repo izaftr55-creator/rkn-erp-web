@@ -417,11 +417,18 @@ const splitQtyPdf = (row: Row, qtyValue: unknown) => {
   const remBase = Math.round(abs - packCount * unitsPerPack);
 
   const packUnit = isThermal ? "DUS" : "BALL";
-  const baseUnit = isThermal ? "LEMBAR" : "ROLL";
+  let baseUnit = `${qtyFmt.format(remBase)} ROLL`;
+  if (isThermal) {
+    if (remBase % 500 === 0 && remBase > 0) {
+      baseUnit = `${qtyFmt.format(remBase / 500)} STACK`;
+    } else {
+      baseUnit = `${qtyFmt.format(remBase)} LEMBAR`;
+    }
+  }
 
   return {
     pack: packCount > 0 ? `${sign}${qtyFmt.format(packCount)} ${packUnit}` : "0",
-    base: remBase > 0 ? `${sign}${qtyFmt.format(remBase)} ${baseUnit}` : "0",
+    base: remBase > 0 ? `${sign}${baseUnit}` : "0",
   };
 };
 
@@ -2403,9 +2410,17 @@ function Products({
             ],
             [
               "defaultSellPriceBaseRp",
-              "Harga / ROLL (LEMBAR)",
+              "Harga / ROLL (STACK)",
               (row) => {
+                const isThermal = isThermalProductRow(row);
                 const prices = effectiveSellPrices(row);
+                if (isThermal) {
+                  const stackPrice =
+                    prices.midPriceRp > 0
+                      ? prices.midPriceRp
+                      : Math.round(prices.packPriceRp / 20);
+                  return stackPrice > 0 ? money.format(stackPrice) : "-";
+                }
                 return prices.basePriceRp > 0
                   ? money.format(prices.basePriceRp)
                   : "-";
@@ -2421,7 +2436,7 @@ function Products({
             ],
             [
               "stockBase",
-              "Stok (ROLL/LEMBAR)",
+              "Stok (ROLL/STACK)",
               (row) => {
                 const sq = splitQtyPdf(row, row.qtyBase);
                 return sq.base !== "0" ? sq.base : "-";
