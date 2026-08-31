@@ -260,7 +260,11 @@ function authoritativeLiveStockRows(sql:Sql){
             COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
             COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp,
             COALESCE((
-              SELECT NULLIF(i.supplier_name,'')
+              SELECT CASE
+                WHEN UPPER(TRIM(i.supplier_name)) IN ('','BELUM ADA','SUPPLIER THERMAL') THEN 'KMS PACKAGING'
+                WHEN i.supplier_name IS NULL THEN 'KMS PACKAGING'
+                ELSE i.supplier_name
+              END
               FROM plastic_inbound i
               JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
               WHERE i.business_unit_id='BU-PLASTIC'
@@ -1783,7 +1787,11 @@ if(view==='REPORTS'){
        v.default_sell_price_mid_rp defaultSellPriceMidRp,
        v.default_sell_price_pack_rp defaultSellPricePackRp,
        COALESCE((
-         SELECT i.supplier_name
+         SELECT CASE
+           WHEN UPPER(TRIM(i.supplier_name)) IN ('','BELUM ADA','SUPPLIER THERMAL') THEN 'KMS PACKAGING'
+           WHEN i.supplier_name IS NULL THEN 'KMS PACKAGING'
+           ELSE i.supplier_name
+         END
          FROM plastic_inbound i
          JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
          WHERE i.business_unit_id='BU-PLASTIC'
@@ -1791,7 +1799,7 @@ if(view==='REPORTS'){
            AND i.date_key<=?
          ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
          LIMIT 1
-       ),'') lastSupplierName,
+       ),'KMS PACKAGING') lastSupplierName,
        COALESCE(b.qty_base,0) liveOnHandQtyBase
      FROM plastic_product_variant v
      LEFT JOIN plastic_inventory_balance b
