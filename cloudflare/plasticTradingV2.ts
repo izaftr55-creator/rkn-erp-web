@@ -555,8 +555,31 @@ if(view==='DASHBOARD'){
   const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period);
   const cogs=scalar(sql,`SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,period);
   const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
-  const stockValue=scalar(sql,`SELECT COALESCE(SUM(qty_base*avg_cost_rp),0) value FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC'`);
-  const stockQty=scalar(sql,`SELECT COALESCE(SUM(qty_base),0) value FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC'`);
+  const stockRows=sql.exec(`
+    SELECT
+      v.variant_id variantId, v.category, v.units_per_mid unitsPerMid, v.units_per_pack unitsPerPack,
+      v.default_sell_price_base_rp defaultSellPriceBaseRp,
+      v.default_sell_price_mid_rp defaultSellPriceMidRp,
+      v.default_sell_price_pack_rp defaultSellPricePackRp,
+      COALESCE(b.qty_base, 0) qtyBase,
+      COALESCE(b.avg_cost_rp, 0) avgCostRp
+    FROM plastic_product_variant v
+    LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id
+    WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
+  `).toArray();
+  let stockValue=0;
+  let stockQty=0;
+  for(const row of stockRows as any[]){
+    const qty=N(row.qtyBase);
+    stockQty+=qty;
+    const unitsPerPack=Math.max(1,N(row.unitsPerPack||1));
+    const unitsPerMid=Math.max(1,N(row.unitsPerMid||1));
+    const pBase=N(row.defaultSellPriceBaseRp);
+    const pMid=N(row.defaultSellPriceMidRp);
+    const pPack=N(row.defaultSellPricePackRp);
+    const effectiveBase=pBase>0?pBase:pMid>0?pMid/unitsPerMid:pPack>0?pPack/unitsPerPack:N(row.avgCostRp);
+    stockValue+=Math.round(qty*effectiveBase);
+  }
   const skuCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1`);
   const status=sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]?.status??'OPEN';
 
@@ -1721,6 +1744,10 @@ if(view==='REPORTS'){
     `SELECT
        i.date_key dateKey,i.inbound_no referenceNo,
        v.product_name productName,v.category,v.color,v.size,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       COALESCE(v.pack_unit,'') packUnit,
+       COALESCE(v.base_unit,'') baseUnit,
        l.qty_input qty,l.input_unit unit,l.qty_base qtyBase,
        l.unit_cost_rp unitCostRp,l.line_total_rp totalRp
      FROM plastic_inbound i
@@ -1737,6 +1764,10 @@ if(view==='REPORTS'){
        i.date_key dateKey,i.invoice_no referenceNo,
        COALESCE(c.customer_name,'') customerName,
        v.product_name productName,v.category,v.color,v.size,
+       COALESCE(v.units_per_mid,1) unitsPerMid,
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       COALESCE(v.pack_unit,'') packUnit,
+       COALESCE(v.base_unit,'') baseUnit,
        l.qty_base qtyBase,l.line_total_rp totalRp,l.cogs_total_rp cogsRp,
        (l.line_total_rp-l.cogs_total_rp) grossProfitRp
      FROM plastic_sales_invoice i
@@ -2206,7 +2237,47 @@ if(view==='REPORTS'){
   };
 }
 
-if(view==='CLOSING')return{view,periodKey:period,actor:a,current:sql.exec(`SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]??{period_key:period,status:'OPEN'},history:sql.exec(`SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' ORDER BY period_key DESC LIMIT 24`).toArray()};
+if(view==='CLOSING'){
+  const currentClose = sql.exec(
+    `SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,
+    period
+  ).toArray()[0];
+
+  const liveSales = scalar(
+    sql,
+    `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,
+    period
+  );
+  const liveCogs = scalar(
+    sql,
+    `SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,
+    period
+  );
+  const liveRec = scalar(
+    sql,
+    `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID' AND i.period_key=?`,
+    period
+  );
+
+  const current = currentClose ?? {
+    period_key: period,
+    status: 'OPEN',
+    sales_rp: liveSales,
+    cogs_rp: liveCogs,
+    gross_profit_rp: liveSales - liveCogs,
+    receivable_rp: liveRec
+  };
+
+  return {
+    view,
+    periodKey: period,
+    actor: a,
+    current,
+    history: sql.exec(
+      `SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' ORDER BY period_key DESC LIMIT 24`
+    ).toArray()
+  };
+}
 if(view==='AUDIT')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT id,actor_user_id actorUserId,action,entity_type entityType,entity_id entityId,reason,created_at createdAt FROM audit_log WHERE business_unit_id='BU-PLASTIC' ORDER BY created_at DESC LIMIT 300`).toArray()};
 /* RKN_PLASTIC_SO_SESSION_VIEW_V2P */
 if(view==='OPNAME'){

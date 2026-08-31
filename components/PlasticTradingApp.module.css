@@ -904,13 +904,32 @@
 
 .closingCard strong {
   font-size: 14px;
+  color: #edf4ff;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .closeActions {
-  margin-top: 12px;
-  display: flex;
-  align-items: flex-end;
-  gap: 9px;
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.closeActions .primaryButton,
+.closeActions .dangerButton {
+  height: 40px;
+  padding: 0 24px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
 }
 
 .closeReason {

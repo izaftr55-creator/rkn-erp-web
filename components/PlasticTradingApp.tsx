@@ -5787,7 +5787,7 @@ function Reconciliation({
 
     const unitsPerBall = Math.max(
       1,
-      Number(row.unitsPerPack || 1)
+      Number(row.unitsPerPack || 100)
     );
 
     const ball = Math.floor(
@@ -5798,6 +5798,10 @@ function Reconciliation({
       abs - ball * unitsPerBall
     );
 
+    if (abs < 0.000001) {
+      return "0 BALL";
+    }
+
     const parts: string[] = [];
 
     if (ball > 0) {
@@ -5806,7 +5810,7 @@ function Reconciliation({
       );
     }
 
-    if (roll > 0 || ball === 0) {
+    if (roll > 0 || parts.length === 0) {
       parts.push(
         `${qtyFmt.format(roll)} ROLL`
       );
@@ -5831,14 +5835,28 @@ function Reconciliation({
           ? "+"
           : "";
 
-    const dus =
-      Math.abs(value) /
-      Math.max(
-        1,
-        Number(row.unitsPerPack || 1)
-      );
+    const abs = Math.abs(value);
+    if (abs < 0.000001) {
+      return "0 DUS";
+    }
 
-    return `${sign}${qtyFmt.format(dus)} DUS`;
+    const factor = Math.max(
+      1,
+      Number(row.unitsPerPack || 10000)
+    );
+
+    const dus = Math.floor((abs + 1e-9) / factor);
+    const rem = cleanQty(abs - dus * factor);
+
+    if (dus > 0 && rem === 0) {
+      return `${sign}${qtyFmt.format(dus)} DUS`;
+    }
+
+    if (dus > 0 && rem > 0) {
+      return `${sign}${qtyFmt.format(dus)} DUS + ${qtyFmt.format(rem)} LEMBAR`;
+    }
+
+    return `${sign}${qtyFmt.format(rem)} LEMBAR`;
   };
 
   const reconQty = (
@@ -6375,19 +6393,29 @@ function Reports({
   };
 
   const stockHuman = (row: Row, total: unknown) => {
-    const parts = decompose(row, total);
+    const raw = Number(total || 0);
+    const isThermal = isThermalProductRow(row);
 
-    return [
-      row.packUnit
-        ? `${qtyText(parts.pack)} ${row.packUnit}`
-        : "",
-      row.midUnit
-        ? `${qtyText(parts.mid)} ${row.midUnit}`
-        : "",
-      `${qtyText(parts.base)} ${row.baseUnit || ""}`,
-    ]
-      .filter(Boolean)
-      .join(" + ");
+    if (Math.abs(raw) < 0.0001) {
+      return isThermal ? `0 ${row.packUnit || "DUS"}` : `0 ${row.packUnit || "BALL"}`;
+    }
+
+    const parts = decompose(row, total);
+    const pieces: string[] = [];
+
+    if (row.packUnit && parts.pack > 0) {
+      pieces.push(`${qtyText(parts.pack)} ${row.packUnit}`);
+    }
+
+    if (row.midUnit && parts.mid > 0) {
+      pieces.push(`${qtyText(parts.mid)} ${row.midUnit}`);
+    }
+
+    if (parts.base > 0 || pieces.length === 0) {
+      pieces.push(`${qtyText(parts.base)} ${row.baseUnit || "ROLL"}`);
+    }
+
+    return pieces.join(" + ");
   };
 
   const sellingValue = (row: Row) => {
@@ -6832,7 +6860,8 @@ function Reports({
     const table = (
       head: any,
       body: any[][],
-      startY = 29
+      startY = 29,
+      columnStyles?: any
     ) => {
       autoTable(doc, {
         theme: "grid",
@@ -6846,6 +6875,7 @@ function Reports({
         },
         head: Array.isArray(head[0]) ? head : [head],
         body,
+        columnStyles: columnStyles || {},
         styles: {
           font: "helvetica",
           fontSize: 6.8,
@@ -6896,7 +6926,13 @@ function Reports({
               ]]
             : []),
         ],
-        33
+        33,
+        {
+          0: { halign: "left", fontStyle: "bold" },
+          1: { halign: "left" },
+          2: { halign: "right", fontStyle: "bold" },
+          3: { halign: "left" },
+        }
       );
 
       if (topStockSellingValueRows.length) {
@@ -6919,7 +6955,15 @@ function Reports({
             ]),
             ["", "", "", "", "TOTAL NILAI JUAL", money.format(stockSellingValueTotalRp)],
           ],
-          33
+          33,
+          {
+            0: { halign: "left" },
+            1: { halign: "left" },
+            2: { halign: "center" },
+            3: { halign: "right" },
+            4: { halign: "right" },
+            5: { halign: "right", fontStyle: "bold" },
+          }
         );
       }
 
@@ -6943,21 +6987,51 @@ function Reports({
             ]),
             ["", "", "TOTAL", "", "", money.format(receivableTotalRp)],
           ],
-          33
+          33,
+          {
+            0: { halign: "center" },
+            1: { halign: "center" },
+            2: { halign: "left" },
+            3: { halign: "right" },
+            4: { halign: "right" },
+            5: { halign: "right", fontStyle: "bold" },
+          }
         );
       }
     }
 
     const splitQtyPdf = (row: Row, qtyValue: any) => {
-      const raw = Number(qtyValue || 0);
-      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 100));
+      const isThermal = isThermalProductRow(row);
+      const unitsPerPack = Math.max(
+        1,
+        Number(row.unitsPerPack || (isThermal ? 10000 : 100))
+      );
+      const raw = Number(
+        qtyValue !== undefined && qtyValue !== null
+          ? qtyValue
+          : row.qtyBase || row.qty || 0
+      );
+
       if (Math.abs(raw) < 0.0001) {
         return { pack: "0", base: "0" };
       }
+
+      const inputUnitUpper = String(
+        row.unit || row.inputUnit || ""
+      ).toUpperCase();
+      if (
+        (inputUnitUpper === "DUS" || inputUnitUpper === "BALL") &&
+        raw <= 500 &&
+        qtyValue === undefined
+      ) {
+        return { pack: qtyFmt.format(raw), base: "0" };
+      }
+
       const sign = raw < 0 ? "-" : "";
       const abs = Math.abs(raw);
-      const pack = Math.floor(abs / unitsPerPack);
-      const base = abs % unitsPerPack;
+      const pack = Math.floor((abs + 1e-9) / unitsPerPack);
+      const base = Math.max(0, Math.round(abs - pack * unitsPerPack));
+
       return {
         pack: `${sign}${qtyFmt.format(pack)}`,
         base: `${qtyFmt.format(base)}`,
@@ -7049,7 +7123,25 @@ function Reports({
       table(
         reconHead,
         bodyFor(allReconRows),
-        33
+        33,
+        {
+          0: { halign: "left" },
+          1: { halign: "left" },
+          2: { halign: "center" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+          6: { halign: "right" },
+          7: { halign: "right" },
+          8: { halign: "right" },
+          9: { halign: "right" },
+          10: { halign: "right" },
+          11: { halign: "right" },
+          12: { halign: "right" },
+          13: { halign: "right" },
+          14: { halign: "right" },
+          15: { halign: "center", fontStyle: "bold" },
+        }
       );
 
       if (pdfOutsideSoRows.length > 0) {
@@ -7062,7 +7154,25 @@ function Reports({
         table(
           reconHead,
           bodyFor(pdfOutsideSoRows),
-          33
+          33,
+          {
+            0: { halign: "left" },
+            1: { halign: "left" },
+            2: { halign: "center" },
+            3: { halign: "right" },
+            4: { halign: "right" },
+            5: { halign: "right" },
+            6: { halign: "right" },
+            7: { halign: "right" },
+            8: { halign: "right" },
+            9: { halign: "right" },
+            10: { halign: "right" },
+            11: { halign: "right" },
+            12: { halign: "right" },
+            13: { halign: "right" },
+            14: { halign: "right" },
+            15: { halign: "center" },
+          }
         );
       }
     }
@@ -7105,7 +7215,17 @@ function Reports({
             ];
           }),
           ["", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
-        ]
+        ],
+        33,
+        {
+          0: { halign: "left" },
+          1: { halign: "left" },
+          2: { halign: "center" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+          6: { halign: "right", fontStyle: "bold" },
+        }
       );
     }
 
@@ -7151,7 +7271,19 @@ function Reports({
             ];
           }),
           ["", "", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockValueTotal)],
-        ]
+        ],
+        33,
+        {
+          0: { halign: "left" },
+          1: { halign: "left" },
+          2: { halign: "left" },
+          3: { halign: "center" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+          6: { halign: "right" },
+          7: { halign: "right" },
+          8: { halign: "right", fontStyle: "bold" },
+        }
       );
     }
 
@@ -7160,7 +7292,7 @@ function Reports({
       const inboundHead = [
         [
           { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
-          { content: "NO. DOKUMEN IN", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "NO. DOKUMEN IN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
           { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
@@ -7187,7 +7319,18 @@ function Reports({
             sq.base,
             `${qtyText(row.qty)} ${row.unit || ""}`,
           ];
-        })
+        }),
+        33,
+        {
+          0: { halign: "center" },
+          1: { halign: "center" },
+          2: { halign: "left" },
+          3: { halign: "left" },
+          4: { halign: "center" },
+          5: { halign: "right" },
+          6: { halign: "right" },
+          7: { halign: "center" },
+        }
       );
     }
 
@@ -7201,7 +7344,7 @@ function Reports({
       const outboundHead = [
         [
           { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
-          { content: "NO. INVOICE", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "NO. INVOICE", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "NAMA CUSTOMER", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
           { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
           { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
@@ -7233,7 +7376,19 @@ function Reports({
             ];
           }),
           ["", "", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
-        ]
+        ],
+        33,
+        {
+          0: { halign: "center" },
+          1: { halign: "center" },
+          2: { halign: "left" },
+          3: { halign: "left" },
+          4: { halign: "left" },
+          5: { halign: "center" },
+          6: { halign: "right" },
+          7: { halign: "right" },
+          8: { halign: "right", fontStyle: "bold" },
+        }
       );
     }
 
@@ -7255,7 +7410,16 @@ function Reports({
             money.format(Number(row.outstandingRp || 0)),
           ]),
           ["", "", "TOTAL PIUTANG", "", "", money.format(pdfReceivableTotal)],
-        ]
+        ],
+        33,
+        {
+          0: { halign: "center" },
+          1: { halign: "center" },
+          2: { halign: "left" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right", fontStyle: "bold" },
+        }
       );
     }
 
@@ -7287,7 +7451,20 @@ function Reports({
             ? "-"
             : stockHuman(row, row.systemSnapshotQtyBase),
           stockHuman(row, row.liveOnHandQtyBase),
-        ])
+        ]),
+        33,
+        {
+          0: { halign: "left" },
+          1: { halign: "left" },
+          2: { halign: "center" },
+          3: { halign: "right" },
+          4: { halign: "right" },
+          5: { halign: "right" },
+          6: { halign: "right" },
+          7: { halign: "right" },
+          8: { halign: "right" },
+          9: { halign: "right" },
+        }
       );
     }
 
