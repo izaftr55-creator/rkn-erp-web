@@ -432,6 +432,48 @@ const splitQtyPdf = (row: Row, qtyValue: unknown) => {
   };
 };
 
+const formatBallDusQty = (
+  row: Row,
+  rawQty: number | string | null | undefined,
+  signed = false
+) => {
+  const num = Number(rawQty || 0);
+  const clean = Math.abs(num) < 0.000001 ? 0 : num;
+  const sign = clean < 0 ? "-" : signed && clean > 0 ? "+" : "";
+  const abs = Math.abs(clean);
+
+  const isThermal =
+    String(row.category || "").toUpperCase() === "THERMAL" ||
+    String(row.productName || "").toUpperCase().includes("THERMAL");
+  const unitsPerPack = Math.max(
+    1,
+    Number(row.unitsPerPack || (isThermal ? 10000 : 100))
+  );
+  const packUnit = String(
+    row.packUnit || (isThermal ? "DUS" : "BALL")
+  ).toUpperCase();
+  const baseUnit = String(
+    row.baseUnit || (isThermal ? "LEMBAR" : "ROLL")
+  ).toUpperCase();
+
+  if (abs < 0.000001) {
+    return `0 ${baseUnit}`;
+  }
+
+  const packCount = Math.floor((abs + 1e-9) / unitsPerPack);
+  const remBase = Math.round(abs - packCount * unitsPerPack);
+
+  const parts: string[] = [];
+  if (packCount > 0) {
+    parts.push(`${qtyFmt.format(packCount)} ${packUnit}`);
+  }
+  if (remBase > 0 || parts.length === 0) {
+    parts.push(`${qtyFmt.format(remBase)} ${baseUnit}`);
+  }
+
+  return `${sign}${parts.join("  ")}`;
+};
+
 const stockText = (row: Row) => {
   const base = String(row.baseUnit || "").toUpperCase();
   const mid = String(row.midUnit || "").toUpperCase();
@@ -4980,36 +5022,7 @@ function Opname({
   };
 
   const qtyText = (row: Row, totalValue: number) => {
-    const raw = Number(totalValue || 0);
-    const parts = decompose(row, Math.abs(raw));
-
-    if (raw < -0.000001) {
-      const negativeParts = [
-        row.packUnit && parts.pack > 0
-          ? `${qtyFmt.format(parts.pack)} ${row.packUnit}`
-          : "",
-        row.midUnit && parts.mid > 0
-          ? `${qtyFmt.format(parts.mid)} ${row.midUnit}`
-          : "",
-        parts.base > 0
-          ? `${qtyFmt.format(parts.base)} ${row.baseUnit || ""}`
-          : "",
-      ].filter(Boolean);
-
-      return `-${negativeParts.join(" / ") || `0 ${row.baseUnit || ""}`}`;
-    }
-
-    return [
-      row.packUnit
-        ? `${qtyFmt.format(parts.pack)} ${row.packUnit}`
-        : "",
-      row.midUnit
-        ? `${qtyFmt.format(parts.mid)} ${row.midUnit}`
-        : "",
-      `${qtyFmt.format(parts.base)} ${row.baseUnit || ""}`,
-    ]
-      .filter(Boolean)
-      .join(" / ");
+    return formatBallDusQty(row, totalValue);
   };
 
   /* RKN_PLASTIC_SO_MIXED_UOM_V2R */
@@ -5811,10 +5824,12 @@ function Opname({
                     "variance",
                     "Selisih",
                     (row) =>
-                      `${qtyFmt.format(
+                      formatBallDusQty(
+                        row,
                         Number(row.physicalQtyBase || 0) -
-                          Number(row.systemQtyBase || 0)
-                      )} ${row.baseUnit || ""}`,
+                          Number(row.systemQtyBase || 0),
+                        true
+                      ),
                   ],
                   [
                     "status",
@@ -5954,25 +5969,23 @@ function Opname({
               "systemQtyBase",
               "System",
               (row) =>
-                `${qtyFmt.format(
-                  Number(row.systemQtyBase || 0)
-                )} ${row.baseUnit || ""}`,
+                formatBallDusQty(row, row.systemQtyBase),
             ],
             [
               "physicalQtyBase",
               "Fisik",
               (row) =>
-                `${qtyFmt.format(
-                  Number(row.physicalQtyBase || 0)
-                )} ${row.baseUnit || ""}`,
+                formatBallDusQty(row, row.physicalQtyBase),
             ],
             [
               "varianceQtyBase",
               "Selisih",
               (row) =>
-                `${qtyFmt.format(
-                  Number(row.varianceQtyBase || 0)
-                )} ${row.baseUnit || ""}`,
+                formatBallDusQty(
+                  row,
+                  row.varianceQtyBase,
+                  true
+                ),
             ],
           ]}
         />
