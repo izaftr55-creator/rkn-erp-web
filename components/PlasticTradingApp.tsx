@@ -1860,6 +1860,7 @@ const [nextView, nextDashboard] = await Promise.all([
           {tab === "OUTBOUND" ? (
             <Outbound
               rows={data.rows || []}
+              payments={data.payments || []}
               products={products}
               customers={customers}
               canWrite={!readOnly}
@@ -3654,6 +3655,7 @@ function Inbound({
 
 function Outbound({
   rows,
+  payments = [],
   products,
   customers,
   canWrite,
@@ -3662,6 +3664,7 @@ function Outbound({
   run,
 }: {
   rows: Row[];
+  payments?: Row[];
   products: Row[];
   customers: Row[];
   canWrite: boolean;
@@ -3687,6 +3690,7 @@ function Outbound({
   const [editInvoiceId, setEditInvoiceId] = useState("");
   const [editInvoiceNo, setEditInvoiceNo] = useState("");
   const [editReason, setEditReason] = useState("");
+  const [viewInvoice, setViewInvoice] = useState<Row | null>(null);
 
   /* RKN_PLASTIC_HISTORY_RECOVERY_UI_V2R */
   const invoices = useMemo(() => {
@@ -3704,6 +3708,7 @@ function Outbound({
       if (!current) {
         map.set(id, {
           ...row,
+          items: [row],
           historyIntegrity: rowIntegrity,
           grossProfitRp:
             Number(row.grandTotalRp || 0) -
@@ -3712,6 +3717,7 @@ function Outbound({
         continue;
       }
 
+      current.items.push(row);
       if (
         String(current.historyIntegrity || "OK") === "OK" &&
         rowIntegrity !== "OK"
@@ -4178,32 +4184,322 @@ function Outbound({
             [
               "actions",
               "Aksi",
-              (row) =>
-                canEdit &&
-                String(row.historyIntegrity || "OK") === "OK" ? (
-                  <div className={styles.tableActions}>
-                    <button
-                      type="button"
-                      className={styles.inlineEditButton}
-                      onClick={() => startEdit(row)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.inlineDangerButton}
-                      onClick={() => voidSale(row)}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                ) : (
-                  "-"
-                ),
+              (row) => (
+                <div className={styles.tableActions}>
+                  <button
+                    type="button"
+                    className={styles.inlineEditButton}
+                    style={{
+                      background: "rgba(56, 189, 248, 0.12)",
+                      color: "#38bdf8",
+                      borderColor: "rgba(56, 189, 248, 0.3)",
+                    }}
+                    onClick={() => setViewInvoice(row)}
+                  >
+                    Lihat
+                  </button>
+                  {canEdit &&
+                  String(row.historyIntegrity || "OK") === "OK" ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.inlineEditButton}
+                        onClick={() => startEdit(row)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.inlineDangerButton}
+                        onClick={() => voidSale(row)}
+                      >
+                        Hapus
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              ),
             ],
           ]}
         />
       </Panel>
+
+      {viewInvoice ? (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setViewInvoice(null)}
+        >
+          <div
+            className={styles.modalPanel}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHead}>
+              <div className={styles.modalHeadTitle}>
+                <span>RINCIAN PRODUK KELUAR</span>
+                <h3>{viewInvoice.invoiceNo}</h3>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setViewInvoice(null)}
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(15, 23, 42, 0.6)",
+                    border: "1px solid rgba(51, 87, 120, 0.35)",
+                    display: "grid",
+                    gap: 3,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Tanggal
+                  </span>
+                  <strong style={{ color: "#f8fafc", fontSize: 14 }}>
+                    {viewInvoice.dateKey}
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(15, 23, 42, 0.6)",
+                    border: "1px solid rgba(51, 87, 120, 0.35)",
+                    display: "grid",
+                    gap: 3,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Pelanggan
+                  </span>
+                  <strong style={{ color: "#38bdf8", fontSize: 14 }}>
+                    {viewInvoice.customerName || "-"}
+                  </strong>
+                </div>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(15, 23, 42, 0.6)",
+                    border: "1px solid rgba(51, 87, 120, 0.35)",
+                    display: "grid",
+                    gap: 3,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Total Item
+                  </span>
+                  <strong style={{ color: "#f8fafc", fontSize: 14 }}>
+                    {(viewInvoice.items || []).length} SKU Produk
+                  </strong>
+                </div>
+              </div>
+
+              {/* Rincian Produk */}
+              <div>
+                <div className={styles.modalSectionHead}>
+                  <strong>Daftar Item Barang Keluar</strong>
+                  <span>{(viewInvoice.items || []).length} item</span>
+                </div>
+                <table className={styles.modalDetailTable}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>No</th>
+                      <th>Produk</th>
+                      <th>Warna</th>
+                      <th>Ukuran</th>
+                      <th>Kuantitas</th>
+                      <th style={{ textAlign: "right" }}>Harga Satuan</th>
+                      <th style={{ textAlign: "right" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(viewInvoice.items || []).map(
+                      (item: Row, idx: number) => (
+                        <tr key={item.lineId || idx}>
+                          <td>{idx + 1}</td>
+                          <td style={{ fontWeight: 600 }}>
+                            {item.productName}
+                          </td>
+                          <td>{item.color || "-"}</td>
+                          <td>{item.size || "-"}</td>
+                          <td style={{ color: "#38bdf8", fontWeight: 700 }}>
+                            {formatBallDusQty(
+                              item,
+                              item.qtyBase || item.qtyInput
+                            )}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            {money.format(Number(item.unitPriceRp || 0))}
+                          </td>
+                          <td
+                            style={{
+                              textAlign: "right",
+                              fontWeight: 700,
+                              color: "#f8fafc",
+                            }}
+                          >
+                            {money.format(Number(item.lineTotalRp || 0))}
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Ringkasan Finansial & Catatan */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 280px",
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(15, 23, 42, 0.4)",
+                    border: "1px solid rgba(51, 87, 120, 0.25)",
+                    fontSize: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      fontWeight: 700,
+                      display: "block",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Catatan Transaksi
+                  </span>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#cbd5e1",
+                      fontStyle: viewInvoice.note ? "normal" : "italic",
+                    }}
+                  >
+                    {viewInvoice.note || "Tidak ada catatan khusus."}
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "rgba(15, 23, 42, 0.6)",
+                    border: "1px solid rgba(51, 87, 120, 0.35)",
+                    display: "grid",
+                    gap: 6,
+                    fontSize: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    <span>Subtotal:</span>
+                    <span>
+                      {money.format(
+                        Number(
+                          viewInvoice.subtotalRp ||
+                            viewInvoice.grandTotalRp ||
+                            0
+                        )
+                      )}
+                    </span>
+                  </div>
+                  {Number(viewInvoice.discountRp || 0) > 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        color: "#f87171",
+                      }}
+                    >
+                      <span>Diskon:</span>
+                      <span>
+                        -
+                        {money.format(
+                          Number(viewInvoice.discountRp || 0)
+                        )}
+                      </span>
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontWeight: 700,
+                      color: "#f8fafc",
+                      borderTop: "1px solid rgba(51, 87, 120, 0.35)",
+                      paddingTop: 6,
+                    }}
+                  >
+                    <span>Total Transaksi:</span>
+                    <span style={{ color: "#38bdf8" }}>
+                      {money.format(Number(viewInvoice.grandTotalRp || 0))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setViewInvoice(null)}
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

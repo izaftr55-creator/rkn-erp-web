@@ -1540,6 +1540,14 @@ if(view==='OUTBOUND')return{
      LIMIT 1600`,
     period,
     period
+  ).toArray(),
+  payments: sql.exec(
+    `SELECT p.payment_id paymentId,p.invoice_id invoiceId,p.date_key dateKey,
+            p.amount_rp amountRp,p.payment_method paymentMethod,p.status,
+            p.note,p.created_at createdAt
+     FROM plastic_payment p
+     WHERE p.business_unit_id='BU-PLASTIC'
+     ORDER BY p.created_at DESC`
   ).toArray()
 };
 if(view==='INVENTORY'){
