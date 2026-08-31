@@ -106,6 +106,7 @@ const menus = [
   ["REPORTS", "Laporan", "reports"],
   ["CLOSING", "Closing", "closing"],
   ["AUDIT", "Audit", "audit"],
+  ["ACCESS", "Akses", "access"],
 ] as const;
 
 const pageDescriptions: Record<string, string> = {
@@ -122,6 +123,7 @@ const pageDescriptions: Record<string, string> = {
   REPORTS: "Laporan dan PDF.",
   CLOSING: "Tutup periode.",
   AUDIT: "Riwayat perubahan.",
+  ACCESS: "Manajemen pendaftaran akun, approval, dan hak akses pengguna.",
 };
 
 /* RKN_PLASTIC_MENU_ICONS_V2N2 */
@@ -248,6 +250,15 @@ function MenuIcon({ name }: { name: string }) {
           <circle cx="11" cy="11" r="6" />
           <path d="m15.5 15.5 4 4" />
           <path d="M8.5 11h5M11 8.5v5" />
+        </svg>
+      );
+    case "access":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       );
     default:
@@ -1399,14 +1410,14 @@ export default function PlasticTradingApp({
   const primaryRole = String(actor.roleCode || actor.primaryRoleCode || actor.role || "").toUpperCase();
   const isAdminOrOwner =
     actor.isSystemAdmin ||
-    ["SYSTEM_ADMIN", "PLASTIC_ADMIN", "GROUP_OWNER", "OWNER"].includes(primaryRole) ||
+    ["SYSTEM_ADMIN", "PLASTIC_ADMIN", "ADMIN", "GROUP_OWNER", "OWNER"].includes(primaryRole) ||
     actor.accessLevel === "OWNER" ||
     actor.accessLevel === "MANAGE";
   const isSupplier = primaryRole.includes("SUPPLIER");
   const isSupervisor =
-    primaryRole.includes("SUPERVISOR") ||
-    primaryRole.includes("SUPERVISORY") ||
-    primaryRole.includes("PENGAWAS");
+    primaryRole.includes("SUPERVIS") ||
+    primaryRole.includes("PENGAWAS") ||
+    actor.accessLevel === "SUPERVISI";
   const readOnly =
     !isAdminOrOwner && (actor.accessLevel === "VIEW" || isSupplier || isSupervisor);
   const canManage = isAdminOrOwner;
@@ -1475,6 +1486,8 @@ const loadMasters = useCallback(async () => {
     const restoredTab =
       savedTab &&
       (!isSupplier || savedTab === "INVENTORY" || savedTab === "INBOUND") &&
+      (!isSupervisor || savedTab !== "RECEIVABLES") &&
+      (isAdminOrOwner || savedTab !== "ACCESS") &&
       menus.some(([key]) => key === savedTab)
         ? savedTab
         : defaultInitialTab;
@@ -1647,7 +1660,7 @@ const [nextView, nextDashboard] = await Promise.all([
           ) : (
             <>
               <div className={styles.navGroupLabel}>OPERASI</div>
-              {menus.slice(0, 8).map(([key, label, glyph]) => (
+              {menus.slice(0, 8).filter(([key]) => !(isSupervisor && key === "RECEIVABLES")).map(([key, label, glyph]) => (
                 <button
                   key={key}
                   type="button"
@@ -1665,7 +1678,7 @@ const [nextView, nextDashboard] = await Promise.all([
               ))}
 
               <div className={styles.navGroupLabel}>KONTROL</div>
-              {menus.slice(8).map(([key, label, glyph]) => (
+              {menus.slice(8).filter(([key]) => !(key === "ACCESS" && !isAdminOrOwner)).map(([key, label, glyph]) => (
                 <button
                   key={key}
                   type="button"
@@ -1932,6 +1945,15 @@ const [nextView, nextDashboard] = await Promise.all([
               />
             </Panel>
           ) : null}
+
+          {tab === "ACCESS" ? (
+            <AccessManagement
+              data={data}
+              canManage={isAdminOrOwner}
+              busy={busy}
+              run={run}
+            />
+          ) : null}
         </div>
       </main>
 
@@ -2019,7 +2041,7 @@ const [nextView, nextDashboard] = await Promise.all([
             <button
               type="button"
               className={
-                ["RECONCILIATION", "REPORTS", "OPNAME", "PRODUCTS", "CUSTOMERS", "RECEIVABLES", "CLOSING", "AUDIT"].includes(tab) || mobileNavOpen
+                ["RECONCILIATION", "REPORTS", "OPNAME", "PRODUCTS", "CUSTOMERS", "RECEIVABLES", "CLOSING", "AUDIT", "ACCESS"].includes(tab) || mobileNavOpen
                   ? styles.mobileBottomActive
                   : styles.mobileBottomItem
               }
@@ -8760,5 +8782,491 @@ function Closing({
         />
       </Panel>
     </>
+  );
+}
+
+/* RKN_PLASTIC_ACCESS_MANAGEMENT_VIEW_V2R */
+function AccessManagement({
+  data,
+  canManage,
+  busy,
+  run,
+}: {
+  data: Row;
+  canManage: boolean;
+  busy: boolean;
+  run: (cmd: string, payload: any, view?: string) => Promise<void>;
+}) {
+  const pendingRequests: Row[] = Array.isArray(data.pendingRequests)
+    ? data.pendingRequests
+    : [];
+  const historyRequests: Row[] = Array.isArray(data.historyRequests)
+    ? data.historyRequests
+    : [];
+  const users: Row[] = Array.isArray(data.users) ? data.users : [];
+
+  const [activeTab, setActiveTab] = useState<"PENDING" | "USERS" | "HISTORY">(
+    pendingRequests.length > 0 ? "PENDING" : "USERS"
+  );
+  const [selectedRoleMap, setSelectedRoleMap] = useState<Record<string, string>>({});
+  const [rejectPromptId, setRejectPromptId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>("");
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("ALL");
+  const [editingUserRoleMap, setEditingUserRoleMap] = useState<Record<string, string>>({});
+
+  const filteredUsers = users.filter((u) => {
+    const q = userSearch.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      String(u.fullName || "").toLowerCase().includes(q) ||
+      String(u.userId || "").toLowerCase().includes(q);
+    const role = String(u.roleCode || "").toUpperCase();
+    const matchesRole =
+      userRoleFilter === "ALL" ||
+      (userRoleFilter === "OWNER" && role === "OWNER") ||
+      (userRoleFilter === "ADMIN" && (role === "ADMIN" || role === "PLASTIC_ADMIN" || role === "SYSTEM_ADMIN")) ||
+      (userRoleFilter === "SUPERVISI" && role.includes("SUPERVIS")) ||
+      (userRoleFilter === "SUPPLIER" && role.includes("SUPPLIER")) ||
+      (userRoleFilter === "STAFF" && role === "STAFF");
+    return matchesSearch && matchesRole;
+  });
+
+  const getRoleBadgeClass = (roleCode: string) => {
+    const r = String(roleCode || "").toUpperCase();
+    if (r === "OWNER" || r === "GROUP_OWNER") return styles.userRoleBadgeOwner;
+    if (r === "ADMIN" || r === "PLASTIC_ADMIN" || r === "SYSTEM_ADMIN") return styles.userRoleBadgeAdmin;
+    if (r.includes("SUPERVIS")) return styles.userRoleBadgeSupervisi;
+    if (r.includes("SUPPLIER")) return styles.userRoleBadgeSupplier;
+    return styles.userRoleBadgeStaff;
+  };
+
+  const getRoleLabel = (roleCode: string) => {
+    const r = String(roleCode || "").toUpperCase();
+    if (r === "OWNER" || r === "GROUP_OWNER") return "👑 Owner";
+    if (r === "ADMIN" || r === "PLASTIC_ADMIN" || r === "SYSTEM_ADMIN") return "⚡ Admin";
+    if (r.includes("SUPERVIS")) return "🔍 Supervisi";
+    if (r.includes("SUPPLIER")) return "🏭 Supplier";
+    return "👤 Staff";
+  };
+
+  return (
+    <div className={styles.accessContainer}>
+      <div className={styles.accessStatsGrid}>
+        <div className={styles.accessStatCard}>
+          <div className={`${styles.accessStatIcon} ${styles.accessStatIconPending}`}>
+            ⏳
+          </div>
+          <div className={styles.accessStatInfo}>
+            <strong>{pendingRequests.length}</strong>
+            <span>Menunggu Approval</span>
+          </div>
+        </div>
+
+        <div className={styles.accessStatCard}>
+          <div className={`${styles.accessStatIcon} ${styles.accessStatIconActive}`}>
+            👥
+          </div>
+          <div className={styles.accessStatInfo}>
+            <strong>{users.length}</strong>
+            <span>Total Pengguna</span>
+          </div>
+        </div>
+
+        <div className={styles.accessStatCard}>
+          <div className={styles.accessStatIcon}>
+            📧
+          </div>
+          <div className={styles.accessStatInfo}>
+            <strong>Zoho Mail</strong>
+            <span>Notifikasi Email Otomatis</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.accessPillsNav}>
+        <button
+          type="button"
+          className={activeTab === "PENDING" ? `${styles.accessPill} ${styles.accessPillActive}` : styles.accessPill}
+          onClick={() => setActiveTab("PENDING")}
+        >
+          <span>⏳ Permintaan Pendaftaran</span>
+          {pendingRequests.length > 0 ? (
+            <span className={styles.accessPillBadge}>{pendingRequests.length}</span>
+          ) : null}
+        </button>
+
+        <button
+          type="button"
+          className={activeTab === "USERS" ? `${styles.accessPill} ${styles.accessPillActive}` : styles.accessPill}
+          onClick={() => setActiveTab("USERS")}
+        >
+          <span>👥 Pengguna Aktif & Hak Akses</span>
+          <span className={styles.accessPillBadge}>{users.length}</span>
+        </button>
+
+        <button
+          type="button"
+          className={activeTab === "HISTORY" ? `${styles.accessPill} ${styles.accessPillActive}` : styles.accessPill}
+          onClick={() => setActiveTab("HISTORY")}
+        >
+          <span>📜 Riwayat Approval</span>
+        </button>
+      </div>
+
+      {activeTab === "PENDING" ? (
+        <Panel
+          title="Permintaan Pendaftaran Akun Baru"
+          subtitle="Verifikasi pendaftar baru dan berikan hak akses operasional RKN ERP. Email notifikasi resmi akan otomatis dikirim via Zoho Mail."
+        >
+          {pendingRequests.length === 0 ? (
+            <div style={{ padding: "32px 20px", textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+              <strong style={{ color: "#e2e8f0", fontSize: 15, display: "block" }}>
+                Tidak Ada Permintaan Pendaftaran
+              </strong>
+              <p style={{ fontSize: 13, margin: "6px 0 0" }}>
+                Semua akun pendaftar sudah disetujui atau belum ada pengajuan baru.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.accessPendingGrid}>
+              {pendingRequests.map((req) => {
+                const assignedRole =
+                  selectedRoleMap[req.id] ||
+                  String(req.requestedRole || "ADMIN").toUpperCase();
+
+                return (
+                  <div key={req.id} className={styles.pendingCard}>
+                    <div className={styles.pendingCardHead}>
+                      <div className={styles.pendingCardUser}>
+                        <h4>{req.fullName || "User Baru"}</h4>
+                        <span>@{req.username || "username"}</span>
+                      </div>
+                      <span className={styles.pendingCardBadge}>
+                        Minta: {req.requestedRole || "ADMIN"}
+                      </span>
+                    </div>
+
+                    <div className={styles.pendingCardDetails}>
+                      <div className={styles.pendingCardRow}>
+                        <span className={styles.pendingCardLabel}>Email:</span>
+                        <span className={styles.pendingCardValue}>{req.email}</span>
+                      </div>
+                      <div className={styles.pendingCardRow}>
+                        <span className={styles.pendingCardLabel}>WhatsApp:</span>
+                        <span className={styles.pendingCardValue}>
+                          {req.whatsapp ? (
+                            <a
+                              href={`https://wa.me/${String(req.whatsapp).replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {req.whatsapp} ↗
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </span>
+                      </div>
+                      <div className={styles.pendingCardRow}>
+                        <span className={styles.pendingCardLabel}>Diajukan:</span>
+                        <span className={styles.pendingCardValue}>
+                          {String(req.submittedAt || "").slice(0, 16).replace("T", " ")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.pendingRoleConfig}>
+                      <label>Setujui Sebagai Role:</label>
+                      <select
+                        className={styles.pendingRoleSelect}
+                        value={assignedRole}
+                        onChange={(e) =>
+                          setSelectedRoleMap((prev) => ({
+                            ...prev,
+                            [req.id]: e.target.value,
+                          }))
+                        }
+                      >
+                        <option value="ADMIN">⚡ ADMIN (Akses Operasional Penuh)</option>
+                        <option value="SUPERVISI">🔍 SUPERVISI (Audit & Stok, Tanpa Penjualan/Piutang)</option>
+                        <option value="SUPPLIER">🏭 SUPPLIER (Pantau Stok Gudang)</option>
+                        <option value="OWNER">👑 OWNER (Pemilik / Akses Penuh)</option>
+                      </select>
+                    </div>
+
+                    {rejectPromptId === req.id ? (
+                      <div style={{ display: "grid", gap: 8, marginTop: 4 }}>
+                        <input
+                          type="text"
+                          placeholder="Alasan penolakan..."
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className={styles.userSearchInput}
+                          style={{ fontSize: 12, padding: "8px 12px" }}
+                        />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <button
+                            type="button"
+                            className={styles.rejectButton}
+                            disabled={busy}
+                            onClick={async () => {
+                              await run(
+                                "REJECT_SIGNUP_USER",
+                                { requestId: req.id, reason: rejectReason || "Ditolak" },
+                                "ACCESS"
+                              );
+                              setRejectPromptId(null);
+                              setRejectReason("");
+                            }}
+                          >
+                            Konfirmasi Tolak
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            style={{ padding: "8px 12px", fontSize: 12 }}
+                            onClick={() => setRejectPromptId(null)}
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={styles.pendingCardActions}>
+                        <button
+                          type="button"
+                          className={styles.approveButton}
+                          disabled={busy || !canManage}
+                          onClick={() =>
+                            run(
+                              "APPROVE_SIGNUP_USER",
+                              {
+                                requestId: req.id,
+                                roleCode: assignedRole,
+                                accessLevel:
+                                  assignedRole === "OWNER"
+                                    ? "OWNER"
+                                    : assignedRole === "ADMIN"
+                                    ? "MANAGE"
+                                    : assignedRole === "SUPERVISI"
+                                    ? "SUPERVISI"
+                                    : "VIEW",
+                              },
+                              "ACCESS"
+                            )
+                          }
+                        >
+                          ✓ Setujui & Kirim Email
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.rejectButton}
+                          disabled={busy || !canManage}
+                          onClick={() => setRejectPromptId(req.id)}
+                        >
+                          ✕ Tolak
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Panel>
+      ) : null}
+
+      {activeTab === "USERS" ? (
+        <Panel
+          title="Daftar Pengguna & Hak Akses"
+          subtitle="Atur role dan hak akses pengguna aktif di sistem Plastic Trading RKN ERP."
+        >
+          <div className={styles.userSearchBox}>
+            <input
+              type="text"
+              placeholder="Cari nama atau user ID..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className={styles.userSearchInput}
+            />
+
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["ALL", "OWNER", "ADMIN", "SUPERVISI", "SUPPLIER", "STAFF"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={userRoleFilter === r ? `${styles.accessPill} ${styles.accessPillActive}` : styles.accessPill}
+                  style={{ padding: "6px 12px", fontSize: 11 }}
+                  onClick={() => setUserRoleFilter(r)}
+                >
+                  {r === "ALL" ? "Semua Role" : r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table className={styles.userTableCard}>
+              <thead>
+                <tr>
+                  <th style={{ width: 44 }}>Avatar</th>
+                  <th>Nama Pengguna</th>
+                  <th>Role Aktif</th>
+                  <th>Ubah Role</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((u) => {
+                  const currentRole = String(u.roleCode || "STAFF").toUpperCase();
+                  const selectedRole =
+                    editingUserRoleMap[u.userId] !== undefined
+                      ? editingUserRoleMap[u.userId]
+                      : currentRole;
+                  const isModified = selectedRole !== currentRole;
+
+                  return (
+                    <tr key={u.userId}>
+                      <td>
+                        <div className={styles.userAvatarCircle}>
+                          {String(u.fullName || "U").slice(0, 2).toUpperCase()}
+                        </div>
+                      </td>
+                      <td>
+                        <strong style={{ color: "#ffffff", display: "block" }}>
+                          {u.fullName || "Pengguna"}
+                        </strong>
+                        <span style={{ fontSize: 11, color: "#64748b" }}>
+                          {u.userId}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={getRoleBadgeClass(currentRole)}>
+                          {getRoleLabel(currentRole)}
+                        </span>
+                      </td>
+                      <td>
+                        <select
+                          className={styles.pendingRoleSelect}
+                          style={{ padding: "6px 10px", fontSize: 12, minWidth: 150 }}
+                          value={selectedRole}
+                          disabled={!canManage}
+                          onChange={(e) =>
+                            setEditingUserRoleMap((prev) => ({
+                              ...prev,
+                              [u.userId]: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="OWNER">👑 OWNER</option>
+                          <option value="ADMIN">⚡ ADMIN</option>
+                          <option value="SUPERVISI">🔍 SUPERVISI</option>
+                          <option value="SUPPLIER">🏭 SUPPLIER</option>
+                          <option value="STAFF">👤 STAFF</option>
+                        </select>
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            background: u.active ? "rgba(16, 185, 129, 0.18)" : "rgba(239, 68, 68, 0.18)",
+                            color: u.active ? "#34d399" : "#f87171",
+                          }}
+                        >
+                          {u.active ? "AKTIF" : "NONAKTIF"}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className={styles.primaryButton}
+                          style={{ padding: "6px 12px", fontSize: 11 }}
+                          disabled={!isModified || busy || !canManage}
+                          onClick={async () => {
+                            await run(
+                              "UPDATE_USER_ROLE",
+                              {
+                                targetUserId: u.userId,
+                                roleCode: selectedRole,
+                                accessLevel:
+                                  selectedRole === "OWNER"
+                                    ? "OWNER"
+                                    : selectedRole === "ADMIN"
+                                    ? "MANAGE"
+                                    : selectedRole === "SUPERVISI"
+                                    ? "SUPERVISI"
+                                    : "VIEW",
+                                active: u.active,
+                              },
+                              "ACCESS"
+                            );
+                            setEditingUserRoleMap((prev) => {
+                              const next = { ...prev };
+                              delete next[u.userId];
+                              return next;
+                            });
+                          }}
+                        >
+                          Simpan
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      ) : null}
+
+      {activeTab === "HISTORY" ? (
+        <Panel
+          title="Riwayat Persetujuan & Penolakan"
+          subtitle="Log pendaftaran pengguna yang telah diproses oleh Administrator."
+        >
+          <DataTable
+            rows={historyRequests}
+            columns={[
+              ["submittedAt", "Tgl Pengajuan", (r) => String(r.submittedAt || "").slice(0, 10)],
+              ["fullName", "Nama"],
+              ["email", "Email"],
+              ["requestedRole", "Role Diminta"],
+              [
+                "status",
+                "Status",
+                (r) => (
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      background:
+                        r.status === "APPROVED"
+                          ? "rgba(16, 185, 129, 0.2)"
+                          : "rgba(239, 68, 68, 0.2)",
+                      color: r.status === "APPROVED" ? "#34d399" : "#f87171",
+                    }}
+                  >
+                    {r.status}
+                  </span>
+                ),
+              ],
+              ["reviewNote", "Catatan Review"],
+              ["reviewedAt", "Waktu Ditinjau", (r) => String(r.reviewedAt || "").slice(0, 16).replace("T", " ")],
+            ]}
+          />
+        </Panel>
+      ) : null}
+    </div>
   );
 }

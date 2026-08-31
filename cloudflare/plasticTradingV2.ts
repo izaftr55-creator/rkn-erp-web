@@ -199,10 +199,11 @@ function actor(sql:Sql,idv:any):Actor{
   const p=sql.exec(`SELECT active,full_name,primary_role_code FROM erp_user_profile WHERE user_id=? LIMIT 1`,id).toArray()[0];
   if(!p||Number(p.active)!==1)throw Error('PLASTIC_PROFILE_INACTIVE');
   const primaryRole=T(p.primary_role_code,64).toUpperCase();
-  const isAdminOrOwner=sql.exec(`SELECT 1 FROM user_role ur JOIN role r ON r.id=ur.role_id WHERE ur.user_id=? AND r.code IN ('SYSTEM_ADMIN','PLASTIC_ADMIN','GROUP_OWNER','OWNER') LIMIT 1`,id).toArray().length>0 || ['SYSTEM_ADMIN','PLASTIC_ADMIN','GROUP_OWNER','OWNER'].includes(primaryRole);
+  const isAdminOrOwner=sql.exec(`SELECT 1 FROM user_role ur JOIN role r ON r.id=ur.role_id WHERE ur.user_id=? AND r.code IN ('SYSTEM_ADMIN','PLASTIC_ADMIN','ADMIN','GROUP_OWNER','OWNER') LIMIT 1`,id).toArray().length>0 || ['SYSTEM_ADMIN','PLASTIC_ADMIN','ADMIN','GROUP_OWNER','OWNER'].includes(primaryRole);
   const s=sql.exec(`SELECT access_level FROM user_business_scope WHERE user_id=? AND business_unit_id='BU-PLASTIC' LIMIT 1`,id).toArray()[0];
-  const level=isAdminOrOwner?'OWNER':(s?.access_level==='MANAGE'?'OWNER':(s?.access_level?T(s.access_level,16):'VIEW'));
-  if(!isAdminOrOwner&&!['VIEW','OPERATE','MANAGE','OWNER'].includes(level))throw Error('PLASTIC_SCOPE_DENIED');
+  const isSupervisi=primaryRole.includes('SUPERVIS') || String(s?.access_level||'').toUpperCase()==='SUPERVISI';
+  const level=isAdminOrOwner?'OWNER':isSupervisi?'SUPERVISI':(s?.access_level==='MANAGE'?'OWNER':(s?.access_level?T(s.access_level,16):'VIEW'));
+  if(!isAdminOrOwner&&!['VIEW','OPERATE','MANAGE','OWNER','SUPERVISI'].includes(level))throw Error('PLASTIC_SCOPE_DENIED');
   return{id,name:T(p.full_name,160),role:primaryRole,level,admin:isAdminOrOwner};
 }
 const op=(a:Actor)=>{if(!a.admin&&!['OPERATE','MANAGE','OWNER'].includes(a.level))throw Error('PLASTIC_WRITE_DENIED')};
@@ -1562,6 +1563,9 @@ if(view==='INVENTORY'){
   };
 }
 if(view==='RECEIVABLES'){
+  if(a.role.includes('SUPERVIS')||a.level==='SUPERVISI'){
+    throw Error('PLASTIC_SUPERVISI_FINANCE_DENIED');
+  }
   const rows=sql.exec(
     `SELECT i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,i.customer_id customerId,
             COALESCE(c.customer_name,'') customerName,i.grand_total_rp grandTotalRp,i.status
@@ -2208,22 +2212,24 @@ if(view==='REPORTS'){
   const finalStatus=finalFailCount===0?'PASS':'REVIEW';
 
 
+  const isSupervisi=a.role.includes('SUPERVIS')||a.level==='SUPERVISI';
+
   return{
     view,
     periodKey:period,
     actor:a,
     metrics:{
       stockValueRp:stock.reduce((sum:any,row:any)=>sum+N(row.stockValueRp),0),
-      receivableRp:receivables.reduce((sum:any,row:any)=>sum+N(row.outstandingRp),0)
+      receivableRp:isSupervisi?0:receivables.reduce((sum:any,row:any)=>sum+N(row.outstandingRp),0)
     },
     stock,
     activeSo,
     soPrep,
     soSessions,
     opname,
-    receivables,
+    receivables:isSupervisi?[]:receivables,
     inbound,
-    outbound,
+    outbound:isSupervisi?[]:outbound,
     auditOpeningDate,
     auditSoDate,
     auditSo: auditSo || (legacyAuditOpname
@@ -2535,9 +2541,170 @@ if(view==='OPNAME'){
   };
 }
 
+if(view==='ACCESS'||view==='USERS'){
+  if(!a.admin && a.level !== 'OWNER') throw Error('PLASTIC_OWNER_DENIED');
+
+  const pendingRequests = sql.exec(
+    `SELECT id, user_id userId, full_name fullName, email, username,
+            whatsapp, requested_role requestedRole, status, submitted_at submittedAt
+     FROM rkn_signup_request
+     WHERE status='PENDING'
+     ORDER BY submitted_at DESC`
+  ).toArray();
+
+  const historyRequests = sql.exec(
+    `SELECT id, user_id userId, full_name fullName, email, username,
+            whatsapp, requested_role requestedRole, status, reviewed_at reviewedAt,
+            review_note reviewNote, submitted_at submittedAt
+     FROM rkn_signup_request
+     WHERE status IN('APPROVED','REJECTED')
+     ORDER BY reviewed_at DESC, submitted_at DESC
+     LIMIT 50`
+  ).toArray();
+
+  const users = sql.exec(
+    `SELECT p.user_id userId, p.full_name fullName,
+            COALESCE(p.primary_role_code,'STAFF') roleCode,
+            COALESCE(p.active,1) active,
+            COALESCE(s.access_level,'VIEW') accessLevel,
+            p.created_at createdAt
+     FROM erp_user_profile p
+     LEFT JOIN user_business_scope s
+       ON s.user_id=p.user_id AND s.business_unit_id='BU-PLASTIC'
+     ORDER BY p.full_name`
+  ).toArray();
+
+  return {
+    view,
+    periodKey: period,
+    actor: a,
+    pendingRequests,
+    historyRequests,
+    users
+  };
+}
+
 throw Error('PLASTIC_VIEW_UNSUPPORTED')}
 
 export function mutatePlasticTradingV2(storage:any,actorId:string,cmdV:string,payloadV:any={}){const sql:Sql=storage.sql;const a=actor(sql,actorId),cmd=T(cmdV,40).toUpperCase(),p=payloadV&&typeof payloadV==='object'?payloadV:{};const atomic=<T,>(f:()=>T):T=>typeof storage.transactionSync==='function'?storage.transactionSync(f):f();
+
+if(cmd==='APPROVE_SIGNUP_USER'){
+  ow(a);
+  const requestId=T(p.requestId,120);
+  const roleCode=T(p.roleCode||'ADMIN',64).toUpperCase();
+  const accessLevel=T(p.accessLevel||(roleCode==='OWNER'?'OWNER':roleCode==='ADMIN'?'MANAGE':roleCode==='SUPERVISI'?'VIEW':'VIEW'),32).toUpperCase();
+  const reviewNote=T(p.reviewNote||'Disetujui dari Panel Akses Plastic Trading',300);
+
+  const req=sql.exec(`SELECT * FROM rkn_signup_request WHERE id=? LIMIT 1`,requestId).toArray()[0];
+  if(!req) throw Error('SIGNUP_REQUEST_NOT_FOUND');
+  if(String(req.status)!=='PENDING') throw Error('SIGNUP_REQUEST_ALREADY_PROCESSED');
+
+  const userId=T(req.user_id,120);
+  const fullName=T(req.full_name,160);
+  const email=T(req.email,160);
+
+  return atomic(()=>{
+    sql.exec(
+      `INSERT INTO erp_user_profile(user_id,person_key,full_name,active,must_change_password,primary_role_code,created_at,updated_at)
+       VALUES(?,?,?,1,0,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+       ON CONFLICT(user_id) DO UPDATE SET
+         full_name=excluded.full_name,
+         active=1,
+         primary_role_code=excluded.primary_role_code,
+         updated_at=CURRENT_TIMESTAMP`,
+      userId,userId,fullName,roleCode
+    ).toArray();
+
+    const roleRow=sql.exec(`SELECT id FROM role WHERE code=? LIMIT 1`,roleCode).toArray()[0];
+    const roleId=roleRow?String(roleRow.id):'ROLE-'+roleCode;
+
+    sql.exec(
+      `INSERT OR IGNORE INTO user_role(id,user_id,role_id,business_unit_id,created_at)
+       VALUES(?,?,?,'BU-PLASTIC',CURRENT_TIMESTAMP)`,
+      crypto.randomUUID(),userId,roleId
+    ).toArray();
+
+    sql.exec(
+      `INSERT INTO user_business_scope(user_id,business_unit_id,access_level,created_at,updated_at)
+       VALUES(?,'BU-PLASTIC',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+       ON CONFLICT(user_id,business_unit_id) DO UPDATE SET
+         access_level=excluded.access_level,
+         updated_at=CURRENT_TIMESTAMP`,
+      userId,accessLevel
+    ).toArray();
+
+    sql.exec(
+      `UPDATE rkn_signup_request
+       SET status='APPROVED',
+           reviewed_by_user_id=?,
+           reviewed_at=CURRENT_TIMESTAMP,
+           review_note=?
+       WHERE id=?`,
+      a.id,reviewNote,requestId
+    ).toArray();
+
+    audit(sql,a,'APPROVE_USER','USER',userId,'Disetujui via Plastic Trading',{requestId,roleCode,accessLevel,email});
+
+    return {ok:true,approved:true,userId,email,fullName,roleCode,accessLevel};
+  });
+}
+
+if(cmd==='REJECT_SIGNUP_USER'){
+  ow(a);
+  const requestId=T(p.requestId,120);
+  const reason=T(p.reason||'Permintaan pendaftaran ditolak oleh Admin/Owner',300);
+
+  const req=sql.exec(`SELECT * FROM rkn_signup_request WHERE id=? LIMIT 1`,requestId).toArray()[0];
+  if(!req) throw Error('SIGNUP_REQUEST_NOT_FOUND');
+
+  return atomic(()=>{
+    sql.exec(
+      `UPDATE rkn_signup_request
+       SET status='REJECTED',
+           reviewed_by_user_id=?,
+           reviewed_at=CURRENT_TIMESTAMP,
+           review_note=?
+       WHERE id=?`,
+      a.id,reason,requestId
+    ).toArray();
+
+    audit(sql,a,'REJECT_USER','USER',String(req.user_id),'Pendaftaran ditolak',{requestId,reason});
+    return {ok:true,rejected:true};
+  });
+}
+
+if(cmd==='UPDATE_USER_ROLE'){
+  ow(a);
+  const targetUserId=T(p.targetUserId,120);
+  const roleCode=T(p.roleCode,64).toUpperCase();
+  const accessLevel=T(p.accessLevel||(roleCode==='OWNER'?'OWNER':roleCode==='ADMIN'?'MANAGE':roleCode==='SUPERVISI'?'VIEW':'VIEW'),32).toUpperCase();
+  const active=p.active===false||p.active===0?0:1;
+
+  if(!targetUserId||!roleCode) throw Error('USER_ROLE_DATA_REQUIRED');
+
+  return atomic(()=>{
+    sql.exec(
+      `UPDATE erp_user_profile
+       SET primary_role_code=?,
+           active=?,
+           updated_at=CURRENT_TIMESTAMP
+       WHERE user_id=?`,
+      roleCode,active,targetUserId
+    ).toArray();
+
+    sql.exec(
+      `INSERT INTO user_business_scope(user_id,business_unit_id,access_level,created_at,updated_at)
+       VALUES(?,'BU-PLASTIC',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+       ON CONFLICT(user_id,business_unit_id) DO UPDATE SET
+         access_level=excluded.access_level,
+         updated_at=CURRENT_TIMESTAMP`,
+      targetUserId,accessLevel
+    ).toArray();
+
+    audit(sql,a,'UPDATE_USER_ROLE','USER',targetUserId,'Perubahan role',{roleCode,accessLevel,active});
+    return {ok:true,updated:true};
+  });
+}
 if(cmd==='UPSERT_PRODUCT'){mg(a);const id=T(p.variantId,120)||crypto.randomUUID(),name=T(p.productName,160);if(!name)throw Error('PLASTIC_PRODUCT_REQUIRED');const t=now(),base=T(p.baseUnit||'ROLL',32).toUpperCase(),mid=T(p.midUnit,32).toUpperCase(),pack=T(p.packUnit||'BALL',32).toUpperCase(),upm=Math.max(1,I(p.unitsPerMid,1)),upp=Math.max(1,I(p.unitsPerPack,1));sql.exec(`INSERT INTO plastic_product_variant(variant_id,business_unit_id,product_name,category,color,size,grade,base_unit,mid_unit,pack_unit,units_per_mid,units_per_pack,default_buy_price_rp,default_sell_price_base_rp,default_sell_price_mid_rp,default_sell_price_pack_rp,low_stock_base_qty,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(variant_id) DO UPDATE SET product_name=excluded.product_name,category=excluded.category,color=excluded.color,size=excluded.size,grade=excluded.grade,base_unit=excluded.base_unit,mid_unit=excluded.mid_unit,pack_unit=excluded.pack_unit,units_per_mid=excluded.units_per_mid,units_per_pack=excluded.units_per_pack,default_buy_price_rp=excluded.default_buy_price_rp,default_sell_price_base_rp=excluded.default_sell_price_base_rp,default_sell_price_mid_rp=excluded.default_sell_price_mid_rp,default_sell_price_pack_rp=excluded.default_sell_price_pack_rp,low_stock_base_qty=excluded.low_stock_base_qty,updated_at=excluded.updated_at`,id,name,T(p.category||'POLYMAILER',64),T(p.color,80),T(p.size,80),T(p.grade,80),base,mid,pack,upm,upp,I(p.defaultBuyPriceRp),I(p.defaultSellPriceBaseRp),I(p.defaultSellPriceMidRp),I(p.defaultSellPricePackRp),Math.max(0,N(p.lowStockBaseQty)),t,t).toArray();audit(sql,a,'PLASTIC_PRODUCT_UPDATE','PLASTIC_PRODUCT_VARIANT',id,'',{name,base,mid,pack,upm,upp});return{ok:true,variantId:id}}
 if(cmd==='UPSERT_CUSTOMER'){op(a);const id=T(p.customerId,120)||crypto.randomUUID(),name=T(p.customerName,160);if(!name)throw Error('PLASTIC_CUSTOMER_REQUIRED');const t=now();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,1,?,?) ON CONFLICT(customer_id) DO UPDATE SET customer_name=excluded.customer_name,phone=excluded.phone,address=excluded.address,notes=excluded.notes,updated_at=excluded.updated_at`,id,name,T(p.phone,80),T(p.address,500),T(p.notes,500),t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_UPDATE','PLASTIC_CUSTOMER',id,'',{name});return{ok:true,customerId:id}}
 /* RKN_PLASTIC_OPENING_LEDGER_V2M */
