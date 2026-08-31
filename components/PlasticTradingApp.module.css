@@ -932,18 +932,20 @@
 }
 
 .closeActions {
-  margin-top: 14px;
+  margin-top: 16px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 12px;
+  gap: 14px;
+  width: 100%;
 }
 
 .closeActions .primaryButton,
 .closeActions .dangerButton {
-  height: 40px;
-  padding: 0 24px;
-  font-size: 11px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 28px;
+  font-size: 12px;
   font-weight: 750;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -952,10 +954,14 @@
   justify-content: center;
   border-radius: 9px;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  align-self: end;
+  margin-bottom: 2px;
+  flex-shrink: 0;
 }
 
 .closeReason {
-  flex: 1;
+  width: 100%;
+  margin: 0;
 }
 
 @media (max-width: 1380px) {
@@ -3239,8 +3245,7 @@
 
 /* Every action bar uses one baseline and one button height. */
 .actions,
-.soActionBar,
-.closeActions {
+.soActionBar {
   width: 100% !important;
   min-height: 42px !important;
   margin-top: 8px !important;

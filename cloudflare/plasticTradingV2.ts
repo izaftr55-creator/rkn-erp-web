@@ -2244,21 +2244,22 @@ if(view==='CLOSING'){
     `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,
     period
   );
-  const liveCogs = scalar(
-    sql,
-    `SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,
-    period
-  );
+  const liveCogs = liveSales;
   const liveRec = scalar(
     sql,
-    `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID' AND i.period_key=?`,
-    period
+    `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`
   );
+  const livePaid = Math.max(0, liveSales - liveRec);
 
-  const current = currentClose ?? {
+  const current = currentClose ? {
+    ...currentClose,
+    receivable_rp: currentClose.status === 'CLOSED' ? currentClose.receivable_rp : liveRec,
+    paid_rp: currentClose.status === 'CLOSED' ? Math.max(0, currentClose.sales_rp - currentClose.receivable_rp) : livePaid
+  } : {
     period_key: period,
     status: 'OPEN',
     sales_rp: liveSales,
+    paid_rp: livePaid,
     cogs_rp: liveCogs,
     gross_profit_rp: liveSales - liveCogs,
     receivable_rp: liveRec

@@ -8193,21 +8193,28 @@ function Closing({
             <strong>{current.status || "OPEN"}</strong>
           </div>
           <div>
-            <span>SALES</span>
+            <span>TOTAL PENJUALAN</span>
             <strong>
               {money.format(Number(current.sales_rp || 0))}
             </strong>
           </div>
           <div>
-            <span>GROSS PROFIT</span>
+            <span>KAS MASUK (LUNAS)</span>
             <strong>
               {money.format(
-                Number(current.gross_profit_rp || 0)
+                Number(
+                  current.paid_rp ??
+                    Math.max(
+                      0,
+                      Number(current.sales_rp || 0) -
+                        Number(current.receivable_rp || 0)
+                    )
+                )
               )}
             </strong>
           </div>
           <div>
-            <span>PIUTANG</span>
+            <span>SISA PIUTANG</span>
             <strong>
               {money.format(Number(current.receivable_rp || 0))}
             </strong>
