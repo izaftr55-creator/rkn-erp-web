@@ -6883,13 +6883,13 @@ function Reports({
 
     const subtitle =
       reportTab === "BOSS_SUMMARY"
-        ? `PERIODE ${period} · STATUS SO: ${bossSoStatus} · RKN GROUP PLASTIC TRADING`
+        ? `PERIODE ${period} - STATUS SO: ${bossSoStatus} - RKN GROUP PLASTIC TRADING`
       : reportTab === "RECON"
         ? auditSoPosted
-          ? `${auditSoNo} · 100% POSTED & BALANCE · ${simpleRows.length} SKU BALANCE`
+          ? `${auditSoNo} - 100% POSTED & BALANCE - ${simpleRows.length} SKU BALANCE`
           : `OPENING + MASUK - KELUAR / SO FISIK`
         : reportTab === "STOCK_VALUE"
-          ? `FISIK SO ${auditSoDate} · VALUASI TOTAL: ${money.format(stockSellingValueTotalRp)}`
+          ? `FISIK SO ${auditSoDate} - VALUASI TOTAL: ${money.format(stockSellingValueTotalRp)}`
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
@@ -6920,8 +6920,8 @@ function Reports({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
-      doc.text("PLASTIC TRADING DIVISION · RKN GROUP", 31, 16.5);
-      doc.text(`CUTOFF: ${auditSoDate} · 100% BALANCE`, 31, 22);
+      doc.text("PLASTIC TRADING DIVISION - RKN GROUP", 31, 16.5);
+      doc.text(`CUTOFF: ${auditSoDate} - 100% BALANCE`, 31, 22);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
@@ -6935,7 +6935,7 @@ function Reports({
 
       doc.setFontSize(6.8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`DICETAK: ${generatedAt} WIB · HALAMAN ${pageNo}`, pageWidth - 5, 21, {
+      doc.text(`DICETAK: ${generatedAt} WIB - HALAMAN ${pageNo}`, pageWidth - 5, 21, {
         align: "right",
       });
       doc.setTextColor(30, 41, 59);
@@ -6950,7 +6950,7 @@ function Reports({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text("RKN ERP · Plastic Trading · RKN GROUP", 4, pageHeight - 3.5);
+      doc.text("RKN ERP - Plastic Trading - RKN GROUP", 4, pageHeight - 3.5);
       doc.text(`Halaman ${pageNo} dari ${totalPages}`, pageWidth - 4, pageHeight - 3.5, { align: "right" });
     };
 
@@ -6995,6 +6995,9 @@ function Reports({
           lineWidth: 0.12,
           halign: "center",
         },
+        bodyStyles: {
+          halign: "center",
+        },
         alternateRowStyles: {
           fillColor: [248, 250, 252],
         },
@@ -7014,17 +7017,17 @@ function Reports({
       table(
         ["Pilar Bisnis", "Indikator Utama", "Nilai / Realisasi", "Catatan Eksekutif & Status"],
         [
-          ["Penjualan & Omset", "Total Omset Periode", money.format(salesValueRp), `${salesInvoiceCount} invoice penjualan · ${salesCustomerCount} pelanggan terlayani`],
+          ["Penjualan & Omset", "Total Omset Periode", money.format(salesValueRp), `${salesInvoiceCount} invoice penjualan - ${salesCustomerCount} pelanggan terlayani`],
           ["Valuasi Persediaan", "Nilai Jual Stok Fisik 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik aktif memiliki stok di gudang`],
           ["Buku Piutang", "Total Piutang Berjalan", money.format(receivableTotalRp), `${receivables.length} invoice aktif belum lunas`],
-          ["Stock Opname", "Status SO 28/08/2026", bossSoStatus, `${simpleRows.length}/${simpleRows.length} SKU (100%) ✓ Balance & Terkunci Resmi`],
+          ["Stock Opname", "Status SO 28/08/2026", bossSoStatus, `${simpleRows.length}/${simpleRows.length} SKU (100%) - Balance & Terkunci Resmi`],
           ["Integritas Audit", "Status Rekonsiliasi", "100% BALANCE (POSTED)", "Seluruh variasi telah diselaraskan melalui dokumen resmi"],
           ...(goldwinAuditRow
             ? [[
                 "Produk Non-SO",
                 "Thermal Goldwin s/d 28/08",
                 reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase),
-                `Opening ${reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk ${reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar ${reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} (Di luar SO fisik)`,
+                `Opening ${reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} - Masuk ${reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} - Keluar ${reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} (Di luar SO fisik)`,
               ]]
             : []),
         ],
@@ -7198,7 +7201,7 @@ function Reports({
       doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU ✓ 100% BALANCE)`, 4, 31);
+      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU - 100% BALANCE)`, 4, 31);
 
       table(
         reconHead,
