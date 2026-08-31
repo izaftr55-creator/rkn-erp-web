@@ -2320,7 +2320,7 @@ function Dashboard({ data }: { data: Row }) {
               (row) => (
                 <span
                   style={{
-                    color: Number(row.outstandingRp || 0) > 0 ? "#d4b27d" : "#34d399",
+                    color: Number(row.outstandingRp || 0) > 0 ? "#d4b27d" : "#94a3b8",
                     fontWeight: 750,
                     fontFamily: "var(--font-jetbrains-mono, monospace)",
                   }}
@@ -4637,9 +4637,9 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                   <span
                     className={styles.statusOpen}
                     style={{
-                      background: "rgba(220, 38, 38, 0.2)",
-                      color: "#FCA5A5",
-                      border: "1px solid rgba(220, 38, 38, 0.4)",
+                      background: "rgba(148, 163, 184, 0.12)",
+                      color: "#cbd5e1",
+                      border: "1px solid rgba(148, 163, 184, 0.3)",
                       fontWeight: 600,
                     }}
                   >
@@ -4652,9 +4652,9 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                   <span
                     className={styles.statusOpen}
                     style={{
-                      background: "rgba(245, 158, 11, 0.2)",
-                      color: "#FCD34D",
-                      border: "1px solid rgba(245, 158, 11, 0.4)",
+                      background: "rgba(212, 178, 125, 0.15)",
+                      color: "#fae2ab",
+                      border: "1px solid rgba(212, 178, 125, 0.4)",
                       fontWeight: 600,
                     }}
                   >
@@ -4666,9 +4666,9 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                 <span
                   className={styles.statusPaid}
                   style={{
-                    background: "rgba(16, 185, 129, 0.15)",
-                    color: "#6EE7B7",
-                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    background: "rgba(176, 141, 87, 0.15)",
+                    color: "#d4b27d",
+                    border: "1px solid rgba(176, 141, 87, 0.4)",
                     fontWeight: 600,
                   }}
                 >
@@ -6828,9 +6828,9 @@ function Reconciliation({
         }
       >
         <section className={styles.reconAuditStrip}>
-          <div style={{ background: "rgba(16, 185, 129, 0.12)", borderColor: "rgba(16, 185, 129, 0.35)" }}>
-            <span style={{ color: "#6ee7b7" }}>STATUS SISTEM</span>
-            <strong style={{ color: "#6ee7b7" }}>{soPosted ? "100% BALANCE & POSTED" : "DRAFT"}</strong>
+          <div style={{ background: "rgba(176, 141, 87, 0.12)", borderColor: "rgba(176, 141, 87, 0.35)" }}>
+            <span style={{ color: "#d4b27d" }}>STATUS SISTEM</span>
+            <strong style={{ color: "#fae2ab" }}>{soPosted ? "100% BALANCE & POSTED" : "DRAFT"}</strong>
           </div>
           <div>
             <span>SKU TERVERIFIKASI</span>
@@ -6842,7 +6842,7 @@ function Reconciliation({
           </div>
           <div>
             <span>ANOMALI TRANSAKSI</span>
-            <strong style={{ color: "#6ee7b7" }}>0 (BERSIH)</strong>
+            <strong style={{ color: "#d4b27d" }}>0 (BERSIH)</strong>
           </div>
           <div>
             <span>STATUS DOKUMEN</span>
@@ -9205,7 +9205,7 @@ function AccessManagement({
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: u.active ? "#34d399" : "#f87171",
+                      color: u.active ? "#d4b27d" : "#94a3b8",
                     }}
                   >
                     {u.active ? "AKTIF" : "NONAKTIF"}
@@ -9288,7 +9288,7 @@ function AccessManagement({
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: r.status === "APPROVED" ? "#34d399" : "#f87171",
+                      color: r.status === "APPROVED" ? "#d4b27d" : "#94a3b8",
                     }}
                   >
                     {r.status}

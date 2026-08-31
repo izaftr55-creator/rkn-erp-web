@@ -371,16 +371,16 @@
 }
 
 .periodOpen {
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(176, 141, 87, 0.45);
+  background: rgba(176, 141, 87, 0.14);
+  color: #d4b27d;
+  box-shadow: 0 0 15px rgba(176, 141, 87, 0.2);
 }
 
 .periodClosed {
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
 }
 
 .periodOpen span,
@@ -925,21 +925,21 @@
 }
 
 .statusPaid {
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  color: #34d399;
+  background: rgba(176, 141, 87, 0.15);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  color: #d4b27d;
 }
 
 .statusPartial {
-  background: rgba(245, 158, 11, 0.18);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #fbbf24;
+  background: rgba(212, 178, 125, 0.12);
+  border: 1px solid rgba(212, 178, 125, 0.35);
+  color: #fae2ab;
 }
 
 .statusOpen {
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #f87171;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #cbd5e1;
 }
 
 .closingCard {
@@ -2717,16 +2717,20 @@
   min-height: 220px;
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding: 16px 8px 4px;
+  gap: 6px;
+  padding: 16px 8px 6px;
   background: rgba(11, 19, 30, 0.45);
   border-radius: 12px;
   border: 1px solid rgba(176, 141, 87, 0.15);
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .salesBarItem {
-  min-width: 20px;
+  min-width: 12px;
   height: 190px;
   flex: 1 1 0;
   display: grid;
@@ -2740,6 +2744,16 @@
 
 .salesBarItem:hover {
   transform: translateY(-4px);
+}
+
+.salesBarItem span {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  font-family: var(--font-jetbrains-mono), monospace;
+  text-align: center;
+  width: 100%;
+  overflow: hidden;
 }
 
 .salesBarTrack {
@@ -7089,10 +7103,11 @@
   }
 
   .main {
-    padding: 12px 12px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: max(16px, env(safe-area-inset-top, 16px)) max(14px, env(safe-area-inset-right, 14px)) calc(92px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 14px)) !important;
     width: 100% !important;
     overflow-x: hidden !important;
     min-height: 100dvh !important;
+    box-sizing: border-box !important;
   }
 
   .topbar {
@@ -7180,6 +7195,22 @@
 
   .panel {
     padding: 12px !important;
+  }
+
+  .salesBars {
+    gap: 3px !important;
+    padding: 14px 4px 4px !important;
+    min-height: 195px !important;
+  }
+
+  .salesBarItem {
+    min-width: 10px !important;
+    height: 165px !important;
+    gap: 4px !important;
+  }
+
+  .salesBarItem span {
+    font-size: 7.5px !important;
   }
 
   .reportCenterHead {
