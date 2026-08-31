@@ -4131,11 +4131,48 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
     return isThermal ? qty <= 10 : qty <= 100;
   };
 
+  const totalStockValueRp = rows.reduce(
+    (sum, r) => sum + Number(r.stockValueRp || 0),
+    0
+  );
+  const totalSkuCount = rows.length;
+  const safeCount = rows.filter(
+    (r) => Number(r.qtyBase || 0) > 0 && !lowStockThreshold(r)
+  ).length;
+  const lowCount = rows.filter(
+    (r) => Number(r.qtyBase || 0) > 0 && lowStockThreshold(r)
+  ).length;
+  const outCount = rows.filter((r) => Number(r.qtyBase || 0) <= 0).length;
+
   return (
-    <Panel
-      title="Stok Fisik Gudang"
-      subtitle={`${rows.length} varian aktif. Pantau sisa stok dan peringatan stok menipis.`}
-    >
+    <>
+      <section className={styles.metricGrid}>
+        <MetricCard
+          label="Total Nilai Persediaan"
+          value={money.format(totalStockValueRp)}
+          note={`${qtyFmt.format(totalSkuCount)} SKU fisik aktif`}
+        />
+        <MetricCard
+          label="Stok Aman"
+          value={`${safeCount} SKU`}
+          note="Persediaan mencukupi"
+        />
+        <MetricCard
+          label="Stok Menipis"
+          value={`${lowCount} SKU`}
+          note={lowCount > 0 ? "Perlu restock segera" : "Stok terkendali"}
+        />
+        <MetricCard
+          label="Stok Habis"
+          value={`${outCount} SKU`}
+          note={outCount > 0 ? "Stok di gudang kosong" : "Tidak ada stok kosong"}
+        />
+      </section>
+
+      <Panel
+        title="Stok Fisik Gudang"
+        subtitle={`${rows.length} varian aktif. Pantau sisa stok dan peringatan stok menipis.`}
+      >
       <DataTable
         rows={rows}
         columns={[
@@ -4221,7 +4258,8 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
         ]}
       />
     </Panel>
-  );
+  </>
+);
 }
 
 /* RKN_PLASTIC_PAYMENT_COMPACT_V2Q9 */
@@ -5985,7 +6023,7 @@ function Reconciliation({
       );
     }
 
-    return sign + parts.join(" + ");
+    return sign + parts.join("  ");
   };
 
   const thermalQtyText = (
@@ -6022,7 +6060,7 @@ function Reconciliation({
     }
 
     if (dus > 0 && rem > 0) {
-      return `${sign}${qtyFmt.format(dus)} DUS + ${qtyFmt.format(rem)} LEMBAR`;
+      return `${sign}${qtyFmt.format(dus)} DUS  ${qtyFmt.format(rem)} LEMBAR`;
     }
 
     return `${sign}${qtyFmt.format(rem)} LEMBAR`;
@@ -7798,7 +7836,22 @@ function Reports({
                 ["productName", "Produk"],
                 ["color", "Warna"],
                 ["size", "Ukuran"],
-                ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
+                [
+                  "packQty",
+                  "BALL / DUS",
+                  (row) => {
+                    const sq = splitQtyPdf(row, row.qtyBase);
+                    return sq.pack !== "0" ? sq.pack : "-";
+                  },
+                ],
+                [
+                  "baseQty",
+                  "ROLL / LEMBAR",
+                  (row) => {
+                    const sq = splitQtyPdf(row, row.qtyBase);
+                    return sq.base !== "0" ? sq.base : "-";
+                  },
+                ],
                 ["defaultSellPriceBaseRp", "Harga Jual", (row) => primarySellPriceText(row)],
                 [
                   "salesValueRp",
@@ -7941,7 +7994,22 @@ function Reports({
               ["productName", "Produk"],
               ["color", "Warna"],
               ["size", "Ukuran"],
-              ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
+              [
+                "packQty",
+                "BALL / DUS",
+                (row) => {
+                  const sq = splitQtyPdf(row, row.qtyBase);
+                  return sq.pack !== "0" ? sq.pack : "-";
+                },
+              ],
+              [
+                "baseQty",
+                "ROLL / LEMBAR",
+                (row) => {
+                  const sq = splitQtyPdf(row, row.qtyBase);
+                  return sq.base !== "0" ? sq.base : "-";
+                },
+              ],
               [
                 "defaultSellPriceBaseRp",
                 "Harga Jual Utama",
