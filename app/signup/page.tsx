@@ -188,19 +188,23 @@ export default async function SignupPage({
                 }}
               >
                 <option value="" disabled>
-                  Pilih akses
+                  Pilih akses peran
                 </option>
 
-                <option value="OWNER">
-                  Owner
+                <option value="SUPPLIER">
+                  Supplier (Pemantau Stok)
                 </option>
 
                 <option value="ADMIN">
-                  Admin
+                  Admin (Operasional & Transaksi)
                 </option>
 
-                <option value="STAFF">
-                  Staff / User Internal
+                <option value="SUPERVISI">
+                  Supervisi (Dewan Pengawas / Audit)
+                </option>
+
+                <option value="OWNER">
+                  Owner (Pemilik Bisnis)
                 </option>
               </select>
             </div>

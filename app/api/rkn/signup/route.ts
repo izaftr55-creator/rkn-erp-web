@@ -9,6 +9,8 @@ const ALLOWED_REQUESTED_ROLES =
   new Set([
     "OWNER",
     "ADMIN",
+    "SUPERVISI",
+    "SUPPLIER",
     "STAFF",
   ]);
 

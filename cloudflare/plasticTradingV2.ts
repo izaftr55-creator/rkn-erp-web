@@ -193,7 +193,18 @@ INSERT OR IGNORE INTO role_permission(role_id,permission_id,created_at) SELECT '
 INSERT OR IGNORE INTO role_permission(role_id,permission_id,created_at) SELECT r.id,p.id,CURRENT_TIMESTAMP FROM role r CROSS JOIN permission p WHERE r.code IN('GROUP_OWNER','SYSTEM_ADMIN') AND p.code LIKE 'plastic.%';
 `).toArray()}
 
-function actor(sql:Sql,idv:any):Actor{const id=T(idv,160);if(!id)throw Error('PLASTIC_ACTOR_REQUIRED');const p=sql.exec(`SELECT active,full_name,primary_role_code FROM erp_user_profile WHERE user_id=? LIMIT 1`,id).toArray()[0];if(!p||Number(p.active)!==1)throw Error('PLASTIC_PROFILE_INACTIVE');const admin=sql.exec(`SELECT 1 FROM user_role ur JOIN role r ON r.id=ur.role_id WHERE ur.user_id=? AND r.code='SYSTEM_ADMIN' LIMIT 1`,id).toArray().length>0;const s=sql.exec(`SELECT access_level FROM user_business_scope WHERE user_id=? AND business_unit_id='BU-PLASTIC' LIMIT 1`,id).toArray()[0];const level=admin?'OWNER':T(s?.access_level,16);if(!admin&&!['VIEW','OPERATE','MANAGE','OWNER'].includes(level))throw Error('PLASTIC_SCOPE_DENIED');return{id,name:T(p.full_name,160),role:T(p.primary_role_code,64),level,admin}}
+function actor(sql:Sql,idv:any):Actor{
+  const id=T(idv,160);
+  if(!id)throw Error('PLASTIC_ACTOR_REQUIRED');
+  const p=sql.exec(`SELECT active,full_name,primary_role_code FROM erp_user_profile WHERE user_id=? LIMIT 1`,id).toArray()[0];
+  if(!p||Number(p.active)!==1)throw Error('PLASTIC_PROFILE_INACTIVE');
+  const primaryRole=T(p.primary_role_code,64).toUpperCase();
+  const isAdminOrOwner=sql.exec(`SELECT 1 FROM user_role ur JOIN role r ON r.id=ur.role_id WHERE ur.user_id=? AND r.code IN ('SYSTEM_ADMIN','PLASTIC_ADMIN','GROUP_OWNER','OWNER') LIMIT 1`,id).toArray().length>0 || ['SYSTEM_ADMIN','PLASTIC_ADMIN','GROUP_OWNER','OWNER'].includes(primaryRole);
+  const s=sql.exec(`SELECT access_level FROM user_business_scope WHERE user_id=? AND business_unit_id='BU-PLASTIC' LIMIT 1`,id).toArray()[0];
+  const level=isAdminOrOwner?'OWNER':(s?.access_level==='MANAGE'?'OWNER':(s?.access_level?T(s.access_level,16):'VIEW'));
+  if(!isAdminOrOwner&&!['VIEW','OPERATE','MANAGE','OWNER'].includes(level))throw Error('PLASTIC_SCOPE_DENIED');
+  return{id,name:T(p.full_name,160),role:primaryRole,level,admin:isAdminOrOwner};
+}
 const op=(a:Actor)=>{if(!a.admin&&!['OPERATE','MANAGE','OWNER'].includes(a.level))throw Error('PLASTIC_WRITE_DENIED')};
 const mg=(a:Actor)=>{if(!a.admin&&!['MANAGE','OWNER'].includes(a.level))throw Error('PLASTIC_MANAGE_DENIED')};
 const ow=(a:Actor)=>{if(!a.admin&&a.level!=='OWNER')throw Error('PLASTIC_OWNER_DENIED')};

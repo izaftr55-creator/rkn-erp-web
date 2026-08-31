@@ -261,17 +261,20 @@
 }
 
 .topbar {
-  min-height: 112px;
-  padding: 20px 22px;
+  min-height: 104px;
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  border: 1px solid #1a2e49;
-  border-radius: 15px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 16px;
   background:
-    linear-gradient(135deg, rgba(14, 31, 54, 0.96), rgba(9, 22, 38, 0.96));
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    linear-gradient(135deg, rgba(14, 31, 56, 0.94), rgba(7, 17, 31, 0.96));
+  box-shadow:
+    0 16px 40px -10px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
 }
 
 .topbarTitle {
@@ -279,55 +282,60 @@
 }
 
 .breadcrumb {
-  color: #5f7da4;
-  font-size: 8px;
+  color: #38bdf8;
+  font-size: 8.5px;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
 }
 
 .topbarTitle h1 {
-  margin: 6px 0 5px;
-  font-size: 24px;
+  margin: 6px 0 4px;
+  font-size: 25px;
+  font-weight: 800;
   line-height: 1.15;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .topbarTitle p {
   max-width: 720px;
   margin: 0;
-  color: #7c8da7;
-  font-size: 11px;
-  line-height: 1.55;
+  color: #94a3b8;
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
 .topbarTools {
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
 }
 
 .periodOpen,
 .periodClosed {
   height: 38px;
-  padding: 0 12px;
+  padding: 0 14px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  border-radius: 9px;
-  font-size: 9px;
-  font-weight: 850;
-  letter-spacing: 0.06em;
+  gap: 8px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .periodOpen {
-  border: 1px solid rgba(53, 196, 119, 0.3);
-  background: rgba(26, 104, 64, 0.16);
-  color: #65dfa0;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
 }
 
 .periodClosed {
-  border: 1px solid rgba(231, 165, 68, 0.3);
-  background: rgba(132, 82, 18, 0.16);
-  color: #f1b765;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
 }
 
 .periodOpen span,
@@ -385,49 +393,64 @@
 }
 
 .content {
-  margin-top: 12px;
+  margin-top: 14px;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .metricGrid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .metricCard {
   min-width: 0;
-  min-height: 116px;
-  padding: 15px;
+  min-height: 120px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border: 1px solid #182d48;
-  border-radius: 13px;
-  background: linear-gradient(160deg, #0c1b2e, #0a1625);
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(14, 30, 53, 0.8), rgba(7, 16, 30, 0.9));
+  box-shadow:
+    0 10px 30px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 16px 36px -6px rgba(56, 189, 248, 0.12);
 }
 
 .metricLabel {
-  color: #6f84a1;
-  font-size: 9px;
+  color: #94a3b8;
+  font-size: 9.5px;
   font-weight: 800;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .metricCard strong {
   overflow: hidden;
-  margin: 8px 0 4px;
-  color: #f3f7ff;
-  font-size: 18px;
+  margin: 10px 0 4px;
+  color: #ffffff;
+  font-size: 21px;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .metricCard > span {
-  color: #536781;
-  font-size: 9px;
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 600;
 }
 
 .twoColumn {

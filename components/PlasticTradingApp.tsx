@@ -1304,33 +1304,39 @@ export default function PlasticTradingApp({
   const [navigationReady, setNavigationReady] = useState(false);
 
   const actor = initialDashboard.actor || {};
-  const readOnly =
-    actor.accessLevel === "VIEW" && !actor.isSystemAdmin;
-  const canManage =
+  const primaryRole = String(actor.roleCode || actor.primaryRoleCode || actor.role || "").toUpperCase();
+  const isAdminOrOwner =
     actor.isSystemAdmin ||
-    ["MANAGE", "OWNER"].includes(actor.accessLevel);
-  const canClose =
-    actor.isSystemAdmin || actor.accessLevel === "OWNER";
-
+    ["SYSTEM_ADMIN", "PLASTIC_ADMIN", "GROUP_OWNER", "OWNER"].includes(primaryRole) ||
+    actor.accessLevel === "OWNER" ||
+    actor.accessLevel === "MANAGE";
+  const isSupplier = primaryRole.includes("SUPPLIER");
+  const isSupervisor =
+    primaryRole.includes("SUPERVISOR") ||
+    primaryRole.includes("SUPERVISORY") ||
+    primaryRole.includes("PENGAWAS");
+  const readOnly =
+    !isAdminOrOwner && (actor.accessLevel === "VIEW" || isSupplier || isSupervisor);
+  const canManage = isAdminOrOwner;
+  const canClose = isAdminOrOwner;
 
   /* RKN_PLASTIC_ROLE_LOGOUT_V2R1 */
   const plasticAccessLabel =
-    actor.isSystemAdmin
-      ? "OWNER"
-      : actor.accessLevel === "OWNER"
-        ? "OWNER"
-        : actor.accessLevel === "VIEW"
-          ? "READ ONLY"
+    isAdminOrOwner
+      ? "OWNER / ADMIN"
+      : isSupplier
+        ? "SUPPLIER (PANTAU STOK)"
+        : isSupervisor
+          ? "SUPERVISI (AUDIT)"
           : humanizeDisplay(actor.accessLevel || "-");
 
   const plasticRoleLabel =
-    actor.isSystemAdmin
-      ? "SYSTEM ADMIN"
-      : String(actor.roleCode || "").toUpperCase() ===
-          "SUPERVISORY_BOARD"
-        ? "SUPERVISORY BOARD"
-        : actor.accessLevel === "OWNER"
-          ? "OWNER"
+    isAdminOrOwner
+      ? (actor.isSystemAdmin ? "SYSTEM ADMIN" : "OWNER / ADMIN")
+      : isSupplier
+        ? "SUPPLIER"
+        : isSupervisor
+          ? "SUPERVISORY BOARD"
           : humanizeDisplay(actor.roleCode || "-");
 
 const loadMasters = useCallback(async () => {
@@ -1373,12 +1379,13 @@ const loadMasters = useCallback(async () => {
     const savedPeriod = window.localStorage.getItem(
       "rkn-plastic-active-period"
     );
-
+    const defaultInitialTab = isSupplier ? "INVENTORY" : "DASHBOARD";
     const restoredTab =
       savedTab &&
+      (!isSupplier || savedTab === "INVENTORY" || savedTab === "INBOUND") &&
       menus.some(([key]) => key === savedTab)
         ? savedTab
-        : "DASHBOARD";
+        : defaultInitialTab;
 
     setTab(restoredTab);
 
@@ -1522,41 +1529,68 @@ const [nextView, nextDashboard] = await Promise.all([
         </div>
 
         <nav className={styles.nav}>
-          <div className={styles.navGroupLabel}>OPERASI</div>
-          {menus.slice(0, 8).map(([key, label, glyph]) => (
-            <button
-              key={key}
-              type="button"
-              className={
-                tab === key ? styles.navActive : styles.navButton
-              }
-              onClick={() => {
-                setTab(key);
-                setMobileNavOpen(false);
-              }}
-            >
-              <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
-              <span>{label}</span>
-            </button>
-          ))}
+          {isSupplier ? (
+            <>
+              <div className={styles.navGroupLabel}>PANTAU STOK</div>
+              {[
+                ["INVENTORY", "Stok Gudang", "inventory"],
+                ["INBOUND", "Barang Masuk", "inbound"],
+              ].map(([key, label, glyph]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    tab === key ? styles.navActive : styles.navButton
+                  }
+                  onClick={() => {
+                    setTab(key);
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              <div className={styles.navGroupLabel}>OPERASI</div>
+              {menus.slice(0, 8).map(([key, label, glyph]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    tab === key ? styles.navActive : styles.navButton
+                  }
+                  onClick={() => {
+                    setTab(key);
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
+                  <span>{label}</span>
+                </button>
+              ))}
 
-          <div className={styles.navGroupLabel}>KONTROL</div>
-          {menus.slice(8).map(([key, label, glyph]) => (
-            <button
-              key={key}
-              type="button"
-              className={
-                tab === key ? styles.navActive : styles.navButton
-              }
-              onClick={() => {
-                setTab(key);
-                setMobileNavOpen(false);
-              }}
-            >
-              <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
-              <span>{label}</span>
-            </button>
-          ))}
+              <div className={styles.navGroupLabel}>KONTROL</div>
+              {menus.slice(8).map(([key, label, glyph]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    tab === key ? styles.navActive : styles.navButton
+                  }
+                  onClick={() => {
+                    setTab(key);
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
+                  <span>{label}</span>
+                </button>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className={styles.sidebarBottom}>
@@ -1745,7 +1779,7 @@ const [nextView, nextDashboard] = await Promise.all([
 
 
 {tab === "INVENTORY" ? (
-            <Inventory rows={data.rows || []} />
+            <Inventory rows={data.rows || []} isSupplier={isSupplier} />
           ) : null}
 
           {tab === "RECEIVABLES" ? (
@@ -1842,34 +1876,34 @@ function Dashboard({ data }: { data: Row }) {
     <div className={styles.dashboardShell}>
       <section className={styles.metricGrid}>
         <MetricCard
-          label="Stock Value"
+          label="Nilai Stok Fisik"
           value={money.format(Number(metrics.stockValueRp || 0))}
           note={`${qtyFmt.format(
             Number(metrics.skuCount || 0)
           )} SKU aktif`}
         />
         <MetricCard
-          label="Piutang"
+          label="Sisa Piutang"
           value={money.format(Number(metrics.receivableRp || 0))}
         />
         <MetricCard
-          label="Sales"
+          label="Total Penjualan"
           value={money.format(Number(metrics.salesRp || 0))}
         />
         <MetricCard
-          label="Gross Profit"
+          label="Laba Kotor"
           value={money.format(Number(metrics.grossProfitRp || 0))}
         />
       </section>
 
       <section className={styles.dashboardCharts}>
         <Panel
-          title="System Balance"
+          title="Keseimbangan Stok"
           subtitle={
             so.isPosted
               ? `SO ${so.dateKey || "28/08/2026"} · 100% BALANCE (POSTED)`
               : so.dateKey
-              ? `SO terakhir ${so.dateKey}`
+              ? `SO ${so.dateKey}`
               : "Belum ada hasil SO"
           }
         >
@@ -3883,11 +3917,17 @@ function Outbound({
   );
 }
 
-function Inventory({ rows }: { rows: Row[] }) {
+function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) {
+  const lowStockThreshold = (row: Row) => {
+    const isThermal = String(row.category || "").toUpperCase() === "THERMAL";
+    const qty = Number(row.qtyBase || 0);
+    return isThermal ? qty <= 10 : qty <= 100;
+  };
+
   return (
     <Panel
-      title="Inventory On Hand"
-      subtitle={`${rows.length} variant aktif. Tampilan stock mengikuti konversi unit master.`}
+      title="Stok Fisik Gudang"
+      subtitle={`${rows.length} varian aktif. Pantau sisa stok dan peringatan stok menipis.`}
     >
       <DataTable
         rows={rows}
@@ -3896,17 +3936,71 @@ function Inventory({ rows }: { rows: Row[] }) {
           ["productName", "Produk"],
           ["color", "Warna"],
           ["size", "Ukuran"],
-          ["qtyBase", "Stock", (row) => stockText(row)],
+          ["qtyBase", "Sisa Stok", (row) => stockText(row)],
           [
-            "avgCostRp",
-            "Avg Cost / Base",
-            (row) => money.format(Number(row.avgCostRp || 0)),
+            "statusPersediaan",
+            "Status Stok",
+            (row) => {
+              const qty = Number(row.qtyBase || 0);
+              if (qty <= 0) {
+                return (
+                  <span
+                    className={styles.statusOpen}
+                    style={{
+                      background: "rgba(220, 38, 38, 0.2)",
+                      color: "#FCA5A5",
+                      border: "1px solid rgba(220, 38, 38, 0.4)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ● Habis
+                  </span>
+                );
+              }
+              if (lowStockThreshold(row)) {
+                return (
+                  <span
+                    className={styles.statusOpen}
+                    style={{
+                      background: "rgba(245, 158, 11, 0.2)",
+                      color: "#FCD34D",
+                      border: "1px solid rgba(245, 158, 11, 0.4)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠️ Menipis - Siapkan Kirim
+                  </span>
+                );
+              }
+              return (
+                <span
+                  className={styles.statusPaid}
+                  style={{
+                    background: "rgba(16, 185, 129, 0.15)",
+                    color: "#6EE7B7",
+                    border: "1px solid rgba(16, 185, 129, 0.35)",
+                    fontWeight: 600,
+                  }}
+                >
+                  ● Aman
+                </span>
+              );
+            },
           ],
-          [
-            "stockValueRp",
-            "Stock Value",
-            (row) => money.format(Number(row.stockValueRp || 0)),
-          ],
+          ...(!isSupplier
+            ? [
+                [
+                  "avgCostRp",
+                  "HPP Rata-rata",
+                  (row: Row) => money.format(Number(row.avgCostRp || 0)),
+                ] as [string, string, (row: Row) => string],
+                [
+                  "stockValueRp",
+                  "Nilai Persediaan",
+                  (row: Row) => money.format(Number(row.stockValueRp || 0)),
+                ] as [string, string, (row: Row) => string],
+              ]
+            : []),
         ]}
       />
     </Panel>
@@ -6644,7 +6738,7 @@ function Reports({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
-      doc.text("PLASTIC TRADING DIVISION · PT RKN GROUP", 28, 15.5);
+      doc.text("PLASTIC TRADING DIVISION · RKN GROUP", 28, 15.5);
       doc.text(`CUTOFF: ${auditSoDate} · SISTEM TERKALIBRASI`, 28, 20);
 
       doc.setTextColor(255, 255, 255);
@@ -6674,7 +6768,7 @@ function Reports({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
       doc.setTextColor(100, 116, 139);
-      doc.text("RKN ERP · Plastic Trading System · Dokumen Resmi Manajemen (Internal Only)", 4, pageHeight - 3.5);
+      doc.text("RKN ERP · Plastic Trading · RKN GROUP", 4, pageHeight - 3.5);
       doc.text(`Halaman ${pageNo} dari ${totalPages}`, pageWidth - 4, pageHeight - 3.5, { align: "right" });
     };
 
