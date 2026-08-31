@@ -988,9 +988,29 @@ function DataTable({
   }, [rows]);
 
   const statusField = useMemo(() => {
-    const candidates = [
-      "paymentLabel",
+    const colKeys = columns.map(([key]) => key);
+    for (const key of [
+      "stockStatus",
       "status",
+      "diagnosticCode",
+      "paymentLabel",
+      "historyIntegrity",
+      "mappingStatus",
+      "periodStatus",
+    ]) {
+      if (
+        colKeys.includes(key) &&
+        rows.some((row) => Boolean(row?.[key]))
+      ) {
+        return key;
+      }
+    }
+
+    const candidates = [
+      "stockStatus",
+      "status",
+      "diagnosticCode",
+      "paymentLabel",
       "historyIntegrity",
       "mappingStatus",
       "periodStatus",
@@ -999,7 +1019,7 @@ function DataTable({
     return candidates.find((key) =>
       rows.some((row) => Boolean(row?.[key]))
     );
-  }, [rows]);
+  }, [rows, columns]);
 
   const statusOptions = useMemo(() => {
     if (!statusField) return [];
@@ -4153,18 +4173,30 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
     return isThermal ? qty <= 10 : qty <= 100;
   };
 
+  const enrichedRows = useMemo(() => {
+    return rows.map((row) => {
+      const qty = Number(row.qtyBase || 0);
+      let stockStatus = "AMAN";
+      if (qty <= 0) {
+        stockStatus = "HABIS";
+      } else if (lowStockThreshold(row)) {
+        stockStatus = "MENIPIS";
+      }
+      return {
+        ...row,
+        stockStatus,
+      };
+    });
+  }, [rows]);
+
   const totalStockValueRp = rows.reduce(
     (sum, r) => sum + Number(r.stockValueRp || 0),
     0
   );
   const totalSkuCount = rows.length;
-  const safeCount = rows.filter(
-    (r) => Number(r.qtyBase || 0) > 0 && !lowStockThreshold(r)
-  ).length;
-  const lowCount = rows.filter(
-    (r) => Number(r.qtyBase || 0) > 0 && lowStockThreshold(r)
-  ).length;
-  const outCount = rows.filter((r) => Number(r.qtyBase || 0) <= 0).length;
+  const safeCount = enrichedRows.filter((r) => r.stockStatus === "AMAN").length;
+  const lowCount = enrichedRows.filter((r) => r.stockStatus === "MENIPIS").length;
+  const outCount = enrichedRows.filter((r) => r.stockStatus === "HABIS").length;
 
   return (
     <>
@@ -4193,10 +4225,10 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
 
       <Panel
         title="Stok Fisik Gudang"
-        subtitle={`${rows.length} varian aktif. Pantau sisa stok dan peringatan stok menipis.`}
+        subtitle={`${rows.length} varian aktif. Pantau sisa stok dan filter status stok.`}
       >
       <DataTable
-        rows={rows}
+        rows={enrichedRows}
         columns={[
           ["category", "Kategori"],
           ["productName", "Produk"],
@@ -4219,11 +4251,10 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
             },
           ],
           [
-            "statusPersediaan",
+            "stockStatus",
             "Status Stok",
             (row) => {
-              const qty = Number(row.qtyBase || 0);
-              if (qty <= 0) {
+              if (row.stockStatus === "HABIS") {
                 return (
                   <span
                     className={styles.statusOpen}
@@ -4238,7 +4269,7 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                   </span>
                 );
               }
-              if (lowStockThreshold(row)) {
+              if (row.stockStatus === "MENIPIS") {
                 return (
                   <span
                     className={styles.statusOpen}
@@ -4249,7 +4280,7 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                       fontWeight: 600,
                     }}
                   >
-                    ⚠️ Menipis - Siapkan Kirim
+                    ⚠️ Menipis
                   </span>
                 );
               }
@@ -5967,12 +5998,30 @@ function Reconciliation({
   const soStatus = String(soSession.status || "").toUpperCase();
   const soPosted = soStatus === "POSTED";
 
-  const polyRows = rows.filter(
+  const enrichedRows = useMemo(() => {
+    return rows.map((row: Row) => {
+      const isGoldwinOrZero =
+        String(row.variantId || "").includes("GOLDWIN") ||
+        (Number(row.systemQtyBase || 0) === 0 &&
+          Number(row.openingQtyBase || 0) > 0);
+      const isBalanced =
+        row.status === "BALANCE" ||
+        Math.abs(Number(row.varianceQtyBase || 0)) <
+          0.000001 ||
+        isGoldwinOrZero;
+      return {
+        ...row,
+        status: isBalanced ? "BALANCE" : "SELISIH",
+      };
+    });
+  }, [rows]);
+
+  const polyRows = enrichedRows.filter(
     (row: Row) =>
       String(row.category || "") !== "THERMAL"
   );
 
-  const thermalRows = rows.filter(
+  const thermalRows = enrichedRows.filter(
     (row: Row) =>
       String(row.category || "") === "THERMAL"
   );
@@ -6176,15 +6225,19 @@ function Reconciliation({
     ],
     [
       "varianceQtyBase",
-      reconMode === "POSTED_BALANCE" && soPosted ? "Selisih Pasca-SO" : "Variance",
+      "Variance",
       (row) => {
-        if (reconMode === "POSTED_BALANCE" && soPosted) {
-          return "0 (✓ Balance)";
-        }
-        if (String(row.variantId || "").includes("GOLDWIN") || Number(row.systemQtyBase || 0) === 0) {
+        if (
+          String(row.variantId || "").includes("GOLDWIN") ||
+          Number(row.systemQtyBase || 0) === 0
+        ) {
           return "0 (✓ Balance)";
         }
         if (Number(row.physicalEntered || 0) === 1) {
+          const v = Number(row.varianceQtyBase || 0);
+          if (Math.abs(v) < 0.000001) {
+            return "0 (✓ Balance)";
+          }
           return reconQty(row, "varianceQtyBase", true);
         }
         return "-";
@@ -6194,17 +6247,14 @@ function Reconciliation({
       "status",
       "Status",
       (row) => {
-        const isGoldwinOrZero =
-          String(row.variantId || "").includes("GOLDWIN") ||
-          (Number(row.systemQtyBase || 0) === 0 && Number(row.openingQtyBase || 0) > 0);
-        const isBalanced =
-          row.status === "BALANCE" ||
-          isGoldwinOrZero ||
-          (reconMode === "POSTED_BALANCE" && soPosted);
-
+        const isBalanced = row.status === "BALANCE";
         return (
-          <span className={isBalanced ? styles.statusPaid : styles.statusOpen}>
-            {isBalanced ? "BALANCE" : row.status}
+          <span
+            className={
+              isBalanced ? styles.statusPaid : styles.statusOpen
+            }
+          >
+            {isBalanced ? "BALANCE" : "SELISIH"}
           </span>
         );
       },
