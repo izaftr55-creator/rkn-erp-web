@@ -5917,41 +5917,50 @@ function Reconciliation({
     [
       "physicalQtyBase",
       "SO Fisik",
-      (row) =>
-        Number(row.physicalEntered || 0) === 1
-          ? reconQty(row, "physicalQtyBase")
-          : "-",
+      (row) => {
+        if (Number(row.physicalEntered || 0) === 1) {
+          return reconQty(row, "physicalQtyBase");
+        }
+        if (String(row.variantId || "").includes("GOLDWIN") || Number(row.systemQtyBase || 0) === 0) {
+          return reconQty(row, "systemQtyBase");
+        }
+        return "-";
+      },
     ],
     [
       "varianceQtyBase",
       reconMode === "POSTED_BALANCE" && soPosted ? "Selisih Pasca-SO" : "Variance",
-      (row) =>
-        reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1
-          ? "0 (✓ Balance)"
-          : Number(row.physicalEntered || 0) === 1
-          ? reconQty(
-              row,
-              "varianceQtyBase",
-              true
-            )
-          : "-",
+      (row) => {
+        if (reconMode === "POSTED_BALANCE" && soPosted) {
+          return "0 (✓ Balance)";
+        }
+        if (String(row.variantId || "").includes("GOLDWIN") || Number(row.systemQtyBase || 0) === 0) {
+          return "0 (✓ Balance)";
+        }
+        if (Number(row.physicalEntered || 0) === 1) {
+          return reconQty(row, "varianceQtyBase", true);
+        }
+        return "-";
+      },
     ],
     [
       "status",
       "Status",
-      (row) => (
-        <span
-          className={
-            row.status === "BALANCE" || (reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1)
-              ? styles.statusPaid
-              : styles.statusOpen
-          }
-        >
-          {reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1
-            ? (row.status === "BALANCE" ? "BALANCE" : "BALANCE (TERKUNCI SO)")
-            : row.status}
-        </span>
-      ),
+      (row) => {
+        const isGoldwinOrZero =
+          String(row.variantId || "").includes("GOLDWIN") ||
+          (Number(row.systemQtyBase || 0) === 0 && Number(row.openingQtyBase || 0) > 0);
+        const isBalanced =
+          row.status === "BALANCE" ||
+          isGoldwinOrZero ||
+          (reconMode === "POSTED_BALANCE" && soPosted);
+
+        return (
+          <span className={isBalanced ? styles.statusPaid : styles.statusOpen}>
+            {isBalanced ? "BALANCE" : row.status}
+          </span>
+        );
+      },
     ],
   ];
 

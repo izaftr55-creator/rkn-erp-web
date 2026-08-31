@@ -1032,39 +1032,43 @@ if(view==='RECONCILIATION'){
       outboundQtyBase+
       correctionQtyBase;
 
-    /* RKN_PLASTIC_GOLDWIN_RECON_VISIBILITY_V2R23
-       Goldwin was not part of the posted physical SO on 28/08. Keep the
-       posted 41-SKU scope immutable, but still expose its official Opening,
-       IN and OUT in reconciliation instead of hiding the product. */
-    const soScope=!(
-      variantId===goldwinVariantId &&
-      target==='2026-08-28'
-    );
+    const isGoldwinZero =
+      variantId === goldwinVariantId &&
+      target === '2026-08-28' &&
+      Math.abs(systemQtyBase) < 0.000001;
 
-    const physical=
-      physicalByVariant.get(variantId)??null;
+    const soScope = isGoldwinZero
+      ? true
+      : !(variantId === goldwinVariantId && target === '2026-08-28');
 
-    const physicalEntered=
-      soScope && Number(physical?.physicalEntered||0)===1;
+    const physical =
+      physicalByVariant.get(variantId) ?? null;
 
-    const physicalQtyBase=
-      physicalEntered
+    const physicalEntered =
+      isGoldwinZero
+        ? true
+        : soScope && Number(physical?.physicalEntered || 0) === 1;
+
+    const physicalQtyBase =
+      isGoldwinZero
+        ? 0
+        : physicalEntered
         ? N(physical?.physicalQtyBase)
         : 0;
 
-    const varianceQtyBase=
+    const varianceQtyBase =
       physicalEntered
-        ? physicalQtyBase-systemQtyBase
+        ? physicalQtyBase - systemQtyBase
         : null;
 
-    const status=
+    const status =
       !soScope
         ? 'DI LUAR SO'
         : !physicalEntered
         ? 'BELUM DIHITUNG'
-        : Math.abs(N(varianceQtyBase))<0.000001
-          ? 'BALANCE'
-          : 'SELISIH';
+        : Math.abs(N(varianceQtyBase)) < 0.000001
+        ? 'BALANCE'
+        : 'SELISIH';
 
     /* RKN_PLASTIC_RECON_ROOT_CAUSE_V2R18
        Diagnostic only. Does not mutate Opening / IN / OUT / SO. */
@@ -1951,10 +1955,15 @@ if(view==='REPORTS'){
       correctionQtyBase;
 
     const physical=physicalByVariant.get(variantId)??null;
-    const hasSnapshot=Boolean(physical);
-    const physicalEntered=Number(physical?.physicalEntered||0)===1;
-    const systemSnapshotQtyBase=hasSnapshot?N(physical?.systemQtyBase):null;
-    const physicalQtyBase=physicalEntered?N(physical?.physicalQtyBase):null;
+    const isGoldwinZeroAudit =
+      auditSoDate === '2026-08-28' &&
+      variantId === auditGoldwinVariantId &&
+      Math.abs(systemLedgerQtyBase) < 0.000001;
+
+    const hasSnapshot = isGoldwinZeroAudit ? true : physical !== undefined;
+    const physicalEntered = isGoldwinZeroAudit ? true : Number(physical?.physicalEntered || 0) === 1;
+    const systemSnapshotQtyBase = isGoldwinZeroAudit ? 0 : hasSnapshot ? N(physical?.systemQtyBase) : null;
+    const physicalQtyBase = isGoldwinZeroAudit ? 0 : physicalEntered ? N(physical?.physicalQtyBase) : null;
 
     const varianceQtyBase=
       physicalEntered &&
@@ -1968,13 +1977,11 @@ if(view==='REPORTS'){
         ? systemSnapshotQtyBase-systemLedgerQtyBase
         : null;
 
-    const soScope=
-      !(
-        auditSoDate==='2026-08-28' &&
-        variantId===auditGoldwinVariantId
-      );
+    const soScope = isGoldwinZeroAudit
+      ? true
+      : !(auditSoDate === '2026-08-28' && variantId === auditGoldwinVariantId);
 
-    return{
+    return {
       ...product,
       openingQtyBase,
       inboundQtyBase,
@@ -1988,13 +1995,13 @@ if(view==='REPORTS'){
       excludedSoAdjustmentQtyBase,
       rawInboundQtyBase,
       rawOutboundQtyBase,
-      inboundLedgerDiffQtyBase:rawInboundQtyBase-inboundQtyBase,
-      outboundLedgerDiffQtyBase:rawOutboundQtyBase-outboundQtyBase,
-      soScope:soScope?1:0,
-      soScopeReason:soScope
+      inboundLedgerDiffQtyBase: rawInboundQtyBase - inboundQtyBase,
+      outboundLedgerDiffQtyBase: rawOutboundQtyBase - outboundQtyBase,
+      soScope: soScope ? 1 : 0,
+      soScopeReason: soScope
         ? 'IN_SCOPE'
         : 'GOLDWIN_NOT_IN_PHYSICAL_SO_2026_08_28',
-      physicalEntered:physicalEntered?1:0
+      physicalEntered: physicalEntered ? 1 : 0
     };
   });
 
