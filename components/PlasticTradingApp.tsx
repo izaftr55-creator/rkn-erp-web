@@ -1239,7 +1239,7 @@ function MetricCard({
     <article className={styles.metricCard}>
       <div className={styles.metricLabel}>{label}</div>
       <strong>{value}</strong>
-      <span>{note || "Periode aktif"}</span>
+      {note ? <span>{note}</span> : null}
     </article>
   );
 }
@@ -1849,16 +1849,35 @@ function Dashboard({ data }: { data: Row }) {
   /* RKN_PLASTIC_DASHBOARD_CHART_UI_V2P */
   const metrics = data.metrics || {};
   const so = data.soBalance || {};
-  const daily = Array.isArray(data.salesDaily)
+  const rawDaily = Array.isArray(data.salesDaily)
     ? [...data.salesDaily].reverse()
     : [];
   const topReceivables = Array.isArray(data.topReceivables)
     ? data.topReceivables
     : [];
 
+  const [dailyFilter, setDailyFilter] = useState<"ALL" | "7D" | "TODAY">("ALL");
+
+  const daily = useMemo(() => {
+    if (dailyFilter === "TODAY") {
+      const t = today();
+      const match = rawDaily.filter((d) => String(d.dateKey) === t);
+      return match.length ? match : rawDaily.slice(-1);
+    }
+    if (dailyFilter === "7D") {
+      return rawDaily.slice(-7);
+    }
+    return rawDaily;
+  }, [rawDaily, dailyFilter]);
+
   const maxSales = Math.max(
     1,
     ...daily.map((row: Row) => Number(row.salesRp || 0))
+  );
+
+  const filteredSalesTotalRp = useMemo(
+    () => daily.reduce((sum, d) => sum + Number(d.salesRp || 0), 0),
+    [daily]
   );
 
   const totalSo = Number(so.total || 0);
@@ -1939,7 +1958,7 @@ function Dashboard({ data }: { data: Row }) {
                 <>
                   <div>
                     <i className={styles.legendBalance} />
-                    <span>Terkalibrasi SO</span>
+                    <span>✓ Sesuai Fisik SO</span>
                     <strong>{totalSo} SKU</strong>
                   </div>
                   <div>
@@ -1985,7 +2004,36 @@ function Dashboard({ data }: { data: Row }) {
           </div>
         </Panel>
 
-        <Panel title="Sales Harian" subtitle="14 hari transaksi terakhir.">
+        <Panel
+          title="Penjualan Harian"
+          subtitle={`Total ${money.format(filteredSalesTotalRp)} · ${daily.length} hari transaksi.`}
+        >
+          <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
+            {[
+              ["ALL", "Semua (14 Hari)"],
+              ["7D", "7 Hari Terakhir"],
+              ["TODAY", "Hari Ini"],
+            ].map(([fKey, fLabel]) => (
+              <button
+                key={fKey}
+                type="button"
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: "7px",
+                  border: dailyFilter === fKey ? "1px solid #38bdf8" : "1px solid rgba(56, 189, 248, 0.2)",
+                  background: dailyFilter === fKey ? "rgba(56, 189, 248, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                  color: dailyFilter === fKey ? "#38bdf8" : "#94a3b8",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+                onClick={() => setDailyFilter(fKey as any)}
+              >
+                {fLabel}
+              </button>
+            ))}
+          </div>
+
           {daily.length ? (
             <div className={styles.salesBars}>
               {daily.map((row: Row) => {
@@ -2013,7 +2061,7 @@ function Dashboard({ data }: { data: Row }) {
             </div>
           ) : (
             <div className={styles.chartEmpty}>
-              Belum ada sales periode ini.
+              Belum ada penjualan periode ini.
             </div>
           )}
         </Panel>
@@ -5879,7 +5927,7 @@ function Reconciliation({
       reconMode === "POSTED_BALANCE" && soPosted ? "Selisih Pasca-SO" : "Variance",
       (row) =>
         reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1
-          ? "0 (Terkalibrasi)"
+          ? "0 (✓ Balance)"
           : Number(row.physicalEntered || 0) === 1
           ? reconQty(
               row,
@@ -6628,7 +6676,7 @@ function Reports({
         Number(row.soScope ?? 1) === 0
           ? "-"
           : auditSoPosted
-          ? "0 (Terkalibrasi)"
+          ? "0 (✓ Balance)"
           : row.counted
           ? reportQtyCell(row, row.differenceQtyBase)
           : "-",
@@ -6704,7 +6752,7 @@ function Reports({
         ? `PERIODE ${period} · STATUS SO: ${bossSoStatus} · RKN GROUP PLASTIC TRADING`
       : reportTab === "RECON"
         ? auditSoPosted
-          ? `${auditSoNo} · 100% POSTED & BALANCE · ${simpleRows.length} SKU TERKALIBRASI`
+          ? `${auditSoNo} · 100% POSTED & BALANCE · ${simpleRows.length} SKU BALANCE`
           : `OPENING + MASUK - KELUAR / SO FISIK`
         : reportTab === "STOCK_VALUE"
           ? `FISIK SO ${auditSoDate} · VALUASI TOTAL: ${money.format(stockSellingValueTotalRp)}`
@@ -6739,7 +6787,7 @@ function Reports({
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
       doc.text("PLASTIC TRADING DIVISION · RKN GROUP", 28, 15.5);
-      doc.text(`CUTOFF: ${auditSoDate} · SISTEM TERKALIBRASI`, 28, 20);
+      doc.text(`CUTOFF: ${auditSoDate} · 100% BALANCE`, 28, 20);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
@@ -6828,7 +6876,7 @@ function Reports({
           ["Penjualan & Omset", "Total Omset Periode", money.format(salesValueRp), `${salesInvoiceCount} invoice penjualan · ${salesCustomerCount} pelanggan terlayani`],
           ["Valuasi Persediaan", "Nilai Jual Stok Fisik 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik aktif memiliki stok di gudang`],
           ["Buku Piutang", "Total Piutang Berjalan", money.format(receivableTotalRp), `${receivables.length} invoice aktif belum lunas`],
-          ["Stock Opname", "Status SO 28/08/2026", bossSoStatus, `${simpleRows.length}/${simpleRows.length} SKU (100%) Terkalibrasi & Terkunci Resmi`],
+          ["Stock Opname", "Status SO 28/08/2026", bossSoStatus, `${simpleRows.length}/${simpleRows.length} SKU (100%) ✓ Balance & Terkunci Resmi`],
           ["Integritas Audit", "Status Rekonsiliasi", "100% BALANCE (POSTED)", "Seluruh variasi telah diselaraskan melalui dokumen resmi"],
           ...(goldwinAuditRow
             ? [[
@@ -6987,7 +7035,7 @@ function Reports({
       doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU TERKALIBRASI 100% BALANCE)`, 4, 30);
+      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU ✓ 100% BALANCE)`, 4, 30);
 
       table(
         reconHead,
@@ -7315,7 +7363,7 @@ function Reports({
               <span>Executive Summary · {period}</span>
               <strong>{bossSoStatus}</strong>
               <small>
-                {auditSoNo} · {simpleRows.length}/{simpleRows.length} SKU (100%) Terkalibrasi & Terkunci Sesuai SO 28/08/2026
+                {auditSoNo} · {simpleRows.length}/{simpleRows.length} SKU (100%) ✓ Balance & Terkunci Sesuai SO 28/08/2026
               </small>
             </div>
             <div className={styles.bossReportHeroValue}>
@@ -7410,7 +7458,7 @@ function Reports({
             <small>
               {auditSoPosted ? (
                 <>
-                  {auditSoNo} · 41 SKU Terkalibrasi Resmi.
+                  {auditSoNo} · 41 SKU ✓ 100% Balance Resmi.
                 </>
               ) : (
                 <>
@@ -7589,7 +7637,7 @@ function Reports({
             </small>
           </div>
         ) : null}
-        <Panel title="Barang Masuk" subtitle={`Dokumen resmi periode aktif ${period}.`}>
+        <Panel title="Barang Masuk" subtitle={`Dokumen resmi periode ${period}.`}>
           <DataTable
             rows={inbound}
             columns={[
@@ -7610,7 +7658,7 @@ function Reports({
       ) : null}
 
       {reportTab === "OUTBOUND" ? (
-        <Panel title="Barang Keluar" subtitle={`Periode aktif ${period}.`}>
+        <Panel title="Barang Keluar" subtitle={`Dokumen penjualan periode ${period}.`}>
           <DataTable
             rows={outbound}
             columns={[
