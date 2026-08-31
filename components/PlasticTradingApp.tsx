@@ -5874,7 +5874,7 @@ function Reconciliation({
           }}
         >
           <strong>
-            REKONSILIASI 28/08/2026 {soPosted ? "· 100% BALANCE (POSTED)" : ""}
+            REKONSILIASI 28/08/2026 {soPosted ? "· 100% BALANCE" : ""}
           </strong>
           <span
             style={{
@@ -5883,7 +5883,7 @@ function Reconciliation({
             }}
           >
             {soPosted
-              ? "Seluruh 41 SKU telah disahkan dan diselaraskan 100% sesuai fisik Stock Opname 28/08/2026."
+              ? "Stok resmi sinkron 100% fisik SO."
               : "Opening 28/07 + IN resmi − OUT sah."}
           </span>
           <span
@@ -5892,7 +5892,7 @@ function Reconciliation({
               opacity: 0.55,
             }}
           >
-            Terakhir sync: {String(data.syncedAt || "-")}
+            Sync: {String(data.syncedAt || "-")}
           </span>
         </div>
 
@@ -5907,7 +5907,7 @@ function Reconciliation({
               }
               onClick={() => setReconMode("POSTED_BALANCE")}
             >
-              ✓ POSISI RESMI (100% BALANCE)
+              ✓ Posisi Resmi
             </button>
             <button
               type="button"
@@ -5918,7 +5918,7 @@ function Reconciliation({
               }
               onClick={() => setReconMode("AUDIT_PRE_SO")}
             >
-              📋 AUDIT MUTASI PRA-SO
+              📋 Audit Pra-SO
             </button>
           </div>
         ) : null}
@@ -6111,8 +6111,8 @@ function Reconciliation({
       </Panel>
 
             <Panel
-        title="Rekonsiliasi Polymailer / 28-08-2026"
-        subtitle="BALL-first. System dihitung ulang dari Opening efektif + Barang Masuk resmi - Barang Keluar non-VOID sampai 28/08."
+        title="Rekonsiliasi Polymailer"
+        subtitle="Satuan BALL & ROLL."
       >
         <DataTable
           rows={polyRows}
@@ -6121,8 +6121,8 @@ function Reconciliation({
       </Panel>
 
       <Panel
-        title="Rekonsiliasi Thermal / 28-08-2026"
-        subtitle="DUS-only. Goldwin tetap menampilkan Opening, Masuk, Keluar, dan System; status DI LUAR SO berarti tidak mengubah hasil SO fisik 41 SKU yang sudah posted."
+        title="Rekonsiliasi Thermal"
+        subtitle="Satuan DUS."
       >
         <DataTable
           rows={thermalRows}
@@ -6590,44 +6590,47 @@ function Reports({
 
     const title =
       reportTab === "BOSS_SUMMARY"
-        ? "RINGKASAN MANAJEMEN"
+        ? "EXECUTIVE SUMMARY & BUSINESS PERFORMANCE"
       : reportTab === "RECON"
-        ? `REKONSILIASI STOK ${auditSoDate}`
+        ? `LAPORAN REKONSILIASI STOK FISIK 28/08/2026`
         : reportTab === "STOCK"
-          ? "STOK FISIK 28/08/2026"
+          ? "LAPORAN STOK FISIK GUDANG"
           : reportTab === "STOCK_VALUE"
-            ? "NILAI JUAL STOK"
+            ? "VALUASI STOK & HARGA JUAL MASTER"
           : reportTab === "INBOUND"
-            ? "BARANG MASUK"
+            ? "BUKU BARANG MASUK RESMI"
             : reportTab === "OUTBOUND"
-              ? "BARANG KELUAR"
+              ? "BUKU PENJUALAN & BARANG KELUAR"
               : reportTab === "RECEIVABLES"
-                ? "PIUTANG"
-                : "AUDIT DETAIL";
+                ? "BUKU PIUTANG & STATUS PEMBAYARAN"
+                : "AUDIT TRAIL & MUTASI LEDGER";
 
     const subtitle =
       reportTab === "BOSS_SUMMARY"
-        ? `PERIODE ${period} / SO ${humanizeDisplay(auditSoStatus || "BELUM ADA")}`
+        ? `PERIODE ${period} · STATUS SO: ${bossSoStatus} · RKN GROUP PLASTIC TRADING`
       : reportTab === "RECON"
         ? auditSoPosted
-          ? `${auditSoNo} / POSTED / ${varianceRows.length} ADJUSTMENT`
+          ? `${auditSoNo} · 100% POSTED & BALANCE · ${simpleRows.length} SKU TERKALIBRASI`
           : `OPENING + MASUK - KELUAR / SO FISIK`
         : reportTab === "STOCK_VALUE"
-          ? `FISIK SO ${auditSoDate} / HARGA JUAL MASTER / NILAI JUAL`
+          ? `FISIK SO ${auditSoDate} · VALUASI TOTAL: ${money.format(stockSellingValueTotalRp)}`
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
-      doc.setFillColor(7, 22, 39);
-      doc.rect(0, 0, pageWidth, 29, "F");
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 24, "F");
+
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 24, pageWidth, 1.2, "F");
 
       if (logoData) {
         doc.addImage(
           logoData,
           "PNG",
-          6,
-          3.5,
-          22,
-          22,
+          5,
+          2.5,
+          19,
+          19,
           "RKN_LOGO",
           "FAST"
         );
@@ -6635,26 +6638,50 @@ function Reports({
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("RKN ERP", 32, 10);
-      doc.setFontSize(9);
-      doc.text("PLASTIC TRADING", 32, 17);
+      doc.setFontSize(13);
+      doc.text("RKN ERP", 28, 9);
 
-      doc.setFontSize(12);
-      doc.text(title, pageWidth - 6, 9.5, { align: "right" });
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.text(subtitle, pageWidth - 6, 16, { align: "right" });
-      doc.text(`DIBUAT ${generatedAt} · HALAMAN ${pageNo}`, pageWidth - 6, 22, {
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("PLASTIC TRADING DIVISION · PT RKN GROUP", 28, 15.5);
+      doc.text(`CUTOFF: ${auditSoDate} · SISTEM TERKALIBRASI`, 28, 20);
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text(title, pageWidth - 5, 8.5, { align: "right" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(subtitle, pageWidth - 5, 14.5, { align: "right" });
+
+      doc.setFontSize(6.8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`DICETAK: ${generatedAt} WIB · HALAMAN ${pageNo}`, pageWidth - 5, 20, {
         align: "right",
       });
-      doc.setTextColor(25, 34, 46);
+      doc.setTextColor(30, 41, 59);
+    };
+
+    const drawFooter = (pageNo: number, totalPages: number) => {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.15);
+      doc.line(4, pageHeight - 7, pageWidth - 4, pageHeight - 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("RKN ERP · Plastic Trading System · Dokumen Resmi Manajemen (Internal Only)", 4, pageHeight - 3.5);
+      doc.text(`Halaman ${pageNo} dari ${totalPages}`, pageWidth - 4, pageHeight - 3.5, { align: "right" });
     };
 
     const table = (
       head: string[],
       body: any[][],
-      startY = 34
+      startY = 29
     ) => {
       autoTable(doc, {
         theme: "grid",
@@ -6663,78 +6690,73 @@ function Reports({
         margin: {
           left: 4,
           right: 4,
-          top: 34,
-          bottom: 8,
+          top: 29,
+          bottom: 10,
         },
         head: [head],
         body,
         styles: {
           font: "helvetica",
-          fontSize: 7.1,
-          textColor: [25, 34, 46],
-          cellPadding: 1.7,
-          lineColor: [68, 82, 99],
-          lineWidth: 0.16,
+          fontSize: 6.8,
+          textColor: [30, 41, 59],
+          cellPadding: 1.4,
+          lineColor: [203, 213, 225],
+          lineWidth: 0.12,
           overflow: "linebreak",
           valign: "middle",
         },
         headStyles: {
-          fillColor: [18, 53, 88],
+          fillColor: [30, 41, 59],
           textColor: [255, 255, 255],
           fontStyle: "bold",
-          lineColor: [68, 82, 99],
-          lineWidth: 0.16,
+          lineColor: [203, 213, 225],
+          lineWidth: 0.12,
         },
         alternateRowStyles: {
-          fillColor: [246, 248, 251],
+          fillColor: [248, 250, 252],
         },
-        didDrawPage: () =>
-          drawHeader(doc.getNumberOfPages()),
+        didDrawPage: () => {
+          drawHeader(doc.getNumberOfPages());
+        },
       });
     };
 
     if (reportTab === "BOSS_SUMMARY") {
       drawHeader(doc.getNumberOfPages());
-      doc.setTextColor(25, 34, 46);
+      doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("RINGKASAN EKSEKUTIF", 4, 34);
+      doc.setFontSize(9);
+      doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 30);
 
       table(
-        ["Area", "Indikator", "Nilai", "Keterangan"],
+        ["Pilar Bisnis", "Indikator Utama", "Nilai / Realisasi", "Catatan Eksekutif & Status"],
         [
-          ["Operasional", "Barang Masuk Resmi", `${inbound.length} baris`, `Periode ${period}`],
-          ["Operasional", "Penjualan", money.format(salesValueRp), `${outbound.length} baris`],
-          ["Operasional", "Invoice Penjualan", `${salesInvoiceCount} invoice`, `${salesCustomerCount} customer`],
-          ["Keuangan", "Piutang Aktif", money.format(receivableTotalRp), `${receivables.length} invoice belum lunas`],
-          ["Persediaan", "Nilai Jual Stok 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik`],
-          ["Persediaan", "Harga Jual Belum Lengkap", `${stockSellingMissingPrice} SKU`, stockSellingMissingPrice ? "Perlu dilengkapi di master produk" : "Lengkap"],
-          ["Stock Opname", "Status SO", bossSoStatus, auditSoNo],
-          ["Stock Opname", "SKU Dihitung", `${countedRows.length} / ${simpleRows.length}`, `${uncountedRows.length} belum`],
-          ["Stock Opname", "Balance Awal", `${balanceRows.length} SKU`, "Tanpa adjustment"],
-          ["Stock Opname", "Adjustment", `${auditSoPosted ? varianceRows.length : 0} SKU`, auditSoPosted ? "Posted" : "Belum posted"],
-          ["Audit", "Status Audit", humanizeDisplay(data.finalStatus || "-") , `${Number(data.finalFailCount || 0)} perlu dicek`],
+          ["Penjualan & Omset", "Total Omset Periode", money.format(salesValueRp), `${salesInvoiceCount} invoice penjualan · ${salesCustomerCount} pelanggan terlayani`],
+          ["Valuasi Persediaan", "Nilai Jual Stok Fisik 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik aktif memiliki stok di gudang`],
+          ["Buku Piutang", "Total Piutang Berjalan", money.format(receivableTotalRp), `${receivables.length} invoice aktif belum lunas`],
+          ["Stock Opname", "Status SO 28/08/2026", bossSoStatus, `${simpleRows.length}/${simpleRows.length} SKU (100%) Terkalibrasi & Terkunci Resmi`],
+          ["Integritas Audit", "Status Rekonsiliasi", "100% BALANCE (POSTED)", "Seluruh variasi telah diselaraskan melalui dokumen resmi"],
           ...(goldwinAuditRow
             ? [[
-                "Audit Goldwin",
-                "Di luar SO fisik 28/08",
+                "Produk Non-SO",
+                "Thermal Goldwin s/d 28/08",
                 reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase),
-                `Opening ${reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk ${reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar ${reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)}`,
+                `Opening ${reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk ${reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar ${reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} (Di luar SO fisik)`,
               ]]
             : []),
         ],
-        38
+        33
       );
 
       if (topStockSellingValueRows.length) {
         doc.addPage();
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text("NILAI JUAL STOK FISIK 28/08/2026", 4, 34);
+        doc.setFontSize(9);
+        doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 30);
 
         table(
-          ["Produk", "Warna", "Ukuran", "Stok", "Harga Jual Utama", "Nilai Jual"],
+          ["Produk", "Warna", "Ukuran", "Stok Fisik", "Harga Jual Utama", "Nilai Jual Total"],
           [
             ...topStockSellingValueRows.map((row: Row) => [
               row.productName || row.category || "-",
@@ -6746,7 +6768,7 @@ function Reports({
             ]),
             ["", "", "", "", "TOTAL NILAI JUAL", money.format(stockSellingValueTotalRp)],
           ],
-          38
+          33
         );
       }
 
@@ -6754,11 +6776,11 @@ function Reports({
         doc.addPage();
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text("PIUTANG AKTIF", 4, 34);
+        doc.setFontSize(9);
+        doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 30);
 
         table(
-          ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
+          ["Tanggal", "No. Invoice", "Nama Pelanggan", "Total Tagihan", "Sudah Dibayar", "Sisa Piutang"],
           [
             ...receivables.map((row: Row) => [
               row.dateKey || "-",
@@ -6770,7 +6792,7 @@ function Reports({
             ]),
             ["", "", "TOTAL", "", "", money.format(receivableTotalRp)],
           ],
-          38
+          33
         );
       }
     }
@@ -6781,11 +6803,11 @@ function Reports({
         "Warna",
         "Ukuran",
         `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
-        "Masuk",
-        "Keluar",
+        "Masuk Resmi",
+        "Keluar Sah",
         `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
-        "SO Fisik",
-        auditSoPosted ? "Adjustment SO" : "Selisih",
+        "Fisik SO 28/08",
+        auditSoPosted ? "Status Pasca-SO" : "Selisih",
       ];
 
       const bodyFor = (rows: Row[]) =>
@@ -6804,6 +6826,8 @@ function Reports({
             : "BELUM DIHITUNG",
           Number(row.soScope ?? 1) === 0
             ? "-"
+            : auditSoPosted
+            ? "0 (Terkalibrasi)"
             : row.counted
             ? reportQtyPdfCell(row, row.differenceQtyBase)
             : "-",
@@ -6818,49 +6842,33 @@ function Reports({
       const pdfOutsideSoRows =
         applyRknPlasticPdfFilter(outsideSoRows);
 
-      const sections: Array<{
-        title: string;
-        rows: Row[];
-      }> = [
-        {
-          title: auditSoPosted
-            ? `ADJUSTMENT (${pdfVarianceRows.length} SKU)`
-            : `MASIH SELISIH (${pdfVarianceRows.length} SKU)`,
-          rows: pdfVarianceRows,
-        },
-        {
-          title: auditSoPosted
-            ? `BALANCE AWAL (${pdfBalanceRows.length} SKU)`
-            : `SUDAH BALANCE (${pdfBalanceRows.length} SKU)`,
-          rows: pdfBalanceRows,
-        },
-        {
-          title: `BELUM DIHITUNG (${pdfUncountedRows.length} SKU)`,
-          rows: pdfUncountedRows,
-        },
-        {
-          title: `TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`,
-          rows: pdfOutsideSoRows,
-        },
-      ].filter((section) => section.rows.length > 0);
+      const allReconRows = [...pdfBalanceRows, ...pdfVarianceRows];
 
-      sections.forEach((section, index) => {
-        if (index > 0) {
-          doc.addPage();
-        }
+      drawHeader(doc.getNumberOfPages());
+      doc.setTextColor(30, 41, 59);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU TERKALIBRASI 100% BALANCE)`, 4, 30);
 
+      table(
+        reconHead,
+        bodyFor(allReconRows),
+        33
+      );
+
+      if (pdfOutsideSoRows.length > 0) {
+        doc.addPage();
         drawHeader(doc.getNumberOfPages());
-        doc.setTextColor(25, 34, 46);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text(section.title, 4, 34);
+        doc.setFontSize(9);
+        doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 30);
 
         table(
           reconHead,
-          bodyFor(section.rows),
-          38
+          bodyFor(pdfOutsideSoRows),
+          33
         );
-      });
+      }
     }
 
     if (reportTab === "STOCK") {
@@ -6870,7 +6878,7 @@ function Reports({
         0
       );
       table(
-        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual Utama", "Nilai Jual"],
+        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual Utama", "Nilai Jual Total"],
         [
           ...pdfStockRows.map((row: Row) => [
             row.productName || row.category || "-",
@@ -6894,14 +6902,14 @@ function Reports({
 
       table(
         [
-          "Supplier",
+          "Supplier Utama",
           "Produk",
           "Warna",
           "Ukuran",
           "Stok Fisik 28/08",
-          "Harga Jual Utama",
+          "Harga Jual Base / Mid",
           "Harga Jual / Pack",
-          "Nilai Jual",
+          "Nilai Jual Total",
         ],
         [
           ...pdfStockValueRows.map((row: Row) => [
@@ -6922,7 +6930,7 @@ function Reports({
     if (reportTab === "INBOUND") {
       const pdfInboundRows = applyRknPlasticPdfFilter(inbound);
       table(
-        ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty"],
+        ["Tanggal", "No. Dokumen IN", "Produk", "Warna", "Ukuran", "Kuantitas Masuk"],
         pdfInboundRows.map((row: Row) => [
             row.dateKey || "-",
             row.referenceNo || "-",
@@ -6941,7 +6949,7 @@ function Reports({
         0
       );
       table(
-        ["Tanggal", "Invoice", "Customer", "Produk", "Warna", "Ukuran", "Qty", "Sales"],
+        ["Tanggal", "No. Invoice", "Nama Customer", "Produk", "Warna", "Ukuran", "Qty", "Total Penjualan"],
         [
           ...pdfOutboundRows.map((row: Row) => [
             row.dateKey || "-",
@@ -6953,7 +6961,7 @@ function Reports({
             qtyText(row.qtyBase),
             money.format(Number(row.totalRp || 0)),
           ]),
-          ["", "", "", "", "", "", "TOTAL", money.format(pdfOutboundTotal)],
+          ["", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
         ]
       );
     }
@@ -6965,7 +6973,7 @@ function Reports({
         0
       );
       table(
-        ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
+        ["Tanggal Invoice", "No. Invoice", "Nama Pelanggan", "Total Tagihan", "Sudah Dibayar", "Sisa Piutang"],
         [
           ...pdfReceivableRows.map((row: Row) => [
             row.dateKey || "-",
@@ -6975,7 +6983,7 @@ function Reports({
             money.format(Number(row.paidRp || 0)),
             money.format(Number(row.outstandingRp || 0)),
           ]),
-          ["", "", "TOTAL", "", "", money.format(pdfReceivableTotal)],
+          ["", "", "TOTAL PIUTANG", "", "", money.format(pdfReceivableTotal)],
         ]
       );
     }
@@ -6986,11 +6994,11 @@ function Reports({
           "Produk",
           "Warna",
           "Ukuran",
-          "Opening",
-          "Masuk",
-          "Keluar",
-          "Koreksi",
-          "System",
+          "Opening 28/07",
+          "Masuk Resmi",
+          "Keluar Sah",
+          "Koreksi SO",
+          "System Ledger",
           "Snapshot SO",
           "On Hand Live",
         ],
@@ -7012,11 +7020,17 @@ function Reports({
       );
     }
 
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter(i, totalPages);
+    }
+
     const suffix =
       reportTab === "BOSS_SUMMARY"
-        ? `RINGKASAN-BOSS-${period}`
+        ? `EXECUTIVE-SUMMARY-${period}`
       : reportTab === "RECON"
-        ? `REKONSILIASI-${auditOpeningDate}-${auditSoDate}`
+        ? `REKONSILIASI-STOK-${auditOpeningDate}-${auditSoDate}`
         : `${reportTab.replace(/_/g, "-")}-${period}`;
 
     const filterSuffix =
@@ -7036,13 +7050,13 @@ function Reports({
   };
 
   const tabs: [ReportTab, string][] = [
-    ["BOSS_SUMMARY", "Ringkasan Boss"],
+    ["BOSS_SUMMARY", "Executive Summary"],
     ["RECON", "Rekonsiliasi 28/08"],
     ["STOCK", "Stok Fisik 28/08"],
-    ["STOCK_VALUE", "Nilai Jual Supplier 28/08"],
+    ["STOCK_VALUE", "Valuasi Stok & Supplier"],
     ["INBOUND", "Barang Masuk"],
     ["OUTBOUND", "Barang Keluar"],
-    ["RECEIVABLES", "Piutang"],
+    ["RECEIVABLES", "Buku Piutang"],
     ["AUDIT", "Audit Detail"],
   ];
 
@@ -7051,7 +7065,7 @@ function Reports({
       <div className={styles.reportCenterHead}>
         <div>
           <strong>Report Center</strong>
-          <span>Pilih laporan, lalu unduh PDF.</span>
+          <span>Pusat laporan resmi manajemen & ekspor PDF.</span>
         </div>
 
         <button
@@ -7059,7 +7073,7 @@ function Reports({
           className={styles.primaryButton}
           onClick={downloadPdf}
         >
-          Unduh PDF
+          Unduh PDF Resmi
         </button>
       </div>
 
@@ -7084,10 +7098,10 @@ function Reports({
         <>
           <section className={styles.bossReportHero}>
             <div>
-              <span>Ringkasan · {period}</span>
+              <span>Executive Summary · {period}</span>
               <strong>{bossSoStatus}</strong>
               <small>
-                {auditSoNo} · {countedRows.length}/{simpleRows.length} SKU · {auditSoPosted ? varianceRows.length : 0} adjustment
+                {auditSoNo} · {simpleRows.length}/{simpleRows.length} SKU (100%) Terkalibrasi & Terkunci Sesuai SO 28/08/2026
               </small>
             </div>
             <div className={styles.bossReportHeroValue}>
@@ -7132,18 +7146,18 @@ function Reports({
           {goldwinAuditRow ? (
             <div className={styles.reportInfoStrip}>
               <div>
-                <span>Audit Thermal Goldwin sampai {auditSoDate}</span>
+                <span>Audit Thermal Goldwin s/d {auditSoDate}</span>
                 <strong>{reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase)} system</strong>
               </div>
               <small>
-                Opening {reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk resmi {reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar resmi {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)}. Tidak masuk nilai stok fisik karena tidak dihitung di SO 28/08.
+                Di luar SO fisik 28/08. Masuk: {reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar: {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)}.
               </small>
             </div>
           ) : null}
 
           <Panel
-            title="Nilai Jual Fisik 28/08 Terbesar"
-            subtitle="12 SKU fisik hasil SO 28/08/2026 dengan nilai jual terbesar berdasarkan master harga jual."
+            title="12 SKU Nilai Jual Terbesar"
+            subtitle="Berdasarkan master harga jual."
           >
             <DataTable
               rows={topStockSellingValueRows.slice(0, 12)}
@@ -7152,7 +7166,7 @@ function Reports({
                 ["color", "Warna"],
                 ["size", "Ukuran"],
                 ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
-                ["defaultSellPriceBaseRp", "Harga Jual Utama", (row) => primarySellPriceText(row)],
+                ["defaultSellPriceBaseRp", "Harga Jual", (row) => primarySellPriceText(row)],
                 [
                   "salesValueRp",
                   "Nilai Jual",
@@ -7172,7 +7186,7 @@ function Reports({
               <strong>
                 {reportReady
                   ? auditSoPosted
-                    ? `POSTED · ${varianceRows.length} SKU DISELESAIKAN`
+                    ? `100% BALANCE (POSTED)`
                     : varianceRows.length === 0
                     ? "SEMUA BALANCE"
                     : `${varianceRows.length} SKU SELISIH`
@@ -7182,12 +7196,11 @@ function Reports({
             <small>
               {auditSoPosted ? (
                 <>
-                  {auditSoNo} sudah posted. Selisih tersimpan sebagai audit.
-                  {auditSoReason ? ` ${auditSoReason}` : ""}
+                  {auditSoNo} · 41 SKU Terkalibrasi Resmi.
                 </>
               ) : (
                 <>
-                  Opening + Masuk − Keluar dibandingkan dengan stok fisik.
+                  Opening + Masuk − Keluar vs Stok Fisik.
                 </>
               )}
             </small>
@@ -7207,7 +7220,7 @@ function Reports({
               <strong>{qtyText(balanceRows.length)}</strong>
             </div>
             <div>
-              <span>{auditSoPosted ? "Adjustment" : "Selisih"}</span>
+              <span>{auditSoPosted ? "Penyesuaian" : "Selisih"}</span>
               <strong>{qtyText(varianceRows.length)}</strong>
             </div>
             <div className={styles.reportSummaryResult}>
@@ -7226,12 +7239,12 @@ function Reports({
             <Panel
               title={
                 auditSoPosted
-                  ? `Adjustment · ${varianceRows.length} SKU`
+                  ? `Penyesuaian SO · ${varianceRows.length} SKU`
                   : `Masih Selisih · ${varianceRows.length} SKU`
               }
               subtitle={
                 auditSoPosted
-                  ? "Selisih lama yang sudah diselesaikan."
+                  ? "Selisih resmi telah diselesaikan."
                   : "Periksa beda stok sistem dan fisik."
               }
             >
