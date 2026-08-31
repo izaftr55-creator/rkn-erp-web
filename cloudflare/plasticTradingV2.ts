@@ -824,21 +824,18 @@ if(view==='RECONCILIATION'){
        v.mid_unit midUnit,
        v.pack_unit packUnit,
        COALESCE(v.units_per_mid,1) unitsPerMid,
-       COALESCE(v.units_per_pack,1) unitsPerPack
+       COALESCE(v.units_per_pack,1) unitsPerPack,
+       COALESCE(v.default_sell_price_base_rp,0) defaultSellPriceBaseRp,
+       COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
+       COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp
      FROM plastic_product_variant v
      WHERE v.business_unit_id='BU-PLASTIC'
        AND v.active=1
-       AND NOT (
-         v.variant_id=?
-         AND ?='2026-08-28'
-       )
      ORDER BY
        v.category,
        UPPER(COALESCE(v.color,'')),
        UPPER(COALESCE(v.size,'')),
-       UPPER(COALESCE(v.product_name,''))`,
-    goldwinVariantId,
-    target
+       UPPER(COALESCE(v.product_name,''))`
   ).toArray();
 
   const rows=(products as any[]).map((product:any)=>{
@@ -951,10 +948,18 @@ if(view==='RECONCILIATION'){
       outboundQtyBase+
       correctionQtyBase;
 
+    /* RKN_PLASTIC_GOLDWIN_REPORT_SCOPE_V2R23_FIXED2 */
+    const soPhysicalApplicable=
+      !(
+        variantId===goldwinVariantId &&
+        target==='2026-08-28'
+      );
+
     const physical=
       physicalByVariant.get(variantId)??null;
 
     const physicalEntered=
+      soPhysicalApplicable &&
       Number(physical?.physicalEntered||0)===1;
 
     const physicalQtyBase=
@@ -963,16 +968,18 @@ if(view==='RECONCILIATION'){
         : 0;
 
     const varianceQtyBase=
-      physicalEntered
+      soPhysicalApplicable && physicalEntered
         ? physicalQtyBase-systemQtyBase
         : null;
 
     const status=
-      !physicalEntered
-        ? 'BELUM DIHITUNG'
-        : Math.abs(N(varianceQtyBase))<0.000001
-          ? 'BALANCE'
-          : 'SELISIH';
+      !soPhysicalApplicable
+        ? 'DI LUAR SCOPE SO'
+        : !physicalEntered
+          ? 'BELUM DIHITUNG'
+          : Math.abs(N(varianceQtyBase))<0.000001
+            ? 'BALANCE'
+            : 'SELISIH';
 
     /* RKN_PLASTIC_RECON_ROOT_CAUSE_V2R18
        Diagnostic only. Does not mutate Opening / IN / OUT / SO. */
@@ -1029,7 +1036,9 @@ if(view==='RECONCILIATION'){
 
     let diagnosticCode='OK';
 
-    if(!physicalEntered){
+    if(!soPhysicalApplicable){
+      diagnosticCode='OK';
+    }else if(!physicalEntered){
       diagnosticCode='SO_NOT_SAVED';
     }else if(systemQtyBase<-0.000001){
       diagnosticCode='SYSTEM_NEGATIVE';
@@ -1057,6 +1066,7 @@ if(view==='RECONCILIATION'){
       systemQtyBase,
       physicalQtyBase,
       physicalEntered:physicalEntered?1:0,
+      soPhysicalApplicable:soPhysicalApplicable?1:0,
       varianceQtyBase,
       status,
       referencePresent:referencePresent?1:0,
@@ -1121,15 +1131,23 @@ if(view==='RECONCILIATION'){
       0
     );
 
-  const balanced=rows.filter(
+  const soScopeRows=rows.filter(
+    (row:any)=>Number(row.soPhysicalApplicable??1)===1
+  );
+
+  const outOfScope=rows.filter(
+    (row:any)=>Number(row.soPhysicalApplicable??1)!==1
+  ).length;
+
+  const balanced=soScopeRows.filter(
     (row:any)=>row.status==='BALANCE'
   ).length;
 
-  const variance=rows.filter(
+  const variance=soScopeRows.filter(
     (row:any)=>row.status==='SELISIH'
   ).length;
 
-  const uncounted=rows.filter(
+  const uncounted=soScopeRows.filter(
     (row:any)=>row.status==='BELUM DIHITUNG'
   ).length;
 
@@ -1183,9 +1201,11 @@ if(view==='RECONCILIATION'){
     rows,
     reviewRows:[],
     summary:{
-      totalVariants:rows.length,
+      totalVariants:soScopeRows.length,
+      reportVariants:rows.length,
+      outOfScopeVariants:outOfScope,
       countedVariants:
-        rows.length-uncounted,
+        soScopeRows.length-uncounted,
       balancedVariants:balanced,
       varianceVariants:variance,
       uncountedVariants:uncounted,

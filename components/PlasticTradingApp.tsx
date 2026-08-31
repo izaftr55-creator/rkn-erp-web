@@ -5544,6 +5544,20 @@ function Reconciliation({
     ],
   ];
 
+  /* RKN_PLASTIC_THERMAL_STACK_PRICE_V2R23_FIXED2 */
+  const thermalColumns: Column[] = [
+    ...reconColumns.slice(0, 3),
+    [
+      "defaultSellPriceMidRp",
+      "Harga / STACK",
+      (row) =>
+        money.format(
+          Number(row.defaultSellPriceMidRp || 0)
+        ),
+    ],
+    ...reconColumns.slice(3),
+  ];
+
   const diagnosticLabel = (row: Row) => {
     const code = String(row.diagnosticCode || "");
 
@@ -5816,11 +5830,11 @@ function Reconciliation({
 
       <Panel
         title="Rekonsiliasi Thermal / 28-08-2026"
-        subtitle="Pembacaan utama DUS-only. Thermal Goldwin tidak termasuk scope fisik SO 28/08."
+        subtitle="DUS-only untuk kuantitas. Harga jual master ditampilkan per STACK. Goldwin tetap tampil sebagai transaksi resmi; fisik SO 28/08 berstatus DI LUAR SCOPE SO."
       >
         <DataTable
           rows={thermalRows}
-          columns={reconColumns}
+          columns={thermalColumns}
         />
       </Panel>
     </>
