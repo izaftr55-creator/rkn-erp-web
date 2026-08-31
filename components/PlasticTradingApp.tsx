@@ -6773,7 +6773,7 @@ function Reports({
     };
 
     const table = (
-      head: string[],
+      head: any,
       body: any[][],
       startY = 29
     ) => {
@@ -6787,7 +6787,7 @@ function Reports({
           top: 29,
           bottom: 10,
         },
-        head: [head],
+        head: Array.isArray(head[0]) ? head : [head],
         body,
         styles: {
           font: "helvetica",
@@ -6891,51 +6891,96 @@ function Reports({
       }
     }
 
+    const splitQtyPdf = (row: Row, qtyValue: any) => {
+      const raw = Number(qtyValue || 0);
+      const unitsPerPack = Math.max(1, Number(row.unitsPerPack || 100));
+      if (Math.abs(raw) < 0.0001) {
+        return { pack: "0", base: "0" };
+      }
+      const sign = raw < 0 ? "-" : "";
+      const abs = Math.abs(raw);
+      const pack = Math.floor(abs / unitsPerPack);
+      const base = abs % unitsPerPack;
+      return {
+        pack: `${sign}${qtyFmt.format(pack)}`,
+        base: `${qtyFmt.format(base)}`,
+      };
+    };
+
     if (reportTab === "RECON") {
       const reconHead = [
-        "Produk",
-        "Warna",
-        "Ukuran",
-        `Opening ${auditOpeningDate.slice(5).split("-").reverse().join("/")}`,
-        "Masuk Resmi",
-        "Keluar Sah",
-        `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
-        "Fisik SO 28/08",
-        auditSoPosted ? "Status Pasca-SO" : "Selisih",
+        [
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: `OPENING (${auditOpeningDate.slice(5).split("-").reverse().join("/")})`, colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "BARANG MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "BARANG KELUAR", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: `SISTEM (${auditSoDate.slice(5).split("-").reverse().join("/")})`, colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "FISIK SO 28/08", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "SELISIH SO", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "STATUS", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+        ],
+        [
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+        ],
       ];
 
       const bodyFor = (rows: Row[]) =>
-        rows.map((row: Row) => [
-          row.productName || row.category || "-",
-          row.color || "-",
-          row.size || "-",
-          reportQtyPdfCell(row, row.openingQtyBase),
-          reportQtyPdfCell(row, row.inboundQtyBase),
-          reportQtyPdfCell(row, row.outboundQtyBase),
-          reportQtyPdfCell(row, row.expectedQtyBase),
-          Number(row.soScope ?? 1) === 0
-            ? "TIDAK MASUK SO 28/08"
-            : row.counted
-            ? reportQtyPdfCell(row, row.physicalQtyBase)
-            : "BELUM DIHITUNG",
-          Number(row.soScope ?? 1) === 0
-            ? "-"
-            : auditSoPosted
-            ? "0 (Terkalibrasi)"
-            : row.counted
-            ? reportQtyPdfCell(row, row.differenceQtyBase)
-            : "-",
-        ]);
+        rows.map((row: Row) => {
+          const op = splitQtyPdf(row, row.openingQtyBase);
+          const inb = splitQtyPdf(row, row.inboundQtyBase);
+          const outb = splitQtyPdf(row, row.outboundQtyBase);
+          const sys = splitQtyPdf(row, row.expectedQtyBase);
+          const phy =
+            Number(row.soScope ?? 1) === 0
+              ? { pack: "-", base: "Non-SO" }
+              : row.counted
+              ? splitQtyPdf(row, row.physicalQtyBase)
+              : { pack: "-", base: "N/A" };
+          const diff =
+            Number(row.soScope ?? 1) === 0
+              ? { pack: "-", base: "-" }
+              : auditSoPosted
+              ? { pack: "0", base: "0" }
+              : row.counted
+              ? splitQtyPdf(row, row.differenceQtyBase)
+              : { pack: "-", base: "-" };
 
-      const pdfVarianceRows =
-        applyRknPlasticPdfFilter(varianceRows);
-      const pdfBalanceRows =
-        applyRknPlasticPdfFilter(balanceRows);
-      const pdfUncountedRows =
-        applyRknPlasticPdfFilter(uncountedRows);
-      const pdfOutsideSoRows =
-        applyRknPlasticPdfFilter(outsideSoRows);
+          return [
+            row.productName || row.category || "-",
+            row.color || "-",
+            row.size || "-",
+            op.pack,
+            op.base,
+            inb.pack,
+            inb.base,
+            outb.pack,
+            outb.base,
+            sys.pack,
+            sys.base,
+            phy.pack,
+            phy.base,
+            diff.pack,
+            diff.base,
+            auditSoPosted ? "BALANCE (POSTED)" : Number(row.differenceQtyBase || 0) === 0 ? "BALANCE" : "SELISIH",
+          ];
+        });
 
+      const pdfVarianceRows = applyRknPlasticPdfFilter(varianceRows);
+      const pdfBalanceRows = applyRknPlasticPdfFilter(balanceRows);
+      const pdfOutsideSoRows = applyRknPlasticPdfFilter(outsideSoRows);
       const allReconRows = [...pdfBalanceRows, ...pdfVarianceRows];
 
       drawHeader(doc.getNumberOfPages());
@@ -6971,18 +7016,38 @@ function Reports({
         (total: number, row: Row) => total + Number(row.salesValueRp || 0),
         0
       );
-      table(
-        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual Utama", "Nilai Jual Total"],
+
+      const stockHead = [
         [
-          ...pdfStockRows.map((row: Row) => [
-            row.productName || row.category || "-",
-            row.color || "-",
-            row.size || "-",
-            stockHuman(row, row.qtyBase),
-            primarySellPriceText(row),
-            sellingValueText(row),
-          ]),
-          ["", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "STOK FISIK GUDANG", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "HARGA JUAL UTAMA", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+        ],
+        [
+          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+        ],
+      ];
+
+      table(
+        stockHead,
+        [
+          ...pdfStockRows.map((row: Row) => {
+            const sq = splitQtyPdf(row, row.qtyBase);
+            return [
+              row.productName || row.category || "-",
+              row.color || "-",
+              row.size || "-",
+              sq.pack,
+              sq.base,
+              primarySellPriceText(row),
+              sellingValueText(row),
+            ];
+          }),
+          ["", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
         ]
       );
     }
@@ -6994,28 +7059,40 @@ function Reports({
         0
       );
 
-      table(
+      const stockValueHead = [
         [
-          "Supplier Utama",
-          "Produk",
-          "Warna",
-          "Ukuran",
-          "Stok Fisik 28/08",
-          "Harga Jual Base / Mid",
-          "Harga Jual / Pack",
-          "Nilai Jual Total",
+          { content: "SUPPLIER", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "STOK FISIK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "HARGA / ROLL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "HARGA / BALL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
         ],
         [
-          ...pdfStockValueRows.map((row: Row) => [
-            row.lastSupplierName || "BELUM ADA",
-            row.productName || row.category || "-",
-            row.color || "-",
-            row.size || "-",
-            stockHuman(row, row.qtyBase),
-            primarySellPriceText(row),
-            packSellPriceText(row),
-            sellingValueText(row),
-          ]),
+          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+        ],
+      ];
+
+      table(
+        stockValueHead,
+        [
+          ...pdfStockValueRows.map((row: Row) => {
+            const sq = splitQtyPdf(row, row.qtyBase);
+            return [
+              row.lastSupplierName || "BELUM ADA",
+              row.productName || row.category || "-",
+              row.color || "-",
+              row.size || "-",
+              sq.pack,
+              sq.base,
+              primarySellPriceText(row),
+              packSellPriceText(row),
+              sellingValueText(row),
+            ];
+          }),
           ["", "", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockValueTotal)],
         ]
       );
@@ -7023,16 +7100,37 @@ function Reports({
 
     if (reportTab === "INBOUND") {
       const pdfInboundRows = applyRknPlasticPdfFilter(inbound);
+      const inboundHead = [
+        [
+          { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "NO. DOKUMEN IN", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "BARANG MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "INPUT ASLI", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+        ],
+        [
+          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+        ],
+      ];
+
       table(
-        ["Tanggal", "No. Dokumen IN", "Produk", "Warna", "Ukuran", "Kuantitas Masuk"],
-        pdfInboundRows.map((row: Row) => [
+        inboundHead,
+        pdfInboundRows.map((row: Row) => {
+          const sq = splitQtyPdf(row, row.qtyBase || row.qty);
+          return [
             row.dateKey || "-",
             row.referenceNo || "-",
             row.productName || "-",
             row.color || "-",
             row.size || "-",
+            sq.pack,
+            sq.base,
             `${qtyText(row.qty)} ${row.unit || ""}`,
-          ])
+          ];
+        })
       );
     }
 
@@ -7042,20 +7140,42 @@ function Reports({
         (total: number, row: Row) => total + Number(row.totalRp || 0),
         0
       );
-      table(
-        ["Tanggal", "No. Invoice", "Nama Customer", "Produk", "Warna", "Ukuran", "Qty", "Total Penjualan"],
+
+      const outboundHead = [
         [
-          ...pdfOutboundRows.map((row: Row) => [
-            row.dateKey || "-",
-            row.referenceNo || "-",
-            row.customerName || "-",
-            row.productName || "-",
-            row.color || "-",
-            row.size || "-",
-            qtyText(row.qtyBase),
-            money.format(Number(row.totalRp || 0)),
-          ]),
-          ["", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
+          { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "NO. INVOICE", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "NAMA CUSTOMER", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "BARANG KELUAR", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "TOTAL PENJUALAN", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+        ],
+        [
+          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+        ],
+      ];
+
+      table(
+        outboundHead,
+        [
+          ...pdfOutboundRows.map((row: Row) => {
+            const sq = splitQtyPdf(row, row.qtyBase || row.qty);
+            return [
+              row.dateKey || "-",
+              row.referenceNo || "-",
+              row.customerName || "-",
+              row.productName || "-",
+              row.color || "-",
+              row.size || "-",
+              sq.pack,
+              sq.base,
+              money.format(Number(row.totalRp || 0)),
+            ];
+          }),
+          ["", "", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
         ]
       );
     }
