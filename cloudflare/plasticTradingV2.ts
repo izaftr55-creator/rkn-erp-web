@@ -203,109 +203,137 @@ const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_prod
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
 const paid=(sql:Sql,invoiceId:string)=>scalar(sql,`SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?`,invoiceId);
 
-/* RKN_PLASTIC_AUTHORITATIVE_LIVE_STOCK_V2R16 */
+const PLASTIC_OPENING_DATE_KEY='2026-07-28';
+
+/* RKN_PLASTIC_POSTED_SO_LIVE_STOCK_V2R23
+   A posted physical SO is the new stock checkpoint. Live stock must start
+   from that physical count and apply only official transactions dated after
+   the checkpoint. A variant outside the SO (Goldwin on 28/08) keeps using
+   Opening + official documents and is explicitly marked without a physical
+   checkpoint. */
 function authoritativeLiveStockRows(sql:Sql){
-  return sql.exec(
-    `SELECT
-       v.variant_id variantId,
-       v.product_name productName,
-       v.category category,
-       v.color color,
-       v.size size,
-       v.grade grade,
-       v.base_unit baseUnit,
-       v.mid_unit midUnit,
-       v.pack_unit packUnit,
-       COALESCE(v.units_per_mid,1) unitsPerMid,
-       COALESCE(v.units_per_pack,1) unitsPerPack,
-       COALESCE(b.qty_base,0) balanceQtyBase,
-       COALESCE(b.avg_cost_rp,0) avgCostRp,
+  const checkpoint=sql.exec(
+    `SELECT so_id soId,date_key dateKey,so_no soNo
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC'
+       AND status='POSTED'
+     ORDER BY date_key DESC,posted_at DESC,created_at DESC
+     LIMIT 1`
+  ).toArray()[0]??null;
+  const checkpointDate=T(checkpoint?.dateKey,10);
+  const checkpointPhysical=new Map<string,number>();
 
-       (
-         COALESCE((
-           SELECT SUM(
-             CASE
-               WHEN m.movement_type='OPENING'
-                AND m.source_type='OPENING_BALANCE'
-                 THEN m.qty_base
-               WHEN m.source_type IN(
-                 'OPENING_REVISION','OPENING_VOID','OPENING_RESET'
-               )
-                AND m.movement_type='ADJUSTMENT_IN'
-                 THEN m.qty_base
-               WHEN m.source_type IN(
-                 'OPENING_REVISION','OPENING_VOID','OPENING_RESET'
-               )
-                AND m.movement_type='ADJUSTMENT_OUT'
-                 THEN -m.qty_base
-               ELSE 0
-             END
-           )
-           FROM plastic_inventory_movement m
-           WHERE m.business_unit_id='BU-PLASTIC'
-             AND m.variant_id=v.variant_id
-             AND m.date_key='2026-07-28'
-         ),0)
+  if(checkpoint?.soId){
+    const lines=sql.exec(
+      `SELECT variant_id variantId,physical_qty_base physicalQtyBase,
+              physical_entered physicalEntered
+       FROM plastic_so_session_line
+       WHERE so_id=?`,
+      T(checkpoint.soId,160)
+    ).toArray();
 
-         +
+    for(const row of lines as any[]){
+      if(Number(row.physicalEntered||0)===1){
+        checkpointPhysical.set(T(row.variantId,120),N(row.physicalQtyBase));
+      }
+    }
+  }
 
-         COALESCE((
-           SELECT SUM(l.qty_base)
-           FROM plastic_inbound_line l
-           JOIN plastic_inbound i
-             ON i.inbound_id=l.inbound_id
-           WHERE i.business_unit_id='BU-PLASTIC'
-             AND l.variant_id=v.variant_id
-         ),0)
-
-         -
-
-         COALESCE((
-           SELECT SUM(l.qty_base)
-           FROM plastic_sales_line l
-           JOIN plastic_sales_invoice i
-             ON i.invoice_id=l.invoice_id
-           WHERE i.business_unit_id='BU-PLASTIC'
-             AND i.status<>'VOID'
-             AND l.variant_id=v.variant_id
-         ),0)
-
-         +
-
-         COALESCE((
-           SELECT SUM(
-             CASE
-               WHEN m.movement_type='ADJUSTMENT_IN'
-                 THEN m.qty_base
-               WHEN m.movement_type='ADJUSTMENT_OUT'
-                 THEN -m.qty_base
-               ELSE 0
-             END
-           )
-           FROM plastic_inventory_movement m
-           WHERE m.business_unit_id='BU-PLASTIC'
-             AND m.variant_id=v.variant_id
-             AND m.movement_type IN(
-               'ADJUSTMENT_IN','ADJUSTMENT_OUT'
-             )
-             AND m.source_type NOT LIKE 'INBOUND%'
-             AND m.source_type NOT LIKE 'SALE%'
-             AND m.source_type NOT LIKE 'OPENING%'
-         ),0)
-       ) authoritativeQtyBase
-
+  const products=sql.exec(
+    `SELECT v.variant_id variantId,v.product_name productName,v.category,
+            v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,
+            v.pack_unit packUnit,COALESCE(v.units_per_mid,1) unitsPerMid,
+            COALESCE(v.units_per_pack,1) unitsPerPack,
+            COALESCE(b.qty_base,0) balanceQtyBase,
+            COALESCE(b.avg_cost_rp,0) avgCostRp
      FROM plastic_product_variant v
      LEFT JOIN plastic_inventory_balance b
        ON b.business_unit_id=v.business_unit_id
       AND b.variant_id=v.variant_id
-     WHERE v.business_unit_id='BU-PLASTIC'
-       AND v.active=1
-     ORDER BY
-       v.category,
-       UPPER(COALESCE(v.product_name,'')),
-       UPPER(COALESCE(v.color,'')),
-       UPPER(COALESCE(v.size,''))`
+     WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
+     ORDER BY v.category,UPPER(COALESCE(v.product_name,'')),
+              UPPER(COALESCE(v.color,'')),UPPER(COALESCE(v.size,''))`
   ).toArray();
+
+  return (products as any[]).map((product:any)=>{
+    const variantId=T(product.variantId,120);
+    const hasPhysicalCheckpoint=
+      Boolean(checkpointDate) && checkpointPhysical.has(variantId);
+    const baselineDate=hasPhysicalCheckpoint
+      ? checkpointDate
+      : PLASTIC_OPENING_DATE_KEY;
+    const baselineQtyBase=hasPhysicalCheckpoint
+      ? N(checkpointPhysical.get(variantId))
+      : scalar(
+          sql,
+          `SELECT COALESCE(SUM(
+             CASE
+               WHEN movement_type='OPENING' AND source_type='OPENING_BALANCE'
+                 THEN qty_base
+               WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+                AND movement_type='ADJUSTMENT_IN' THEN qty_base
+               WHEN source_type IN('OPENING_REVISION','OPENING_VOID','OPENING_RESET')
+                AND movement_type='ADJUSTMENT_OUT' THEN -qty_base
+               ELSE 0
+             END
+           ),0) value
+           FROM plastic_inventory_movement
+           WHERE business_unit_id='BU-PLASTIC'
+             AND variant_id=? AND date_key=?`,
+          variantId,PLASTIC_OPENING_DATE_KEY
+        );
+    const inboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_inbound_line l
+       JOIN plastic_inbound i ON i.inbound_id=l.inbound_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND l.variant_id=? AND i.date_key>?`,
+      variantId,baselineDate
+    );
+    const outboundQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(l.qty_base),0) value
+       FROM plastic_sales_line l
+       JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id
+       WHERE i.business_unit_id='BU-PLASTIC'
+         AND i.status<>'VOID' AND l.variant_id=? AND i.date_key>?`,
+      variantId,baselineDate
+    );
+    const correctionQtyBase=scalar(
+      sql,
+      `SELECT COALESCE(SUM(
+         CASE WHEN movement_type='ADJUSTMENT_IN' THEN qty_base
+              WHEN movement_type='ADJUSTMENT_OUT' THEN -qty_base
+              ELSE 0 END
+       ),0) value
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND variant_id=? AND date_key>?
+         AND movement_type IN('ADJUSTMENT_IN','ADJUSTMENT_OUT')
+         AND source_type NOT LIKE 'INBOUND%'
+         AND source_type NOT LIKE 'SALE%'
+         AND source_type NOT LIKE 'OPENING%'
+         AND source_type NOT IN('SO_SESSION','STOCK_OPNAME','SO_ADJUSTMENT')`,
+      variantId,baselineDate
+    );
+
+    return{
+      ...product,
+      baselineQtyBase,
+      inboundQtyBase,
+      outboundQtyBase,
+      correctionQtyBase,
+      authoritativeQtyBase:
+        baselineQtyBase+inboundQtyBase-outboundQtyBase+correctionQtyBase,
+      checkpointDateKey:hasPhysicalCheckpoint?checkpointDate:'',
+      checkpointSoId:hasPhysicalCheckpoint?T(checkpoint?.soId,160):'',
+      checkpointSoNo:hasPhysicalCheckpoint?T(checkpoint?.soNo,160):'',
+      stockSource:hasPhysicalCheckpoint
+        ? 'POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS'
+        : 'OPENING_PLUS_OFFICIAL_TRANSACTIONS_NO_SO_PHYSICAL'
+    };
+  });
 }
 
 function syncAuthoritativeInventory(sql:Sql){
@@ -355,7 +383,7 @@ function syncAuthoritativeInventory(sql:Sql){
       ),
       balanceDriftQtyBase:
         qtyBase-N(row.balanceQtyBase),
-      stockSource:'OFFICIAL_DOCUMENTS',
+      stockSource:row.stockSource,
       stockGuard:
         authoritativeRaw < -0.000001
           ? 'NEGATIVE_HISTORY_CLAMPED_TO_ZERO'
@@ -369,8 +397,6 @@ function syncAuthoritativeInventory(sql:Sql){
    The first SO starts from the effective 28/07 opening. A later SO starts
    from the latest posted SO physical checkpoint, then applies official IN,
    non-VOID OUT, and genuine manual corrections up to the new SO date. */
-const PLASTIC_OPENING_DATE_KEY='2026-07-28';
-
 function authoritativeSoStockRows(sql:Sql,targetDateV:any){
   const targetDate=DK(targetDateV);
   const checkpoint=sql.exec(
@@ -514,6 +540,7 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=/^\d{4}-\d{2}$/.test(String(periodV??''))?String(periodV):curPeriod();const view=T(viewV,32).toUpperCase();
 /* RKN_PLASTIC_DASHBOARD_SO_CHART_V2P */
 if(view==='DASHBOARD'){
+  syncAuthoritativeInventory(sql);
   const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period);
   const cogs=scalar(sql,`SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,period);
   const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
@@ -824,10 +851,7 @@ if(view==='RECONCILIATION'){
        v.mid_unit midUnit,
        v.pack_unit packUnit,
        COALESCE(v.units_per_mid,1) unitsPerMid,
-       COALESCE(v.units_per_pack,1) unitsPerPack,
-       COALESCE(v.default_sell_price_base_rp,0) defaultSellPriceBaseRp,
-       COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
-       COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp
+       COALESCE(v.units_per_pack,1) unitsPerPack
      FROM plastic_product_variant v
      WHERE v.business_unit_id='BU-PLASTIC'
        AND v.active=1
@@ -948,19 +972,20 @@ if(view==='RECONCILIATION'){
       outboundQtyBase+
       correctionQtyBase;
 
-    /* RKN_PLASTIC_GOLDWIN_REPORT_SCOPE_V2R23_FIXED2 */
-    const soPhysicalApplicable=
-      !(
-        variantId===goldwinVariantId &&
-        target==='2026-08-28'
-      );
+    /* RKN_PLASTIC_GOLDWIN_RECON_VISIBILITY_V2R23
+       Goldwin was not part of the posted physical SO on 28/08. Keep the
+       posted 41-SKU scope immutable, but still expose its official Opening,
+       IN and OUT in reconciliation instead of hiding the product. */
+    const soScope=!(
+      variantId===goldwinVariantId &&
+      target==='2026-08-28'
+    );
 
     const physical=
       physicalByVariant.get(variantId)??null;
 
     const physicalEntered=
-      soPhysicalApplicable &&
-      Number(physical?.physicalEntered||0)===1;
+      soScope && Number(physical?.physicalEntered||0)===1;
 
     const physicalQtyBase=
       physicalEntered
@@ -968,18 +993,18 @@ if(view==='RECONCILIATION'){
         : 0;
 
     const varianceQtyBase=
-      soPhysicalApplicable && physicalEntered
+      physicalEntered
         ? physicalQtyBase-systemQtyBase
         : null;
 
     const status=
-      !soPhysicalApplicable
-        ? 'DI LUAR SCOPE SO'
+      !soScope
+        ? 'DI LUAR SO'
         : !physicalEntered
-          ? 'BELUM DIHITUNG'
-          : Math.abs(N(varianceQtyBase))<0.000001
-            ? 'BALANCE'
-            : 'SELISIH';
+        ? 'BELUM DIHITUNG'
+        : Math.abs(N(varianceQtyBase))<0.000001
+          ? 'BALANCE'
+          : 'SELISIH';
 
     /* RKN_PLASTIC_RECON_ROOT_CAUSE_V2R18
        Diagnostic only. Does not mutate Opening / IN / OUT / SO. */
@@ -1036,8 +1061,8 @@ if(view==='RECONCILIATION'){
 
     let diagnosticCode='OK';
 
-    if(!soPhysicalApplicable){
-      diagnosticCode='OK';
+    if(!soScope){
+      diagnosticCode='OUTSIDE_SO_SCOPE_WITH_ACTIVITY';
     }else if(!physicalEntered){
       diagnosticCode='SO_NOT_SAVED';
     }else if(systemQtyBase<-0.000001){
@@ -1064,9 +1089,12 @@ if(view==='RECONCILIATION'){
       outboundQtyBase,
       correctionQtyBase,
       systemQtyBase,
+      soScope:soScope?1:0,
+      soScopeReason:soScope
+        ? 'IN_SCOPE'
+        : 'GOLDWIN_NOT_IN_PHYSICAL_SO_2026_08_28',
       physicalQtyBase,
       physicalEntered:physicalEntered?1:0,
-      soPhysicalApplicable:soPhysicalApplicable?1:0,
       varianceQtyBase,
       status,
       referencePresent:referencePresent?1:0,
@@ -1078,11 +1106,15 @@ if(view==='RECONCILIATION'){
     };
   });
 
-  const poly=rows.filter(
+  const scopedRows=rows.filter(
+    (row:any)=>Number(row.soScope||0)===1
+  );
+
+  const poly=scopedRows.filter(
     (row:any)=>T(row.category,40)!=='THERMAL'
   );
 
-  const thermal=rows.filter(
+  const thermal=scopedRows.filter(
     (row:any)=>T(row.category,40)==='THERMAL'
   );
 
@@ -1131,23 +1163,15 @@ if(view==='RECONCILIATION'){
       0
     );
 
-  const soScopeRows=rows.filter(
-    (row:any)=>Number(row.soPhysicalApplicable??1)===1
-  );
-
-  const outOfScope=rows.filter(
-    (row:any)=>Number(row.soPhysicalApplicable??1)!==1
-  ).length;
-
-  const balanced=soScopeRows.filter(
+  const balanced=scopedRows.filter(
     (row:any)=>row.status==='BALANCE'
   ).length;
 
-  const variance=soScopeRows.filter(
+  const variance=scopedRows.filter(
     (row:any)=>row.status==='SELISIH'
   ).length;
 
-  const uncounted=soScopeRows.filter(
+  const uncounted=scopedRows.filter(
     (row:any)=>row.status==='BELUM DIHITUNG'
   ).length;
 
@@ -1201,11 +1225,10 @@ if(view==='RECONCILIATION'){
     rows,
     reviewRows:[],
     summary:{
-      totalVariants:soScopeRows.length,
-      reportVariants:rows.length,
-      outOfScopeVariants:outOfScope,
+      totalVariants:scopedRows.length,
       countedVariants:
-        soScopeRows.length-uncounted,
+        scopedRows.length-uncounted,
+      outsideSoVariants:rows.length-scopedRows.length,
       balancedVariants:balanced,
       varianceVariants:variance,
       uncountedVariants:uncounted,
@@ -1223,6 +1246,9 @@ if(view==='RECONCILIATION'){
       ).length,
       diagnosticFactualVariance:rows.filter(
         (row:any)=>row.diagnosticCode==='FACTUAL_VARIANCE_OR_DOC_GAP'
+      ).length,
+      diagnosticOutsideSo:rows.filter(
+        (row:any)=>row.diagnosticCode==='OUTSIDE_SO_SCOPE_WITH_ACTIVITY'
       ).length,
 
       polySystemBallCount:
@@ -1257,7 +1283,10 @@ if(view==='RECONCILIATION'){
     }
   };
 }
-if(view==='PRODUCTS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' ORDER BY v.active DESC,v.category,v.product_name,v.color,v.size`).toArray()};
+if(view==='PRODUCTS'){
+  syncAuthoritativeInventory(sql);
+  return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' ORDER BY v.active DESC,v.category,v.product_name,v.color,v.size`).toArray()};
+}
 if(view==='CUSTOMERS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT c.customer_id customerId,c.customer_name customerName,c.phone,c.address,c.notes,c.active,COUNT(DISTINCT i.invoice_id) invoiceCount,COALESCE(SUM(i.grand_total_rp),0) totalSalesRp,MAX(i.date_key) lastPurchaseDate FROM plastic_customer c LEFT JOIN plastic_sales_invoice i ON i.customer_id=c.customer_id AND i.status<>'VOID' WHERE c.business_unit_id='BU-PLASTIC' GROUP BY c.customer_id ORDER BY c.active DESC,c.customer_name`).toArray()};
 /* RKN_PLASTIC_INBOUND_VIEW_V2N */
 /* RKN_PLASTIC_HISTORY_PERIOD_RECOVERY_V2Q9 INBOUND */
@@ -1410,7 +1439,7 @@ if(view==='INVENTORY'){
     view,
     periodKey:period,
     actor:a,
-    stockSource:'OFFICIAL_DOCUMENTS',
+    stockSource:'POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS',
     rows
   };
 }
@@ -1508,6 +1537,7 @@ if(view==='RECEIVABLES'){
 
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 if(view==='REPORTS'){
+  syncAuthoritativeInventory(sql);
   const stock=sql.exec(
     `SELECT
        v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,
@@ -3379,7 +3409,7 @@ if(cmd==='UPDATE_INBOUND'){
 /* RKN_PLASTIC_BACKFILL_OUT_RECORDING_V2R6 */
 /* RKN_PLASTIC_FACTUAL_OUT_MODE_V2R7 */
 if(cmd==='CREATE_SALE'){
-  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=historicalBackfill;open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],asOf=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND date_key<=? AND source_type NOT IN('STOCK_OPNAME','SO_SESSION','SO_ADJUSTMENT')`,vid,date).toArray()[0],liveLedger=sql.exec(`SELECT COALESCE(SUM(CASE WHEN movement_type IN('OPENING','IN','RETURN_IN','ADJUSTMENT_IN') THEN qty_base WHEN movement_type IN('OUT','RETURN_OUT','ADJUSTMENT_OUT') THEN -qty_base ELSE 0 END),0) qty_base FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,vid).toArray()[0],avail=N(asOf?.qty_base),liveAvail=N(liveLedger?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);if(price<=0){const mid=String(v.mid_unit||'').toUpperCase();price=q.unit===String(v.pack_unit).toUpperCase()?I(v.default_sell_price_pack_rp):mid&&q.unit===mid?I(v.default_sell_price_mid_rp):I(v.default_sell_price_base_rp)};const sum=Math.round(q.qty*price),uc=I(b?.avg_cost_rp),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});/* RKN_PLASTIC_SALE_AGGREGATE_STOCK_GUARD_V2R19 */if(!factualOutMode){const requestedByVariant=new Map<string,{requested:number;available:number}>();for(const row of norm){const current=requestedByVariant.get(row.vid)??{requested:0,available:row.avail};current.requested+=row.baseQty;current.available=Math.min(current.available,row.avail);requestedByVariant.set(row.vid,current)}for(const row of requestedByVariant.values()){if(row.requested>row.available+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK')}}const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}syncAuthoritativeInventory(sql);if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
+  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=historicalBackfill,saleStockByVariant=new Map(authoritativeSoStockRows(sql,date).map((row:any)=>[T(row.variantId,120),N(row.systemQtyBase)]));open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],avail=N(saleStockByVariant.get(vid)),liveAvail=N(b?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);if(price<=0){const mid=String(v.mid_unit||'').toUpperCase();price=q.unit===String(v.pack_unit).toUpperCase()?I(v.default_sell_price_pack_rp):mid&&q.unit===mid?I(v.default_sell_price_mid_rp):I(v.default_sell_price_base_rp)};const sum=Math.round(q.qty*price),uc=I(b?.avg_cost_rp),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});/* RKN_PLASTIC_SALE_AGGREGATE_STOCK_GUARD_V2R19 */if(!factualOutMode){const requestedByVariant=new Map<string,{requested:number;available:number}>();for(const row of norm){const current=requestedByVariant.get(row.vid)??{requested:0,available:row.avail};current.requested+=row.baseQty;current.available=Math.min(current.available,row.avail);requestedByVariant.set(row.vid,current)}for(const row of requestedByVariant.values()){if(row.requested>row.available+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK')}}const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}syncAuthoritativeInventory(sql);if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls,stockBasis:'POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS'});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
 /* RKN_PLASTIC_SALE_LIFECYCLE_V2O */
 if(cmd==='UPDATE_SALE'){
   mg(a);

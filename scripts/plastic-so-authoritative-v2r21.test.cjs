@@ -23,6 +23,47 @@ function loadEngine() {
   return loaded.exports;
 }
 
+function loadEffectiveSellPrices() {
+  const filename = path.join(projectRoot, "components", "PlasticTradingApp.tsx");
+  const sourceText = fs.readFileSync(filename, "utf8");
+  const sourceFile = ts.createSourceFile(
+    filename,
+    sourceText,
+    ts.ScriptTarget.ES2022,
+    true,
+    ts.ScriptKind.TSX
+  );
+  let helperNode = null;
+
+  sourceFile.forEachChild((node) => {
+    if (!ts.isVariableStatement(node)) return;
+    for (const declaration of node.declarationList.declarations) {
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.name.text === "effectiveSellPrices"
+      ) {
+        helperNode = node;
+      }
+    }
+  });
+
+  assert.ok(helperNode, "effectiveSellPrices helper must exist");
+  const helperSource = helperNode.getText(sourceFile);
+  const output = ts.transpileModule(
+    `type Row = Record<string, any>;\n${helperSource}\nmodule.exports = { effectiveSellPrices };`,
+    {
+      compilerOptions: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.CommonJS,
+      },
+      fileName: "effectiveSellPrices.ts",
+    }
+  ).outputText;
+  const loaded = new Module("effectiveSellPrices.ts", module);
+  loaded._compile(output, "effectiveSellPrices.ts");
+  return loaded.exports.effectiveSellPrices;
+}
+
 function createStorage() {
   const db = new Database(":memory:");
   db.pragma("foreign_keys = OFF");
@@ -91,6 +132,31 @@ function createStorage() {
 }
 
 function run() {
+  const reportUiSource = fs.readFileSync(
+    path.join(projectRoot, "components", "PlasticTradingApp.tsx"),
+    "utf8"
+  );
+  assert.match(reportUiSource, /Harga Jual Utama/);
+  assert.doesNotMatch(reportUiSource, /Harga Jual \/ Unit/);
+  assert.doesNotMatch(reportUiSource, /Potensi|potensi/);
+
+  const effectiveSellPrices = loadEffectiveSellPrices();
+  const thermalPrices = effectiveSellPrices({
+    baseUnit: "LEMBAR",
+    midUnit: "STACK",
+    packUnit: "DUS",
+    unitsPerMid: 500,
+    unitsPerPack: 10000,
+    defaultSellPriceBaseRp: 0,
+    defaultSellPriceMidRp: 39000,
+    defaultSellPricePackRp: 780000,
+  });
+  assert.equal(thermalPrices.basePriceRp, 78);
+  assert.equal(thermalPrices.midPriceRp, 39000);
+  assert.equal(thermalPrices.packPriceRp, 780000);
+  assert.equal(thermalPrices.baseDerived, true);
+  assert.equal(9 * thermalPrices.packPriceRp, 7020000);
+
   const engine = loadEngine();
   const { db, storage } = createStorage();
   db.prepare(
@@ -103,9 +169,35 @@ function run() {
 
   const variantId = "PL-POLY-KUNING-17X30";
   const valuationVariantId = "PL-POLY-KUNING-15X25";
+  const goldwinVariantId = "PL-THERMAL-THERMAL-GOLDWIN";
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
     dateKey: "2026-08-26",
     lines: [{ variantId, qty: 2, unit: "BALL", unitCostRp: 1175000 }],
+  });
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
+    dateKey: "2026-08-20",
+    supplierName: "Supplier Goldwin",
+    lines: [
+      {
+        variantId: goldwinVariantId,
+        qty: 15,
+        unit: "DUS",
+        unitCostRp: 0,
+      },
+    ],
+  });
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_SALE", {
+    dateKey: "2026-08-24",
+    customerName: "Goldwin Customer",
+    paymentStatus: "PAID",
+    lines: [
+      {
+        variantId: goldwinVariantId,
+        qty: 2,
+        unit: "DUS",
+        unitPriceRp: 840000,
+      },
+    ],
   });
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
     dateKey: "2026-08-26",
@@ -215,6 +307,87 @@ function run() {
   assert.equal(postedAuditLine.physicalQtyBase, 0);
   assert.equal(postedAuditLine.excludedSoAdjustmentQtyBase, 50);
 
+  const goldwinReconciliation = engine.getPlasticTradingViewV2(
+    storage,
+    "test-owner",
+    "RECONCILIATION",
+    "2026-08"
+  );
+  const goldwinReconRow = goldwinReconciliation.rows.find(
+    (row) => row.variantId === goldwinVariantId
+  );
+  assert.ok(goldwinReconRow, "Goldwin must remain visible in reconciliation");
+  assert.equal(goldwinReconRow.soScope, 0);
+  assert.equal(goldwinReconRow.physicalEntered, 0);
+  assert.equal(goldwinReconRow.inboundQtyBase, 150000);
+  assert.equal(goldwinReconRow.outboundQtyBase, 20000);
+  assert.equal(goldwinReconRow.systemQtyBase, 130000);
+  assert.equal(goldwinReconRow.status, "DI LUAR SO");
+  assert.equal(goldwinReconciliation.summary.totalVariants, 41);
+  assert.equal(goldwinReconciliation.summary.outsideSoVariants, 1);
+
+  const goldwinInboundReport = postedReport.inbound.find(
+    (row) => row.productName === "Thermal Goldwin"
+  );
+  const goldwinAuditLine = postedReport.auditLedger.find(
+    (row) => row.variantId === goldwinVariantId
+  );
+  assert.ok(goldwinInboundReport, "Official Goldwin inbound must be reported");
+  assert.equal(goldwinInboundReport.qty, 15);
+  assert.equal(goldwinInboundReport.unit, "DUS");
+  assert.equal(goldwinAuditLine.soScope, 0);
+  assert.equal(goldwinAuditLine.systemLedgerQtyBase, 130000);
+
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
+    dateKey: "2026-08-27",
+    supplierName: "Supplier Nilai Stok",
+    lines: [
+      {
+        variantId: valuationVariantId,
+        qty: 4,
+        unit: "ROLL",
+        unitCostRp: 18000,
+      },
+    ],
+  });
+  const stockAfterHistoricalEdit = engine.getPlasticTradingViewV2(
+    storage,
+    "test-owner",
+    "INVENTORY",
+    "2026-08"
+  );
+  const anchoredStockRow = stockAfterHistoricalEdit.rows.find(
+    (row) => row.variantId === valuationVariantId
+  );
+  assert.equal(anchoredStockRow.qtyBase, 5);
+  assert.equal(
+    anchoredStockRow.stockSource,
+    "POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS"
+  );
+  assert.throws(
+    () =>
+      engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_SALE", {
+        dateKey: "2026-08-29",
+        customerName: "Oversell Must Fail",
+        paymentStatus: "NOT_PAID",
+        lines: [
+          {
+            variantId: valuationVariantId,
+            qty: 3,
+            unit: "ROLL",
+            unitPriceRp: 18500,
+          },
+          {
+            variantId: valuationVariantId,
+            qty: 3,
+            unit: "ROLL",
+            unitPriceRp: 18500,
+          },
+        ],
+      }),
+    /PLASTIC_INSUFFICIENT_STOCK/
+  );
+
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
     dateKey: "2026-08-30",
     supplierName: "Supplier Setelah Cutoff",
@@ -272,7 +445,11 @@ function run() {
   console.log("PASS existing REVIEW session overlays stale stored snapshot");
   console.log("PASS negative history is visible and posts to zero without false stock");
   console.log("PASS posted report retains pre-adjustment variance and official settlement");
+  console.log("PASS Goldwin official IN/OUT stays visible outside immutable SO scope");
+  console.log("PASS posted physical SO anchors live stock against pre-cutoff document edits");
+  console.log("PASS future sale guard checks posted SO stock and aggregates duplicate SKU lines");
   console.log("PASS supplier stock report cuts off physical quantity and supplier at 28/08");
+  console.log("PASS selling price derives automatically across LEMBAR / STACK / DUS");
   console.log("PASS next SO starts from latest posted physical checkpoint");
 }
 

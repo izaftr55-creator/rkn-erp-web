@@ -2329,7 +2329,7 @@
 
 .soChartTop {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
 }
@@ -2440,7 +2440,7 @@
 .salesBars {
   min-height: 220px;
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   gap: 7px;
   padding: 12px 2px 0;
 }
@@ -2460,7 +2460,7 @@
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: center;
   border-bottom: 1px solid #1c3554;
 }
@@ -2495,7 +2495,7 @@
 
 .soStartAction {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
 }
 
 .soSessionHead {
@@ -2746,7 +2746,7 @@
 .topbarTools {
   min-width: 0 !important;
   display: flex !important;
-  align-items: end !important;
+  align-items: flex-end !important;
   justify-content: flex-end !important;
   gap: 10px !important;
 }

@@ -309,22 +309,97 @@ const unitOptions = (product?: Row) => {
     );
 };
 
+/* RKN_PLASTIC_EFFECTIVE_SELL_PRICE_V2R23
+   A product may be priced at any maintained UOM. Derive the other
+   price levels from the configured conversion so reports and sales
+   do not treat an empty base price as an empty selling price. */
+const effectiveSellPrices = (product: Row | undefined) => {
+  if (!product) {
+    return {
+      basePriceRp: 0,
+      midPriceRp: 0,
+      packPriceRp: 0,
+      baseDerived: false,
+      midDerived: false,
+      packDerived: false,
+      baseSourceUnit: "",
+    };
+  }
+
+  const unitsPerMid = Math.max(1, Number(product.unitsPerMid || 1));
+  const unitsPerPack = Math.max(1, Number(product.unitsPerPack || 1));
+  const explicitBase = Math.max(
+    0,
+    Number(product.defaultSellPriceBaseRp || 0)
+  );
+  const explicitMid = Math.max(
+    0,
+    Number(product.defaultSellPriceMidRp || 0)
+  );
+  const explicitPack = Math.max(
+    0,
+    Number(product.defaultSellPricePackRp || 0)
+  );
+
+  const basePriceRp =
+    explicitBase > 0
+      ? explicitBase
+      : explicitMid > 0
+        ? explicitMid / unitsPerMid
+        : explicitPack > 0
+          ? explicitPack / unitsPerPack
+          : 0;
+  const midPriceRp = product.midUnit
+    ? explicitMid > 0
+      ? explicitMid
+      : basePriceRp * unitsPerMid
+    : 0;
+  const packPriceRp = product.packUnit
+    ? explicitPack > 0
+      ? explicitPack
+      : basePriceRp * unitsPerPack
+    : 0;
+  const baseSourceUnit =
+    explicitBase > 0
+      ? String(product.baseUnit || "UNIT")
+      : explicitMid > 0
+        ? String(product.midUnit || "MID")
+        : explicitPack > 0
+          ? String(product.packUnit || "PACK")
+          : "";
+
+  return {
+    basePriceRp,
+    midPriceRp,
+    packPriceRp,
+    baseDerived: explicitBase <= 0 && basePriceRp > 0,
+    midDerived: explicitMid <= 0 && midPriceRp > 0,
+    packDerived: explicitPack <= 0 && packPriceRp > 0,
+    baseSourceUnit,
+  };
+};
+
+const isThermalProductRow = (row: Row) =>
+  String(row.category || "").toUpperCase() === "THERMAL" ||
+  String(row.productName || "").toUpperCase().startsWith("THERMAL");
+
 const defaultPrice = (product: Row | undefined, unit: string) => {
   if (!product) return 0;
   const normalized = String(unit || "").toUpperCase();
+  const prices = effectiveSellPrices(product);
   if (
     normalized &&
     normalized === String(product.packUnit || "").toUpperCase()
   ) {
-    return Number(product.defaultSellPricePackRp || 0);
+    return Math.round(prices.packPriceRp);
   }
   if (
     normalized &&
     normalized === String(product.midUnit || "").toUpperCase()
   ) {
-    return Number(product.defaultSellPriceMidRp || 0);
+    return Math.round(prices.midPriceRp);
   }
-  return Number(product.defaultSellPriceBaseRp || 0);
+  return Math.round(prices.basePriceRp);
 };
 
 const stockText = (row: Row) => {
@@ -2085,26 +2160,33 @@ function Products({
             [
               "defaultSellPriceBaseRp",
               "Harga Base",
-              (row) =>
-                money.format(
-                  Number(row.defaultSellPriceBaseRp || 0)
-                ),
+              (row) => {
+                if (isThermalProductRow(row)) return "-";
+                const prices = effectiveSellPrices(row);
+                return `${money.format(prices.basePriceRp)}${
+                  prices.baseDerived ? " · AUTO" : ""
+                }`;
+              },
             ],
             [
               "defaultSellPriceMidRp",
               "Harga Mid",
-              (row) =>
-                money.format(
-                  Number(row.defaultSellPriceMidRp || 0)
-                ),
+              (row) => {
+                const prices = effectiveSellPrices(row);
+                return `${money.format(prices.midPriceRp)}${
+                  prices.midDerived ? " · AUTO" : ""
+                }`;
+              },
             ],
             [
               "defaultSellPricePackRp",
               "Harga Pack",
-              (row) =>
-                money.format(
-                  Number(row.defaultSellPricePackRp || 0)
-                ),
+              (row) => {
+                const prices = effectiveSellPrices(row);
+                return `${money.format(prices.packPriceRp)}${
+                  prices.packDerived ? " · AUTO" : ""
+                }`;
+              },
             ],
             ["qtyBase", "Stock", (row) => stockText(row)],
           ]}
@@ -5544,20 +5626,6 @@ function Reconciliation({
     ],
   ];
 
-  /* RKN_PLASTIC_THERMAL_STACK_PRICE_V2R23_FIXED2 */
-  const thermalColumns: Column[] = [
-    ...reconColumns.slice(0, 3),
-    [
-      "defaultSellPriceMidRp",
-      "Harga / STACK",
-      (row) =>
-        money.format(
-          Number(row.defaultSellPriceMidRp || 0)
-        ),
-    ],
-    ...reconColumns.slice(3),
-  ];
-
   const diagnosticLabel = (row: Row) => {
     const code = String(row.diagnosticCode || "");
 
@@ -5579,6 +5647,10 @@ function Reconciliation({
 
     if (code === "FACTUAL_VARIANCE_OR_DOC_GAP") {
       return "CEK DOKUMEN / SELISIH FAKTUAL";
+    }
+
+    if (code === "OUTSIDE_SO_SCOPE_WITH_ACTIVITY") {
+      return "TRANSAKSI ADA · DI LUAR SO FISIK";
     }
 
     return "OK";
@@ -5759,6 +5831,10 @@ function Reconciliation({
             <span>Beda dokumen</span>
             <strong>{Number(summary.diagnosticFactualVariance || 0)}</strong>
           </div>
+          <div>
+            <span>Di luar SO</span>
+            <strong>{Number(summary.diagnosticOutsideSo || 0)}</strong>
+          </div>
         </section>
 
         <DataTable
@@ -5830,11 +5906,11 @@ function Reconciliation({
 
       <Panel
         title="Rekonsiliasi Thermal / 28-08-2026"
-        subtitle="DUS-only untuk kuantitas. Harga jual master ditampilkan per STACK. Goldwin tetap tampil sebagai transaksi resmi; fisik SO 28/08 berstatus DI LUAR SCOPE SO."
+        subtitle="DUS-only. Goldwin tetap menampilkan Opening, Masuk, Keluar, dan System; status DI LUAR SO berarti tidak mengubah hasil SO fisik 41 SKU yang sudah posted."
       >
         <DataTable
           rows={thermalRows}
-          columns={thermalColumns}
+          columns={reconColumns}
         />
       </Panel>
     </>
@@ -5872,6 +5948,12 @@ function Reports({
   const auditLedger = Array.isArray(data.auditLedger)
     ? data.auditLedger
     : [];
+  const goldwinAuditRow = auditLedger.find(
+    (row: Row) =>
+      String(row.variantId || "") ===
+        "PL-THERMAL-THERMAL-GOLDWIN" ||
+      String(row.productName || "").toUpperCase().includes("GOLDWIN")
+  );
 
   const auditOpeningDate = String(
     data.auditOpeningDate || "2026-07-28"
@@ -5943,17 +6025,18 @@ function Reports({
 
   const sellingValue = (row: Row) => {
     const parts = decompose(row, row.qtyBase);
-    const basePrice = Number(row.defaultSellPriceBaseRp || 0);
-    const midPrice = Number(row.defaultSellPriceMidRp || 0);
-    const packPrice = Number(row.defaultSellPricePackRp || 0);
+    const prices = effectiveSellPrices(row);
     const missingPrice =
-      (parts.pack > 0.000001 && packPrice <= 0) ||
-      (parts.mid > 0.000001 && midPrice <= 0) ||
-      (parts.base > 0.000001 && basePrice <= 0);
+      (parts.pack > 0.000001 && prices.packPriceRp <= 0) ||
+      (parts.mid > 0.000001 && prices.midPriceRp <= 0) ||
+      (parts.base > 0.000001 && prices.basePriceRp <= 0);
 
     return {
-      salesValueRp:
-        parts.pack * packPrice + parts.mid * midPrice + parts.base * basePrice,
+      salesValueRp: Math.round(
+        parts.pack * prices.packPriceRp +
+          parts.mid * prices.midPriceRp +
+          parts.base * prices.basePriceRp
+      ),
       salesPriceMissing: missingPrice ? 1 : 0,
     };
   };
@@ -5973,15 +6056,30 @@ function Reports({
     (row: Row) => Number(row.salesPriceMissing || 0) === 1
   ).length;
 
-  const baseSellPriceText = (row: Row) =>
-    Number(row.defaultSellPriceBaseRp || 0) > 0
-      ? `${money.format(Number(row.defaultSellPriceBaseRp || 0))} / ${row.baseUnit || "UNIT"}`
-      : "HARGA JUAL BELUM ADA";
+  const primarySellPriceText = (row: Row) => {
+    const prices = effectiveSellPrices(row);
+    if (isThermalProductRow(row)) {
+      return prices.midPriceRp > 0
+        ? `${money.format(prices.midPriceRp)} / ${row.midUnit || "STACK"}`
+        : "HARGA JUAL BELUM ADA";
+    }
+    if (prices.basePriceRp <= 0) return "HARGA JUAL BELUM ADA";
+    return `${money.format(prices.basePriceRp)} / ${
+      row.baseUnit || "UNIT"
+    }${
+      prices.baseDerived && prices.baseSourceUnit
+        ? ` · AUTO DARI ${prices.baseSourceUnit}`
+        : ""
+    }`;
+  };
 
   const packSellPriceText = (row: Row) => {
     if (!row.packUnit) return "-";
-    return Number(row.defaultSellPricePackRp || 0) > 0
-      ? `${money.format(Number(row.defaultSellPricePackRp || 0))} / ${row.packUnit}`
+    const prices = effectiveSellPrices(row);
+    return prices.packPriceRp > 0
+      ? `${money.format(prices.packPriceRp)} / ${row.packUnit}${
+          prices.packDerived ? " · AUTO" : ""
+        }`
       : "HARGA JUAL BELUM ADA";
   };
 
@@ -5996,8 +6094,7 @@ function Reports({
   });
 
   const isThermalRow = (row: Row) =>
-    String(row.category || "").toUpperCase() === "THERMAL" ||
-    String(row.productName || "").toUpperCase().startsWith("THERMAL");
+    isThermalProductRow(row);
 
   /*
     Report utama:
@@ -6117,6 +6214,16 @@ function Reports({
         status,
       };
     });
+  const outsideSoRows = auditLedger
+    .filter((row: Row) => Number(row.soScope ?? 1) === 0)
+    .map((row: Row) => ({
+      ...row,
+      expectedQtyBase: Number(row.systemLedgerQtyBase || 0),
+      counted: false,
+      physicalQtyBase: null,
+      differenceQtyBase: null,
+      status: "DI LUAR SO FISIK",
+    }));
   /* RKN_PLASTIC_SO_LIVE_RECON_MODEL_V2R9
      Keep every active SKU from the SO session in reconciliation.
      Uncounted zero-activity SKU must remain visible as BELUM DIHITUNG. */
@@ -6136,24 +6243,16 @@ function Reports({
     simpleRows.length > 0 && uncountedRows.length === 0;
 
   /* RKN_PLASTIC_BOSS_REPORT_MODEL_V2R22 */
-  const inboundValueRp = inbound.reduce(
-    (total: number, row: Row) => total + Number(row.totalRp || 0),
-    0
-  );
   const salesValueRp = outbound.reduce(
     (total: number, row: Row) => total + Number(row.totalRp || 0),
     0
   );
-  const salesCogsRp = outbound.reduce(
-    (total: number, row: Row) => total + Number(row.cogsRp || 0),
-    0
-  );
-  const grossProfitRp = outbound.reduce(
-    (total: number, row: Row) => total + Number(row.grossProfitRp || 0),
-    0
-  );
-  const grossMarginPct =
-    salesValueRp > 0 ? (grossProfitRp / salesValueRp) * 100 : 0;
+  const salesInvoiceCount = new Set(
+    outbound.map((row: Row) => String(row.referenceNo || "")).filter(Boolean)
+  ).size;
+  const salesCustomerCount = new Set(
+    outbound.map((row: Row) => String(row.customerName || "")).filter(Boolean)
+  ).size;
   const receivableTotalRp = receivables.reduce(
     (total: number, row: Row) => total + Number(row.outstandingRp || 0),
     0
@@ -6206,7 +6305,9 @@ function Reports({
       "physicalQtyBase",
       "SO Fisik",
       (row) =>
-        row.counted
+        Number(row.soScope ?? 1) === 0
+          ? "TIDAK MASUK SO 28/08"
+          : row.counted
           ? reportQtyCell(row, row.physicalQtyBase)
           : "BELUM DIHITUNG",
     ],
@@ -6214,7 +6315,9 @@ function Reports({
       "differenceQtyBase",
       auditSoPosted ? "Adjustment SO" : "Selisih",
       (row) =>
-        row.counted
+        Number(row.soScope ?? 1) === 0
+          ? "-"
+          : row.counted
           ? reportQtyCell(row, row.differenceQtyBase)
           : "-",
     ],
@@ -6275,7 +6378,7 @@ function Reports({
         : reportTab === "STOCK"
           ? "STOK FISIK 28/08/2026"
           : reportTab === "STOCK_VALUE"
-            ? "POTENSI NILAI JUAL STOK"
+            ? "NILAI JUAL STOK"
           : reportTab === "INBOUND"
             ? "BARANG MASUK"
             : reportTab === "OUTBOUND"
@@ -6292,7 +6395,7 @@ function Reports({
           ? `${auditSoNo} / POSTED / ${varianceRows.length} ADJUSTMENT`
           : `OPENING + MASUK - KELUAR / SO FISIK`
         : reportTab === "STOCK_VALUE"
-          ? `FISIK SO ${auditSoDate} / HARGA JUAL MASTER / POTENSI NILAI`
+          ? `FISIK SO ${auditSoDate} / HARGA JUAL MASTER / NILAI JUAL`
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
@@ -6382,18 +6485,25 @@ function Reports({
       table(
         ["Area", "Indikator", "Nilai", "Keterangan"],
         [
-          ["Operasional", "Barang Masuk", money.format(inboundValueRp), `${inbound.length} baris`],
+          ["Operasional", "Barang Masuk Resmi", `${inbound.length} baris`, `Periode ${period}`],
           ["Operasional", "Penjualan", money.format(salesValueRp), `${outbound.length} baris`],
-          ["Profitabilitas", "HPP Penjualan", money.format(salesCogsRp), `Periode ${period}`],
-          ["Profitabilitas", "Gross Profit", money.format(grossProfitRp), `Margin ${reportQtyFmt.format(grossMarginPct)}%`],
+          ["Operasional", "Invoice Penjualan", `${salesInvoiceCount} invoice`, `${salesCustomerCount} customer`],
           ["Keuangan", "Piutang Aktif", money.format(receivableTotalRp), `${receivables.length} invoice belum lunas`],
-          ["Persediaan", "Potensi Nilai Jual Stok 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik`],
+          ["Persediaan", "Nilai Jual Stok 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik`],
           ["Persediaan", "Harga Jual Belum Lengkap", `${stockSellingMissingPrice} SKU`, stockSellingMissingPrice ? "Perlu dilengkapi di master produk" : "Lengkap"],
           ["Stock Opname", "Status SO", bossSoStatus, auditSoNo],
           ["Stock Opname", "SKU Dihitung", `${countedRows.length} / ${simpleRows.length}`, `${uncountedRows.length} belum`],
           ["Stock Opname", "Balance Awal", `${balanceRows.length} SKU`, "Tanpa adjustment"],
           ["Stock Opname", "Adjustment", `${auditSoPosted ? varianceRows.length : 0} SKU`, auditSoPosted ? "Posted" : "Belum posted"],
           ["Audit", "Status Audit", humanizeDisplay(data.finalStatus || "-") , `${Number(data.finalFailCount || 0)} perlu dicek`],
+          ...(goldwinAuditRow
+            ? [[
+                "Audit Goldwin",
+                "Di luar SO fisik 28/08",
+                reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase),
+                `Opening ${reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk ${reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar ${reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)}`,
+              ]]
+            : []),
         ],
         38
       );
@@ -6403,20 +6513,20 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
         doc.setFontSize(10);
-        doc.text("POTENSI NILAI JUAL STOK FISIK 28/08/2026", 4, 34);
+        doc.text("NILAI JUAL STOK FISIK 28/08/2026", 4, 34);
 
         table(
-          ["Produk", "Warna", "Ukuran", "Stok", "Harga Jual / Unit", "Potensi Nilai Jual"],
+          ["Produk", "Warna", "Ukuran", "Stok", "Harga Jual Utama", "Nilai Jual"],
           [
             ...topStockSellingValueRows.map((row: Row) => [
               row.productName || row.category || "-",
               row.color || "-",
               row.size || "-",
               stockHuman(row, row.qtyBase),
-              baseSellPriceText(row),
+              primarySellPriceText(row),
               sellingValueText(row),
             ]),
-            ["", "", "", "", "TOTAL POTENSI", money.format(stockSellingValueTotalRp)],
+            ["", "", "", "", "TOTAL NILAI JUAL", money.format(stockSellingValueTotalRp)],
           ],
           38
         );
@@ -6469,10 +6579,14 @@ function Reports({
           reportQtyPdfCell(row, row.inboundQtyBase),
           reportQtyPdfCell(row, row.outboundQtyBase),
           reportQtyPdfCell(row, row.expectedQtyBase),
-          row.counted
+          Number(row.soScope ?? 1) === 0
+            ? "TIDAK MASUK SO 28/08"
+            : row.counted
             ? reportQtyPdfCell(row, row.physicalQtyBase)
             : "BELUM DIHITUNG",
-          row.counted
+          Number(row.soScope ?? 1) === 0
+            ? "-"
+            : row.counted
             ? reportQtyPdfCell(row, row.differenceQtyBase)
             : "-",
         ]);
@@ -6483,6 +6597,8 @@ function Reports({
         applyRknPlasticPdfFilter(balanceRows);
       const pdfUncountedRows =
         applyRknPlasticPdfFilter(uncountedRows);
+      const pdfOutsideSoRows =
+        applyRknPlasticPdfFilter(outsideSoRows);
 
       const sections: Array<{
         title: string;
@@ -6503,6 +6619,10 @@ function Reports({
         {
           title: `BELUM DIHITUNG (${pdfUncountedRows.length} SKU)`,
           rows: pdfUncountedRows,
+        },
+        {
+          title: `TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`,
+          rows: pdfOutsideSoRows,
         },
       ].filter((section) => section.rows.length > 0);
 
@@ -6532,17 +6652,17 @@ function Reports({
         0
       );
       table(
-        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual / Unit", "Potensi Nilai Jual"],
+        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual Utama", "Nilai Jual"],
         [
           ...pdfStockRows.map((row: Row) => [
             row.productName || row.category || "-",
             row.color || "-",
             row.size || "-",
             stockHuman(row, row.qtyBase),
-            baseSellPriceText(row),
+            primarySellPriceText(row),
             sellingValueText(row),
           ]),
-          ["", "", "", "", "TOTAL POTENSI", money.format(pdfStockTotal)],
+          ["", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
         ]
       );
     }
@@ -6561,9 +6681,9 @@ function Reports({
           "Warna",
           "Ukuran",
           "Stok Fisik 28/08",
-          "Harga Jual / Unit",
+          "Harga Jual Utama",
           "Harga Jual / Pack",
-          "Potensi Nilai Jual",
+          "Nilai Jual",
         ],
         [
           ...pdfStockValueRows.map((row: Row) => [
@@ -6572,36 +6692,27 @@ function Reports({
             row.color || "-",
             row.size || "-",
             stockHuman(row, row.qtyBase),
-            baseSellPriceText(row),
+            primarySellPriceText(row),
             packSellPriceText(row),
             sellingValueText(row),
           ]),
-          ["", "", "", "", "", "", "TOTAL POTENSI", money.format(pdfStockValueTotal)],
+          ["", "", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockValueTotal)],
         ]
       );
     }
 
     if (reportTab === "INBOUND") {
       const pdfInboundRows = applyRknPlasticPdfFilter(inbound);
-      const pdfInboundTotal = pdfInboundRows.reduce(
-        (total: number, row: Row) => total + Number(row.totalRp || 0),
-        0
-      );
       table(
-        ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty", "HPP", "Nilai"],
-        [
-          ...pdfInboundRows.map((row: Row) => [
+        ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty"],
+        pdfInboundRows.map((row: Row) => [
             row.dateKey || "-",
             row.referenceNo || "-",
             row.productName || "-",
             row.color || "-",
             row.size || "-",
             `${qtyText(row.qty)} ${row.unit || ""}`,
-            money.format(Number(row.unitCostRp || 0)),
-            money.format(Number(row.totalRp || 0)),
-          ]),
-          ["", "", "", "", "", "", "TOTAL", money.format(pdfInboundTotal)],
-        ]
+          ])
       );
     }
 
@@ -6762,7 +6873,7 @@ function Reports({
               </small>
             </div>
             <div className={styles.bossReportHeroValue}>
-              <span>Potensi Nilai Jual Stok Fisik 28/08/2026</span>
+              <span>Nilai Jual Stok Fisik 28/08/2026</span>
               <strong>{money.format(stockSellingValueTotalRp)}</strong>
               <small>{stockSellingValueRows.length} SKU fisik memiliki stok</small>
             </div>
@@ -6773,17 +6884,17 @@ function Reports({
               <h3>Kinerja Periode</h3>
               <div className={styles.bossMetricList}>
                 <div><span>Penjualan</span><strong>{money.format(salesValueRp)}</strong></div>
-                <div><span>HPP / COGS</span><strong>{money.format(salesCogsRp)}</strong></div>
-                <div><span>Gross Profit</span><strong>{money.format(grossProfitRp)}</strong></div>
-                <div><span>Gross Margin</span><strong>{reportQtyFmt.format(grossMarginPct)}%</strong></div>
+                <div><span>Invoice Penjualan</span><strong>{salesInvoiceCount}</strong></div>
+                <div><span>Customer</span><strong>{salesCustomerCount}</strong></div>
+                <div><span>Dasar Nilai</span><strong>Harga Jual</strong></div>
               </div>
             </article>
 
             <article>
               <h3>Stok & Arus Barang</h3>
               <div className={styles.bossMetricList}>
-                <div><span>Barang Masuk</span><strong>{money.format(inboundValueRp)}</strong></div>
-                <div><span>Potensi Nilai Jual 28/08</span><strong>{money.format(stockSellingValueTotalRp)}</strong></div>
+                <div><span>Barang Masuk Resmi</span><strong>{inbound.length} baris</strong></div>
+                <div><span>Nilai Jual 28/08</span><strong>{money.format(stockSellingValueTotalRp)}</strong></div>
                 <div><span>Piutang Aktif</span><strong>{money.format(receivableTotalRp)}</strong></div>
                 <div><span>Harga Jual Belum Lengkap</span><strong>{stockSellingMissingPrice} SKU</strong></div>
               </div>
@@ -6800,9 +6911,21 @@ function Reports({
             </article>
           </section>
 
+          {goldwinAuditRow ? (
+            <div className={styles.reportInfoStrip}>
+              <div>
+                <span>Audit Thermal Goldwin sampai {auditSoDate}</span>
+                <strong>{reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase)} system</strong>
+              </div>
+              <small>
+                Opening {reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Masuk resmi {reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} · Keluar resmi {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)}. Tidak masuk nilai stok fisik karena tidak dihitung di SO 28/08.
+              </small>
+            </div>
+          ) : null}
+
           <Panel
-            title="Potensi Nilai Jual Fisik 28/08 Terbesar"
-            subtitle="12 SKU fisik hasil SO 28/08/2026 dengan potensi nilai jual terbesar berdasarkan master harga jual."
+            title="Nilai Jual Fisik 28/08 Terbesar"
+            subtitle="12 SKU fisik hasil SO 28/08/2026 dengan nilai jual terbesar berdasarkan master harga jual."
           >
             <DataTable
               rows={topStockSellingValueRows.slice(0, 12)}
@@ -6811,10 +6934,10 @@ function Reports({
                 ["color", "Warna"],
                 ["size", "Ukuran"],
                 ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
-                ["defaultSellPriceBaseRp", "Harga Jual / Unit", (row) => baseSellPriceText(row)],
+                ["defaultSellPriceBaseRp", "Harga Jual Utama", (row) => primarySellPriceText(row)],
                 [
                   "salesValueRp",
-                  "Potensi Nilai Jual",
+                  "Nilai Jual",
                   (row) => sellingValueText(row),
                 ],
               ]}
@@ -6928,6 +7051,18 @@ function Reports({
               />
             </Panel>
           ) : null}
+
+          {outsideSoRows.length ? (
+            <Panel
+              title={`Transaksi di Luar SO Fisik · ${outsideSoRows.length} SKU`}
+              subtitle="Riwayat Opening, Masuk, dan Keluar tetap ditampilkan. Baris ini tidak mengubah hasil SO 41 SKU karena tidak memiliki hitungan fisik 28/08."
+            >
+              <DataTable
+                rows={outsideSoRows}
+                columns={reconColumns}
+              />
+            </Panel>
+          ) : null}
         </>
       ) : null}
 
@@ -6945,12 +7080,12 @@ function Reports({
               ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
               [
                 "defaultSellPriceBaseRp",
-                "Harga Jual / Unit",
-                (row) => baseSellPriceText(row),
+                "Harga Jual Utama",
+                (row) => primarySellPriceText(row),
               ],
               [
                 "salesValueRp",
-                "Potensi Nilai Jual",
+                "Nilai Jual",
                 (row) => sellingValueText(row),
               ],
             ]}
@@ -6962,7 +7097,7 @@ function Reports({
         <>
           <div className={styles.reportInfoStrip}>
             <div>
-              <span>Potensi nilai jual stok fisik per 28/08/2026</span>
+              <span>Nilai jual stok fisik per 28/08/2026</span>
               <strong>{money.format(stockSellingValueTotalRp)}</strong>
             </div>
             <small>
@@ -6972,7 +7107,7 @@ function Reports({
           </div>
 
           <Panel
-            title="Potensi Nilai Jual Fisik 28/08 per Produk"
+            title="Nilai Jual Fisik 28/08 per Produk"
             subtitle="Qty SO fisik 28/08 × harga jual master. Supplier mengikuti penerimaan terakhir sampai tanggal 28/08."
           >
             <DataTable
@@ -6983,11 +7118,11 @@ function Reports({
                 ["color", "Warna"],
                 ["size", "Ukuran"],
                 ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
-                ["defaultSellPriceBaseRp", "Harga Jual / Unit", (row) => baseSellPriceText(row)],
+                ["defaultSellPriceBaseRp", "Harga Jual Utama", (row) => primarySellPriceText(row)],
                 ["defaultSellPricePackRp", "Harga Jual / Pack", (row) => packSellPriceText(row)],
                 [
                   "salesValueRp",
-                  "Potensi Nilai Jual",
+                  "Nilai Jual",
                   (row) => sellingValueText(row),
                 ],
               ]}
@@ -6997,7 +7132,19 @@ function Reports({
       ) : null}
 
       {reportTab === "INBOUND" ? (
-        <Panel title="Barang Masuk" subtitle={`Periode aktif ${period}.`}>
+        <>
+        {goldwinAuditRow ? (
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Goldwin · seluruh dokumen sampai {auditSoDate}</span>
+              <strong>{reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} masuk resmi</strong>
+            </div>
+            <small>
+              Tabel di bawah hanya periode {period}. Rekonsiliasi cutoff tetap membaca seluruh dokumen: Opening {reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Keluar {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} · System {reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase)}.
+            </small>
+          </div>
+        ) : null}
+        <Panel title="Barang Masuk" subtitle={`Dokumen resmi periode aktif ${period}.`}>
           <DataTable
             rows={inbound}
             columns={[
@@ -7011,14 +7158,10 @@ function Reports({
                 "Qty",
                 (row) => `${qtyText(row.qty)} ${row.unit || ""}`,
               ],
-              [
-                "unitCostRp",
-                "HPP",
-                (row) => money.format(Number(row.unitCostRp || 0)),
-              ],
             ]}
           />
         </Panel>
+        </>
       ) : null}
 
       {reportTab === "OUTBOUND" ? (
