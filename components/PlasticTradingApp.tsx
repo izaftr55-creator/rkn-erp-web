@@ -7432,10 +7432,10 @@ function Reports({
 
     const drawHeader = (pageNo: number) => {
       doc.setFillColor(11, 19, 30);
-      doc.rect(0, 0, pageWidth, 27, "F");
+      doc.rect(0, 0, pageWidth, 24, "F");
 
       doc.setFillColor(176, 141, 87);
-      doc.rect(0, 27, pageWidth, 1.4, "F");
+      doc.rect(0, 24, pageWidth, 1.2, "F");
 
       if (logoData) {
         doc.addImage(
@@ -7443,8 +7443,8 @@ function Reports({
           "PNG",
           5,
           2.5,
-          22,
-          22,
+          19,
+          19,
           "RKN_LOGO",
           "FAST"
         );
@@ -7452,31 +7452,31 @@ function Reports({
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(13);
-      doc.text("RKN ERP", 31, 9.5);
+      doc.setFontSize(12);
+      doc.text("RKN ERP", 28, 8.5);
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.2);
       doc.setTextColor(212, 178, 125);
-      doc.text("PLASTIC TRADING DIVISION - RKN GROUP", 31, 16.5);
-      doc.text(`CUTOFF: ${auditSoDate} - 100% BALANCE`, 31, 22);
+      doc.text("PLASTIC TRADING DIVISION - RKN GROUP", 28, 14.5);
+      doc.text(`CUTOFF: ${auditSoDate} - 100% BALANCE`, 28, 20);
 
       doc.setTextColor(252, 237, 197);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(10.5);
+      doc.setFontSize(10);
       doc.text(title, pageWidth - 5, 8.5, { align: "right" });
 
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
+      doc.setFontSize(7.2);
       doc.setTextColor(197, 162, 106);
       doc.text(subtitle, pageWidth - 5, 14.5, { align: "right" });
 
-      doc.setFontSize(6.8);
+      doc.setFontSize(6.5);
       doc.setTextColor(148, 163, 184);
-      doc.text(`${generatedAt} WIB`, pageWidth - 5, 21, {
+      doc.text(`${generatedAt} WIB`, pageWidth - 5, 20, {
         align: "right",
       });
-      doc.setTextColor(30, 41, 59);
+      doc.setTextColor(44, 62, 80);
     };
 
     const drawFooter = (pageNo: number, totalPages: number) => {
@@ -7495,7 +7495,7 @@ function Reports({
     const table = (
       head: any,
       body: any[][],
-      startY = 32,
+      startY = 37,
       columnStyles?: any
     ) => {
       autoTable(doc, {
@@ -7505,7 +7505,7 @@ function Reports({
         margin: {
           left: 4,
           right: 4,
-          top: 32,
+          top: 37,
           bottom: 10,
         },
         head: Array.isArray(head[0]) ? head : [head],
@@ -7549,8 +7549,8 @@ function Reports({
       drawHeader(doc.getNumberOfPages());
       doc.setTextColor(44, 62, 80);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 31);
+      doc.setFontSize(8.5);
+      doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 32);
 
       table(
         ["Pilar Bisnis", "Indikator Utama", "Nilai / Realisasi", "Catatan Eksekutif & Status"],
@@ -7569,7 +7569,7 @@ function Reports({
               ]]
             : []),
         ],
-        33
+        37
       );
 
       if (topStockSellingValueRows.length) {
@@ -7577,8 +7577,8 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 31);
+        doc.setFontSize(8.5);
+        doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 32);
 
         table(
           ["Produk", "Warna", "Ukuran", "Stok Fisik", "Harga Jual Utama", "Nilai Jual Total"],
@@ -7613,7 +7613,7 @@ function Reports({
               },
             ],
           ],
-          33
+          37
         );
       }
 
@@ -7622,8 +7622,8 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 31);
+        doc.setFontSize(8.5);
+        doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 32);
 
         table(
           ["Tanggal", "No. Invoice", "Nama Pelanggan", "Total Tagihan", "Sudah Dibayar", "Sisa Piutang"],
@@ -7658,7 +7658,7 @@ function Reports({
               },
             ],
           ],
-          33
+          37
         );
       }
     }
@@ -7707,11 +7707,11 @@ function Reports({
           { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
-          { content: `OPENING (${auditOpeningDate.slice(5).split("-").reverse().join("/")})`, colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "BARANG MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "BARANG KELUAR", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: `SISTEM (${auditSoDate.slice(5).split("-").reverse().join("/")})`, colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "FISIK SO 28/08", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "OPENING", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "KELUAR", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "SALDO SISTEM", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+          { content: "FISIK SO", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
           { content: "SELISIH SO", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
           { content: "STATUS", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
@@ -7780,13 +7780,13 @@ function Reports({
       drawHeader(doc.getNumberOfPages());
       doc.setTextColor(44, 62, 80);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU - 100% BALANCE)`, 4, 31);
+      doc.setFontSize(8.5);
+      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU - 100% BALANCE)`, 4, 32);
 
       table(
         reconHead,
         bodyFor(allReconRows),
-        33
+        37
       );
 
       if (pdfOutsideSoRows.length > 0) {
@@ -7794,13 +7794,13 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(9);
-        doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 31);
+        doc.setFontSize(8.5);
+        doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 32);
 
         table(
           reconHead,
           bodyFor(pdfOutsideSoRows),
-          33
+          37
         );
       }
     }
@@ -7864,7 +7864,7 @@ function Reports({
             },
           ],
         ],
-        33
+        37
       );
     }
 
@@ -7931,7 +7931,7 @@ function Reports({
             },
           ],
         ],
-        33
+        37
       );
     }
 
@@ -7968,7 +7968,7 @@ function Reports({
             `${qtyText(row.qty)} ${row.unit || ""}`,
           ];
         }),
-        33
+        37
       );
     }
 
@@ -8035,7 +8035,7 @@ function Reports({
             },
           ],
         ],
-        33
+        37
       );
     }
 
@@ -8078,7 +8078,7 @@ function Reports({
             },
           ],
         ],
-        33
+        37
       );
     }
 
@@ -8111,7 +8111,7 @@ function Reports({
             : stockHuman(row, row.systemSnapshotQtyBase),
           stockHuman(row, row.liveOnHandQtyBase),
         ]),
-        33
+        37
       );
     }
 
