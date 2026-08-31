@@ -6973,6 +6973,11 @@ function Reports({
         head: Array.isArray(head[0]) ? head : [head],
         body,
         columnStyles: columnStyles || {},
+        didParseCell: (data: any) => {
+          if (columnStyles && columnStyles[data.column.index]?.halign) {
+            data.cell.styles.halign = columnStyles[data.column.index].halign;
+          }
+        },
         styles: {
           font: "helvetica",
           fontSize: 6.8,

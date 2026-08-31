@@ -577,8 +577,22 @@ if(view==='DASHBOARD'){
     const pBase=N(row.defaultSellPriceBaseRp);
     const pMid=N(row.defaultSellPriceMidRp);
     const pPack=N(row.defaultSellPricePackRp);
+    const effectivePack=pPack>0?pPack:pMid>0?pMid*(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerPack:0;
+    const effectiveMid=pMid>0?pMid:pPack>0?pPack/(unitsPerPack/unitsPerMid):pBase>0?pBase*unitsPerMid:0;
     const effectiveBase=pBase>0?pBase:pMid>0?pMid/unitsPerMid:pPack>0?pPack/unitsPerPack:N(row.avgCostRp);
-    stockValue+=Math.round(qty*effectiveBase);
+
+    let total=Math.max(0,qty);
+    const pack=Math.floor((total+1e-9)/unitsPerPack);
+    total-=pack*unitsPerPack;
+    const mid=unitsPerMid>1?Math.floor((total+1e-9)/unitsPerMid):0;
+    total-=mid*unitsPerMid;
+    const base=Math.max(0,total);
+
+    stockValue+=Math.round(
+      pack*(effectivePack>0?effectivePack:effectiveBase*unitsPerPack)+
+      mid*(effectiveMid>0?effectiveMid:effectiveBase*unitsPerMid)+
+      base*effectiveBase
+    );
   }
   const skuCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1`);
   const status=sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]?.status??'OPEN';
