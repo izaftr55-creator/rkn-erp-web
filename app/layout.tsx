@@ -2,7 +2,7 @@ import "./styles.css";
 import type { Metadata, Viewport } from "next";
 
 export const viewport: Viewport = {
-  themeColor: "#050811",
+  themeColor: "#0b131e",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -29,6 +29,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="id">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
         <link rel="icon" type="image/png" sizes="192x192" href="/rkn-logo.png" />
         <link rel="icon" type="image/png" sizes="64x64" href="/rkn-logo.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/rkn-logo.png" />
@@ -42,3 +48,4 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
+

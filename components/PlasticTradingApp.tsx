@@ -2244,9 +2244,9 @@ function Dashboard({ data }: { data: Row }) {
                 style={{
                   padding: "4px 10px",
                   borderRadius: "7px",
-                  border: dailyFilter === fKey ? "1px solid #38bdf8" : "1px solid rgba(56, 189, 248, 0.2)",
-                  background: dailyFilter === fKey ? "rgba(56, 189, 248, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                  color: dailyFilter === fKey ? "#38bdf8" : "#94a3b8",
+                  border: dailyFilter === fKey ? "1px solid #b08d57" : "1px solid rgba(176, 141, 87, 0.2)",
+                  background: dailyFilter === fKey ? "rgba(176, 141, 87, 0.2)" : "rgba(15, 23, 42, 0.6)",
+                  color: dailyFilter === fKey ? "#d4b27d" : "#94a3b8",
                   fontSize: "10px",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -4212,9 +4212,9 @@ function Outbound({
                     type="button"
                     className={styles.inlineEditButton}
                     style={{
-                      background: "rgba(56, 189, 248, 0.12)",
-                      color: "#38bdf8",
-                      borderColor: "rgba(56, 189, 248, 0.3)",
+                      background: "rgba(176, 141, 87, 0.15)",
+                      color: "#d4b27d",
+                      borderColor: "rgba(176, 141, 87, 0.35)",
                     }}
                     onClick={() => setViewInvoice(row)}
                   >
@@ -4322,7 +4322,7 @@ function Outbound({
                   >
                     Pelanggan
                   </span>
-                  <strong style={{ color: "#38bdf8", fontSize: 14 }}>
+                  <strong style={{ color: "#d4b27d", fontSize: 14 }}>
                     {viewInvoice.customerName || "-"}
                   </strong>
                 </div>
@@ -4380,7 +4380,7 @@ function Outbound({
                           </td>
                           <td>{item.color || "-"}</td>
                           <td>{item.size || "-"}</td>
-                          <td style={{ color: "#38bdf8", fontWeight: 700 }}>
+                          <td style={{ color: "#d4b27d", fontWeight: 700 }}>
                             {formatBallDusQty(
                               item,
                               item.qtyBase || item.qtyInput
@@ -4502,7 +4502,7 @@ function Outbound({
                     }}
                   >
                     <span>Total Transaksi:</span>
-                    <span style={{ color: "#38bdf8" }}>
+                    <span style={{ color: "#d4b27d" }}>
                       {money.format(Number(viewInvoice.grandTotalRp || 0))}
                     </span>
                   </div>
@@ -4640,7 +4640,7 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                       fontWeight: 600,
                     }}
                   >
-                    ⚠️ Menipis
+                    Menipis
                   </span>
                 );
               }
@@ -6686,7 +6686,7 @@ function Reconciliation({
               }
               onClick={() => setReconMode("POSTED_BALANCE")}
             >
-              ✓ Posisi Resmi
+              Posisi Resmi (SO)
             </button>
             <button
               type="button"
@@ -6697,7 +6697,7 @@ function Reconciliation({
               }
               onClick={() => setReconMode("AUDIT_PRE_SO")}
             >
-              📋 Audit Pra-SO
+              Audit Pra-SO
             </button>
           </div>
         ) : null}
@@ -6820,7 +6820,7 @@ function Reconciliation({
           </div>
           <div>
             <span>DASAR REKONSILIASI</span>
-            <strong style={{ color: "#38bdf8" }}>SO FISIK 28/08</strong>
+            <strong style={{ color: "#d4b27d" }}>SO FISIK 28/08</strong>
           </div>
           <div>
             <span>ANOMALI TRANSAKSI</span>
@@ -6828,7 +6828,7 @@ function Reconciliation({
           </div>
           <div>
             <span>STATUS DOKUMEN</span>
-            <strong style={{ color: "#38bdf8" }}>TERKUNCI RESMI</strong>
+            <strong style={{ color: "#d4b27d" }}>TERKUNCI RESMI</strong>
           </div>
         </section>
 
@@ -8920,7 +8920,7 @@ function AccessManagement({
                           href={`https://wa.me/${String(r.whatsapp).replace(/\D/g, "")}`}
                           target="_blank"
                           rel="noreferrer"
-                          style={{ fontSize: 11, color: "#38bdf8", textDecoration: "none" }}
+                          style={{ fontSize: 11, color: "#d4b27d", textDecoration: "none" }}
                         >
                           WA: {r.whatsapp}
                         </a>

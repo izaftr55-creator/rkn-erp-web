@@ -422,10 +422,10 @@ export default function RknLoginScreen() {
             href="/signup"
             style={{
               fontWeight: 700,
-              color: "#38bdf8",
+              color: "#d4b27d",
               textDecoration: "none",
               letterSpacing: "0.04em",
-              borderBottom: "1px solid rgba(56, 189, 248, 0.4)",
+              borderBottom: "1px solid rgba(176, 141, 87, 0.4)",
               paddingBottom: 1,
             }}
           >

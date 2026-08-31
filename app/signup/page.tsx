@@ -320,7 +320,7 @@ function SignupForm() {
           href="/"
           style={{
             fontWeight: 700,
-            color: "#5b8cff",
+            color: "#d4b27d",
             textDecoration: "none",
             letterSpacing: "0.04em",
           }}
