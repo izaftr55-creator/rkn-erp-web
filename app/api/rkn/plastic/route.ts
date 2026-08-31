@@ -1,3 +1,4 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getErpCoreRpcStub } from "@/lib/erpCoreRpc";
@@ -29,13 +30,133 @@ export async function GET(request: Request) {
       { status: 401 }
     );
   const u = new URL(request.url);
+  const view = (u.searchParams.get("view") || "DASHBOARD").toUpperCase();
+  const period = u.searchParams.get("period") || undefined;
+
+  if (view === "ACCESS" || view === "USERS") {
+    try {
+      const { env } = getCloudflareContext();
+      const db = (env as any).AUTH_DB;
+      const directory = await getErpCoreRpcStub().getAdminAccessDirectory(s.user.id);
+
+      let pendingRequests: any[] = [];
+      let historyRequests: any[] = [];
+      let users: any[] = [];
+
+      if (db) {
+        const pendingResult = await db
+          .prepare(`
+            SELECT
+              id,
+              user_id as userId,
+              full_name as fullName,
+              email,
+              username,
+              whatsapp,
+              requested_role as requestedRole,
+              status,
+              submitted_at as submittedAt
+            FROM rkn_signup_request
+            WHERE status = 'PENDING'
+            ORDER BY submitted_at DESC
+          `)
+          .all();
+        pendingRequests = Array.isArray(pendingResult?.results)
+          ? pendingResult.results
+          : [];
+
+        const historyResult = await db
+          .prepare(`
+            SELECT
+              id,
+              user_id as userId,
+              full_name as fullName,
+              email,
+              username,
+              whatsapp,
+              requested_role as requestedRole,
+              status,
+              submitted_at as submittedAt,
+              reviewed_at as reviewedAt,
+              review_note as reviewNote
+            FROM rkn_signup_request
+            WHERE status IN ('APPROVED', 'REJECTED')
+            ORDER BY reviewed_at DESC, submitted_at DESC
+            LIMIT 50
+          `)
+          .all();
+        historyRequests = Array.isArray(historyResult?.results)
+          ? historyResult.results
+          : [];
+
+        const authUsersResult = await db
+          .prepare(`
+            SELECT
+              id as userId,
+              name as fullName,
+              email,
+              username,
+              createdAt
+            FROM "user"
+            ORDER BY name, email
+          `)
+          .all();
+        const rawUsers = Array.isArray(authUsersResult?.results)
+          ? authUsersResult.results
+          : [];
+
+        const profileMap = new Map<string, any>();
+        if (Array.isArray(directory?.users)) {
+          for (const userItem of directory.users) {
+            profileMap.set(String(userItem.userId), userItem);
+          }
+        }
+
+        users = rawUsers.map((userItem: any) => {
+          const prof = profileMap.get(String(userItem.userId));
+          return {
+            userId: userItem.userId,
+            fullName: prof?.fullName || userItem.fullName || "User",
+            email: userItem.email,
+            username: userItem.username,
+            roleCode: prof?.primaryRoleCode || "STAFF",
+            active: prof?.active !== undefined ? prof.active : 1,
+            accessLevel: prof?.accessLevel || "VIEW",
+            createdAt: userItem.createdAt,
+          };
+        });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        data: {
+          view: "ACCESS",
+          periodKey: period || "2026-08",
+          actor: directory?.actor || { id: s.user.id, name: s.user.name },
+          pendingRequests,
+          historyRequests,
+          users,
+        },
+      });
+    } catch (e) {
+      console.error("ACCESS_VIEW_ERROR:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "ACCESS_READ_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
     return NextResponse.json({
       ok: true,
       data: await getErpCoreRpcStub().getPlasticTradingView(
         s.user.id,
-        u.searchParams.get("view") || "DASHBOARD",
-        u.searchParams.get("period") || undefined
+        view,
+        period
       ),
     });
   } catch (e) {
@@ -65,24 +186,187 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  const cmd = String(b.command ?? "");
+  const payload: any =
+    b.payload && typeof b.payload === "object" ? b.payload : {};
+
+  if (cmd === "APPROVE_SIGNUP_USER") {
+    try {
+      const { env } = getCloudflareContext();
+      const db = (env as any).AUTH_DB;
+      const requestId = String(payload.requestId ?? "").trim();
+      const roleCode = String(payload.roleCode ?? "ADMIN")
+        .trim()
+        .toUpperCase();
+      const accessLevel = String(
+        payload.accessLevel ??
+          (roleCode === "OWNER"
+            ? "OWNER"
+            : roleCode === "ADMIN"
+            ? "MANAGE"
+            : "VIEW")
+      )
+        .trim()
+        .toUpperCase();
+      const reviewNote = String(
+        payload.reviewNote ?? "Disetujui dari Panel Akses Plastic Trading"
+      ).slice(0, 300);
+
+      const signup = await db
+        .prepare(`
+          SELECT id, user_id, full_name, email, status
+          FROM rkn_signup_request
+          WHERE id = ?
+          LIMIT 1
+        `)
+        .bind(requestId)
+        .first();
+
+      if (!signup || String(signup.status ?? "") !== "PENDING") {
+        return NextResponse.json(
+          { ok: false, error: "SIGNUP_REQUEST_NOT_FOUND_OR_PROCESSED" },
+          { status: 400 }
+        );
+      }
+
+      await getErpCoreRpcStub().provisionPendingErpUserAccess(
+        s.user.id,
+        String(signup.user_id),
+        String(signup.full_name),
+        roleCode,
+        "BU-PLASTIC",
+        accessLevel as any
+      );
+
+      await db
+        .prepare(`
+          UPDATE rkn_signup_request
+          SET
+            status = 'APPROVED',
+            reviewed_by_user_id = ?,
+            reviewed_at = CURRENT_TIMESTAMP,
+            review_note = ?
+          WHERE
+            id = ?
+            AND status = 'PENDING'
+        `)
+        .bind(s.user.id, reviewNote, requestId)
+        .run();
+
+      if (signup.email) {
+        sendAccountApprovedEmail({
+          to: String(signup.email),
+          fullName: String(signup.full_name || "User"),
+          roleCode,
+          accessLevel,
+        }).catch((err) =>
+          console.error("ZOHO_APPROVE_USER_EMAIL_ERR:", err)
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        data: { approved: true, userId: signup.user_id },
+      });
+    } catch (e) {
+      console.error("APPROVE_USER_ERROR:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "APPROVE_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (cmd === "REJECT_SIGNUP_USER") {
+    try {
+      const { env } = getCloudflareContext();
+      const db = (env as any).AUTH_DB;
+      const requestId = String(payload.requestId ?? "").trim();
+      const reason = String(payload.reason ?? "Ditolak").slice(0, 300);
+
+      await db
+        .prepare(`
+          UPDATE rkn_signup_request
+          SET
+            status = 'REJECTED',
+            reviewed_by_user_id = ?,
+            reviewed_at = CURRENT_TIMESTAMP,
+            review_note = ?
+          WHERE
+            id = ?
+            AND status = 'PENDING'
+        `)
+        .bind(s.user.id, reason, requestId)
+        .run();
+
+      return NextResponse.json({
+        ok: true,
+        data: { rejected: true },
+      });
+    } catch (e) {
+      console.error("REJECT_USER_ERROR:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "REJECT_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (cmd === "UPDATE_USER_ROLE") {
+    try {
+      const targetUserId = String(payload.targetUserId ?? "").trim();
+      const roleCode = String(payload.roleCode ?? "ADMIN")
+        .trim()
+        .toUpperCase();
+      const accessLevel = String(
+        payload.accessLevel ??
+          (roleCode === "OWNER"
+            ? "OWNER"
+            : roleCode === "ADMIN"
+            ? "MANAGE"
+            : "VIEW")
+      )
+        .trim()
+        .toUpperCase();
+
+      await getErpCoreRpcStub().provisionPendingErpUserAccess(
+        s.user.id,
+        targetUserId,
+        "",
+        roleCode,
+        "BU-PLASTIC",
+        accessLevel as any
+      );
+
+      return NextResponse.json({
+        ok: true,
+        data: { updated: true },
+      });
+    } catch (e) {
+      console.error("UPDATE_USER_ROLE_ERROR:", e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e instanceof Error ? e.message : "UPDATE_ROLE_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
-    const cmd = String(b.command ?? "");
     const res = await getErpCoreRpcStub().mutatePlasticTrading(
       s.user.id,
       cmd,
       b.payload
     );
-
-    if (cmd === "APPROVE_SIGNUP_USER" && (res as any)?.email) {
-      sendAccountApprovedEmail({
-        to: String((res as any).email),
-        fullName: String((res as any).fullName || "User"),
-        roleCode: String((res as any).roleCode || "ADMIN"),
-        accessLevel: String((res as any).accessLevel || "OPERATE"),
-      }).catch((err) =>
-        console.error("ZOHO_PLASTIC_APPROVE_EMAIL_ERR:", err)
-      );
-    }
 
     return NextResponse.json({ ok: true, data: res });
   } catch (e) {
