@@ -6201,9 +6201,48 @@
 .shell input[type="datetime-local"],
 .shell input[type="month"],
 .shell input[type="time"] {
+  min-height: 42px !important;
+  height: 42px !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+  font-family: var(--font-jetbrains-mono), "SF Mono", monospace !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: normal !important;
+  text-transform: uppercase !important;
   background-color: var(--rkn-bg-1) !important;
   color: var(--rkn-text) !important;
   color-scheme: dark !important;
+}
+
+.shell input[type="month"]::-webkit-datetime-edit,
+.shell input[type="date"]::-webkit-datetime-edit {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  color: var(--rkn-text) !important;
+  -webkit-text-fill-color: var(--rkn-text) !important;
+}
+
+.shell input[type="month"]::-webkit-datetime-edit-fields-wrapper,
+.shell input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.shell input[type="month"]::-webkit-datetime-edit-text,
+.shell input[type="month"]::-webkit-datetime-edit-month-field,
+.shell input[type="month"]::-webkit-datetime-edit-year-field {
+  padding: 0 2px !important;
+  color: var(--rkn-text) !important;
+  -webkit-text-fill-color: var(--rkn-text) !important;
 }
 
 .shell input[type="date"]::-webkit-calendar-picker-indicator,
@@ -7013,23 +7052,70 @@
   }
 
   .main {
-    padding: 12px 12px 30px !important;
+    padding: 12px 12px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
     width: 100% !important;
     overflow-x: hidden !important;
+    min-height: 100dvh !important;
   }
 
   .topbar {
     padding: 14px 16px !important;
     min-height: auto !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
+    display: grid !important;
+    grid-template-columns: auto 1fr !important;
+    align-items: center !important;
+    gap: 12px 14px !important;
+  }
+
+  .mobileMenuButton {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .topbarTitle {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    text-align: right !important;
+  }
+
+  .topbarTitle h1 {
+    font-size: 18px !important;
+    margin: 2px 0 0 !important;
+  }
+
+  .topbarTitle p {
+    display: none !important;
   }
 
   .topbarTools {
-    width: 100% !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
     justify-content: space-between !important;
-    flex-wrap: wrap !important;
+    gap: 12px !important;
+    width: 100% !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(176, 141, 87, 0.15) !important;
+  }
+
+  .topbarTools .field {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .topbarTools .field input {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .periodOpen,
+  .periodClosed {
+    flex: 0 0 auto !important;
+    height: 42px !important;
+    padding: 0 16px !important;
   }
 
   .metricGrid {
@@ -7135,15 +7221,15 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
     background: rgba(11, 18, 28, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid rgba(176, 141, 87, 0.25);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-around;
-    padding: 0 8px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
     z-index: 990;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
   }
@@ -7154,24 +7240,24 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     background: none;
     border: none;
-    padding: 6px 12px;
+    padding: 4px 10px;
     border-radius: 10px;
     cursor: pointer;
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     color: #94a3b8;
     transition: all 0.2s ease;
-    min-width: 54px;
-    min-height: 48px;
+    min-width: 50px;
+    min-height: 44px;
   }
 
   .mobileBottomItem svg,
   .mobileBottomActive svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     stroke: currentColor;
   }
 
@@ -7186,7 +7272,7 @@
   }
 
   .main {
-    padding-bottom: 84px !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
