@@ -404,20 +404,29 @@ export default function RknLoginScreen() {
 
         <div
           style={{
-            marginTop: 18,
+            marginTop: 20,
             textAlign: "center",
             fontSize: 13,
+            color: "#94a3b8",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
           }}
         >
           <span>
-            Belum punya akun?{" "}
+            Belum punya akun?
           </span>
 
           <Link
             href="/signup"
             style={{
-              fontWeight: 800,
+              fontWeight: 700,
+              color: "#38bdf8",
               textDecoration: "none",
+              letterSpacing: "0.04em",
+              borderBottom: "1px solid rgba(56, 189, 248, 0.4)",
+              paddingBottom: 1,
             }}
           >
             BUAT AKUN
