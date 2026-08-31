@@ -2029,16 +2029,28 @@ function Dashboard({ data }: { data: Row }) {
           )} SKU aktif`}
         />
         <MetricCard
-          label="Sisa Piutang"
-          value={money.format(Number(metrics.receivableRp || 0))}
-        />
-        <MetricCard
           label="Total Penjualan"
           value={money.format(Number(metrics.salesRp || 0))}
+          note="Omset periode"
         />
         <MetricCard
-          label="Laba Kotor"
-          value={money.format(Number(metrics.grossProfitRp || 0))}
+          label="Kas Masuk (Lunas)"
+          value={money.format(
+            Number(
+              metrics.paidRp ??
+                Math.max(
+                  0,
+                  Number(metrics.salesRp || 0) -
+                    Number(metrics.receivableRp || 0)
+                )
+            )
+          )}
+          note="Pembayaran diterima"
+        />
+        <MetricCard
+          label="Sisa Piutang"
+          value={money.format(Number(metrics.receivableRp || 0))}
+          note="Tagihan belum lunas"
         />
       </section>
 

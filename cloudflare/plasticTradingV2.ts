@@ -703,6 +703,8 @@ if(view==='DASHBOARD'){
       stockQty,
       stockValueRp:stockValue,
       salesRp:sales,
+      paidRp:Math.max(0, sales-rec),
+      cashInflowRp:Math.max(0, sales-rec),
       cogsRp:cogs,
       grossProfitRp:sales-cogs,
       receivableRp:rec,
