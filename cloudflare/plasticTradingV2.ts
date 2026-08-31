@@ -260,14 +260,14 @@ function authoritativeLiveStockRows(sql:Sql){
             COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
             COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp,
             COALESCE((
-              SELECT i.supplier_name
+              SELECT NULLIF(i.supplier_name,'')
               FROM plastic_inbound i
               JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
               WHERE i.business_unit_id='BU-PLASTIC'
                 AND l.variant_id=v.variant_id
               ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
               LIMIT 1
-            ),'') lastSupplierName,
+            ),'KMS PACKAGING') lastSupplierName,
             COALESCE(b.qty_base,0) balanceQtyBase,
             COALESCE(b.avg_cost_rp,0) avgCostRp
      FROM plastic_product_variant v

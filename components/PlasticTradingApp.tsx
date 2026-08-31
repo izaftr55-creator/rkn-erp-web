@@ -7002,7 +7002,7 @@ function Reports({
 
       doc.setFontSize(6.8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`DICETAK: ${generatedAt} WIB - HALAMAN ${pageNo}`, pageWidth - 5, 21, {
+      doc.text(`${generatedAt} WIB`, pageWidth - 5, 21, {
         align: "right",
       });
       doc.setTextColor(30, 41, 59);
@@ -7119,7 +7119,27 @@ function Reports({
               primarySellPriceText(row),
               sellingValueText(row),
             ]),
-            ["", "", "", "", "TOTAL NILAI JUAL", money.format(stockSellingValueTotalRp)],
+            [
+              {
+                content: "TOTAL NILAI JUAL",
+                colSpan: 5,
+                styles: {
+                  halign: "right",
+                  fontStyle: "bold",
+                  fillColor: [241, 245, 249],
+                  textColor: [30, 41, 59],
+                },
+              },
+              {
+                content: money.format(stockSellingValueTotalRp),
+                styles: {
+                  halign: "center",
+                  fontStyle: "bold",
+                  fillColor: [241, 245, 249],
+                  textColor: [30, 41, 59],
+                },
+              },
+            ],
           ],
           33
         );
@@ -7143,7 +7163,27 @@ function Reports({
               money.format(Number(row.paidRp || 0)),
               money.format(Number(row.outstandingRp || 0)),
             ]),
-            ["", "", "TOTAL", "", "", money.format(receivableTotalRp)],
+            [
+              {
+                content: "TOTAL PIUTANG",
+                colSpan: 5,
+                styles: {
+                  halign: "right",
+                  fontStyle: "bold",
+                  fillColor: [241, 245, 249],
+                  textColor: [30, 41, 59],
+                },
+              },
+              {
+                content: money.format(receivableTotalRp),
+                styles: {
+                  halign: "center",
+                  fontStyle: "bold",
+                  fillColor: [241, 245, 249],
+                  textColor: [30, 41, 59],
+                },
+              },
+            ],
           ],
           33
         );
@@ -7328,7 +7368,27 @@ function Reports({
               sellingValueText(row),
             ];
           }),
-          ["", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
+          [
+            {
+              content: "TOTAL NILAI JUAL",
+              colSpan: 6,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+            {
+              content: money.format(pdfStockTotal),
+              styles: {
+                halign: "center",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+          ],
         ],
         33
       );
@@ -7364,7 +7424,7 @@ function Reports({
           ...pdfStockValueRows.map((row: Row) => {
             const sq = splitQtyPdf(row, row.qtyBase);
             return [
-              row.lastSupplierName || "BELUM ADA",
+              row.lastSupplierName || "KMS PACKAGING",
               row.productName || row.category || "-",
               row.color || "-",
               row.size || "-",
@@ -7375,7 +7435,27 @@ function Reports({
               sellingValueText(row),
             ];
           }),
-          ["", "", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockValueTotal)],
+          [
+            {
+              content: "TOTAL NILAI JUAL",
+              colSpan: 8,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+            {
+              content: money.format(pdfStockValueTotal),
+              styles: {
+                halign: "center",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+          ],
         ],
         33
       );
@@ -7459,7 +7539,27 @@ function Reports({
               money.format(Number(row.totalRp || 0)),
             ];
           }),
-          ["", "", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
+          [
+            {
+              content: "TOTAL PENJUALAN",
+              colSpan: 8,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+            {
+              content: money.format(pdfOutboundTotal),
+              styles: {
+                halign: "center",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+          ],
         ],
         33
       );
@@ -7482,7 +7582,27 @@ function Reports({
             money.format(Number(row.paidRp || 0)),
             money.format(Number(row.outstandingRp || 0)),
           ]),
-          ["", "", "TOTAL PIUTANG", "", "", money.format(pdfReceivableTotal)],
+          [
+            {
+              content: "TOTAL PIUTANG",
+              colSpan: 5,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+            {
+              content: money.format(pdfReceivableTotal),
+              styles: {
+                halign: "center",
+                fontStyle: "bold",
+                fillColor: [241, 245, 249],
+                textColor: [30, 41, 59],
+              },
+            },
+          ],
         ],
         33
       );
@@ -7845,7 +7965,7 @@ function Reports({
             <DataTable
               rows={stockSellingValueRows}
               columns={[
-                ["lastSupplierName", "Supplier", (row) => row.lastSupplierName || "BELUM ADA"],
+                ["lastSupplierName", "Supplier", (row) => row.lastSupplierName || "KMS PACKAGING"],
                 ["productName", "Produk"],
                 ["color", "Warna"],
                 ["size", "Ukuran"],
