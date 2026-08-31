@@ -1497,6 +1497,15 @@ if(view==='REPORTS'){
        v.default_sell_price_base_rp defaultSellPriceBaseRp,
        v.default_sell_price_mid_rp defaultSellPriceMidRp,
        v.default_sell_price_pack_rp defaultSellPricePackRp,
+       COALESCE((
+         SELECT i.supplier_name
+         FROM plastic_inbound i
+         JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
+         WHERE i.business_unit_id='BU-PLASTIC'
+           AND l.variant_id=v.variant_id
+         ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
+         LIMIT 1
+       ),'') lastSupplierName,
        COALESCE(b.qty_base,0) qtyBase,
        COALESCE(b.avg_cost_rp,0) avgCostRp,
        ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp
@@ -1639,13 +1648,27 @@ if(view==='REPORTS'){
        v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
        COALESCE(v.units_per_mid,1) unitsPerMid,
        COALESCE(v.units_per_pack,1) unitsPerPack,
+       v.default_sell_price_base_rp defaultSellPriceBaseRp,
+       v.default_sell_price_mid_rp defaultSellPriceMidRp,
+       v.default_sell_price_pack_rp defaultSellPricePackRp,
+       COALESCE((
+         SELECT i.supplier_name
+         FROM plastic_inbound i
+         JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
+         WHERE i.business_unit_id='BU-PLASTIC'
+           AND l.variant_id=v.variant_id
+           AND i.date_key<=?
+         ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
+         LIMIT 1
+       ),'') lastSupplierName,
        COALESCE(b.qty_base,0) liveOnHandQtyBase
      FROM plastic_product_variant v
      LEFT JOIN plastic_inventory_balance b
        ON b.business_unit_id=v.business_unit_id
       AND b.variant_id=v.variant_id
      WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
-     ORDER BY v.category,v.product_name,UPPER(v.color),UPPER(v.size)`
+     ORDER BY v.category,v.product_name,UPPER(v.color),UPPER(v.size)`,
+    auditSoDate
   ).toArray();
 
   const auditMovements=sql.exec(

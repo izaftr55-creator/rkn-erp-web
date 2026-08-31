@@ -102,9 +102,22 @@ function run() {
   engine.initPlasticTradingV2(storage);
 
   const variantId = "PL-POLY-KUNING-17X30";
+  const valuationVariantId = "PL-POLY-KUNING-15X25";
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
     dateKey: "2026-08-26",
     lines: [{ variantId, qty: 2, unit: "BALL", unitCostRp: 1175000 }],
+  });
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
+    dateKey: "2026-08-26",
+    supplierName: "Supplier Nilai Stok",
+    lines: [
+      {
+        variantId: valuationVariantId,
+        qty: 5,
+        unit: "ROLL",
+        unitCostRp: 18000,
+      },
+    ],
   });
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_SALE", {
     dateKey: "2026-08-27",
@@ -133,7 +146,7 @@ function run() {
     soId: firstSo.soId,
     lines: allVariantIds.map((row) => ({
       variantId: row.variantId,
-      physicalQtyBase: 0,
+      physicalQtyBase: row.variantId === valuationVariantId ? 5 : 0,
       note: "Regression zero count",
     })),
   });
@@ -188,6 +201,60 @@ function run() {
     "-50 history + 50 SO adjustment must cache as zero, never false-positive 50"
   );
 
+  const postedReport = engine.getPlasticTradingViewV2(
+    storage,
+    "test-owner",
+    "REPORTS",
+    "2026-08"
+  );
+  const postedAuditLine = postedReport.auditLedger.find(
+    (row) => row.variantId === variantId
+  );
+  assert.equal(postedReport.auditSo.status, "POSTED");
+  assert.equal(postedAuditLine.systemLedgerQtyBase, -50);
+  assert.equal(postedAuditLine.physicalQtyBase, 0);
+  assert.equal(postedAuditLine.excludedSoAdjustmentQtyBase, 50);
+
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
+    dateKey: "2026-08-30",
+    supplierName: "Supplier Setelah Cutoff",
+    lines: [
+      {
+        variantId: valuationVariantId,
+        qty: 2,
+        unit: "ROLL",
+        unitCostRp: 18000,
+      },
+    ],
+  });
+  const valuationReport = engine.getPlasticTradingViewV2(
+    storage,
+    "test-owner",
+    "REPORTS",
+    "2026-08"
+  );
+  const valuationRow = valuationReport.stock.find(
+    (row) => row.variantId === valuationVariantId
+  );
+  const checkpointValuationRow = valuationReport.auditLedger.find(
+    (row) => row.variantId === valuationVariantId
+  );
+  assert.equal(valuationRow.lastSupplierName, "Supplier Setelah Cutoff");
+  assert.equal(valuationRow.qtyBase, 7);
+  assert.equal(valuationRow.avgCostRp, 18000);
+  assert.equal(valuationRow.stockValueRp, 126000);
+  assert.equal(valuationRow.defaultSellPriceBaseRp, 18500);
+  assert.equal(valuationRow.defaultSellPricePackRp, 1850000);
+  assert.equal(checkpointValuationRow.lastSupplierName, "Supplier Nilai Stok");
+  assert.equal(checkpointValuationRow.physicalQtyBase, 5);
+  assert.equal(checkpointValuationRow.liveOnHandQtyBase, 7);
+  assert.equal(checkpointValuationRow.defaultSellPriceBaseRp, 18500);
+  assert.equal(
+    checkpointValuationRow.physicalQtyBase *
+      checkpointValuationRow.defaultSellPriceBaseRp,
+    92500
+  );
+
   const nextSo = engine.mutatePlasticTradingV2(
     storage,
     "test-owner",
@@ -204,6 +271,8 @@ function run() {
   console.log("PASS authoritative SO snapshot uses official documents");
   console.log("PASS existing REVIEW session overlays stale stored snapshot");
   console.log("PASS negative history is visible and posts to zero without false stock");
+  console.log("PASS posted report retains pre-adjustment variance and official settlement");
+  console.log("PASS supplier stock report cuts off physical quantity and supplier at 28/08");
   console.log("PASS next SO starts from latest posted physical checkpoint");
 }
 

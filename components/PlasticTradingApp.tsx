@@ -5121,7 +5121,7 @@ function Opname({
           {active.status === "REVIEW" ? (
             <Panel
               title="Review SO"
-              subtitle="System authoritative dihitung dari checkpoint resmi sampai tanggal SO. Bandingkan dengan fisik sebelum posting adjustment."
+              subtitle="Stok sistem dibandingkan dengan stok fisik."
             >
               <div className={styles.soReviewSummary}>
                 <div>
@@ -5163,15 +5163,14 @@ function Opname({
               <div className={styles.soAuthoritativeNotice}>
                 <strong>
                   {authoritativeSystemReady
-                    ? "SYSTEM AUTHORITATIVE SIAP"
-                    : "SYSTEM AUTHORITATIVE BELUM SIAP"}
+                    ? "SISTEM SIAP"
+                    : "SISTEM BELUM SIAP"}
                 </strong>
                 <span>
-                  Opening/checkpoint + IN resmi − OUT non-VOID + koreksi
-                  manual sah sampai {formatSoDate(active.dateKey)}.
+                  Data resmi sampai {formatSoDate(active.dateKey)}.
                   {systemSnapshotDriftCount > 0
-                    ? ` ${systemSnapshotDriftCount} snapshot lama sudah diganti untuk review ini.`
-                    : " Snapshot SO sudah konsisten."}
+                    ? ` ${systemSnapshotDriftCount} snapshot diperbarui.`
+                    : " Snapshot sudah sesuai."}
                 </span>
               </div>
 
@@ -5188,7 +5187,7 @@ function Opname({
                   ],
                   [
                     "systemQtyBase",
-                    "System Authoritative",
+                    "Stok Sistem",
                     (row) =>
                       qtyText(
                         row,
@@ -5323,10 +5322,14 @@ function Reconciliation({
 }) {
   /* RKN_PLASTIC_RECON_BALL_FIRST_UI_V2R17 */
   /* RKN_PLASTIC_RECON_ROOT_CAUSE_UI_V2R18 */
+  /* RKN_PLASTIC_RECON_SETTLEMENT_UI_V2R22 */
   const summary = data.summary || {};
   const rows = Array.isArray(data.rows)
     ? data.rows
     : [];
+  const soSession = data.soSession || {};
+  const soStatus = String(soSession.status || "").toUpperCase();
+  const soPosted = soStatus === "POSTED";
 
   const polyRows = rows.filter(
     (row: Row) =>
@@ -5337,6 +5340,20 @@ function Reconciliation({
     (row: Row) =>
       String(row.category || "") === "THERMAL"
   );
+
+  const thermalLess = thermalRows.filter(
+    (row: Row) =>
+      row.varianceQtyBase !== null &&
+      row.varianceQtyBase !== undefined &&
+      Number(row.varianceQtyBase) < -0.000001
+  ).length;
+
+  const thermalMore = thermalRows.filter(
+    (row: Row) =>
+      row.varianceQtyBase !== null &&
+      row.varianceQtyBase !== undefined &&
+      Number(row.varianceQtyBase) > 0.000001
+  ).length;
 
   const cleanQty = (value: number) =>
     Math.abs(value) < 0.000001
@@ -5584,7 +5601,7 @@ function Reconciliation({
           }}
         >
           <strong>
-            REKONSILIASI AUTHORITATIVE 28/08/2026
+            REKONSILIASI 28/08/2026
           </strong>
           <span
             style={{
@@ -5592,9 +5609,7 @@ function Reconciliation({
               opacity: 0.7,
             }}
           >
-            AUTO SYNC saat halaman dibuka · Opening efektif
-            28/07 + IN resmi − OUT non-VOID + koreksi manual
-            sah.
+            Opening 28/07 + IN resmi − OUT sah.
           </span>
           <span
             style={{
@@ -5611,110 +5626,125 @@ function Reconciliation({
           className={styles.secondaryButton}
           onClick={syncNow}
         >
-          UPDATE / SYNC DATA
+          SYNC DATA
         </button>
       </div>
 
-      <section className={styles.metricGrid}>
-        <MetricCard
-          label="Polymailer System"
-          value={totalPolyText(
-            summary.polySystemBallCount,
-            summary.polySystemLooseRollCount
-          )}
-          note="BALL diprioritaskan · sisa tetap ROLL"
-        />
+      <section className={styles.reconSummaryGrid}>
+        <article
+          className={`${styles.reconStatusCard} ${
+            soPosted ? styles.reconStatusPosted : ""
+          }`}
+        >
+          <div className={styles.reconCardEyebrow}>Status SO</div>
+          <strong>{soPosted ? "POSTED" : humanizeDisplay(soStatus || "BELUM POSTED")}</strong>
+          <span>
+            {String(soSession.soNo || "SO 28/08/2026")}
+            {soPosted
+              ? " · adjustment selesai"
+              : " · belum selesai"}
+          </span>
 
-        <MetricCard
-          label="Polymailer Physical"
-          value={totalPolyText(
-            summary.polyPhysicalBallCount,
-            summary.polyPhysicalLooseRollCount
-          )}
-          note="SO fisik 28/08"
-        />
+          <div className={styles.reconStatusStats}>
+            <div>
+              <b>{Number(summary.balancedVariants || 0)}</b>
+              <small>Balance awal</small>
+            </div>
+            <div>
+              <b>{Number(summary.varianceVariants || 0)}</b>
+              <small>{soPosted ? "Disesuaikan" : "Selisih"}</small>
+            </div>
+            <div>
+              <b>{Number(summary.uncountedVariants || 0)}</b>
+              <small>Belum dihitung</small>
+            </div>
+          </div>
+        </article>
 
-        <MetricCard
-          label="Polymailer Variance"
-          value={`${Number(
-            summary.polyLessVariants || 0
-          )} KURANG / ${Number(
-            summary.polyMoreVariants || 0
-          )} LEBIH`}
-          note="dibaca per SKU, bukan total ROLL"
-        />
+        <article className={styles.reconCompareCard}>
+          <div className={styles.reconCompareHead}>
+            <strong>Polymailer</strong>
+            <span>Sebelum post</span>
+          </div>
+          <div className={styles.reconCompareValues}>
+            <div>
+              <span>System</span>
+              <strong>
+                {totalPolyText(
+                  summary.polySystemBallCount,
+                  summary.polySystemLooseRollCount
+                )}
+              </strong>
+            </div>
+            <div>
+              <span>Fisik</span>
+              <strong>
+                {totalPolyText(
+                  summary.polyPhysicalBallCount,
+                  summary.polyPhysicalLooseRollCount
+                )}
+              </strong>
+            </div>
+          </div>
+          <small>
+            {Number(summary.polyLessVariants || 0)} kurang · {Number(
+              summary.polyMoreVariants || 0
+            )} lebih
+            {soPosted ? " · sudah diposting" : ""}
+          </small>
+        </article>
 
-        <MetricCard
-          label="Thermal System"
-          value={`${qtyFmt.format(
-            Number(summary.thermalSystemDus || 0)
-          )} DUS`}
-          note="DUS-only"
-        />
-
-        <MetricCard
-          label="Thermal Physical"
-          value={`${qtyFmt.format(
-            Number(summary.thermalPhysicalDus || 0)
-          )} DUS`}
-          note="SO fisik 28/08"
-        />
-
-        <MetricCard
-          label="SKU Balance"
-          value={`${Number(
-            summary.balancedVariants || 0
-          )} / ${Number(
-            summary.totalVariants || 0
-          )}`}
-          note={`${Number(
-            summary.varianceVariants || 0
-          )} selisih · ${Number(
-            summary.uncountedVariants || 0
-          )} belum dihitung`}
-        />
+        <article className={styles.reconCompareCard}>
+          <div className={styles.reconCompareHead}>
+            <strong>Thermal</strong>
+            <span>Sebelum post</span>
+          </div>
+          <div className={styles.reconCompareValues}>
+            <div>
+              <span>System</span>
+              <strong>
+                {qtyFmt.format(Number(summary.thermalSystemDus || 0))} DUS
+              </strong>
+            </div>
+            <div>
+              <span>Fisik</span>
+              <strong>
+                {qtyFmt.format(Number(summary.thermalPhysicalDus || 0))} DUS
+              </strong>
+            </div>
+          </div>
+          <small>
+            {thermalLess} kurang · {thermalMore} lebih
+            {soPosted ? " · sudah diposting" : ""}
+          </small>
+        </article>
       </section>
 
       <Panel
-        title="Audit Penyebab Selisih / Belum Dihitung"
-        subtitle="Read-only diagnostic. Tidak mengubah transaksi. Referensi SO lama hanya pembanding, bukan source of truth."
+        title="Audit Selisih"
+        subtitle="Diagnostik saja. Transaksi tidak berubah."
       >
-        <section className={styles.metricGrid}>
-          <MetricCard
-            label="SO Belum Tersimpan"
-            value={String(
-              Number(summary.diagnosticSoNotSaved || 0)
-            )}
-            note="physical_entered masih 0"
-          />
-          <MetricCard
-            label="SO Beda Referensi"
-            value={String(
-              Number(summary.diagnosticReferenceDiff || 0)
-            )}
-            note="indikasi input lama / mixed UOM perlu dicek"
-          />
-          <MetricCard
-            label="Raw Ledger Drift"
-            value={String(
-              Number(summary.diagnosticRawDrift || 0)
-            )}
-            note="ledger lama berbeda dari dokumen resmi"
-          />
-          <MetricCard
-            label="System Negatif"
-            value={String(
-              Number(summary.diagnosticSystemNegative || 0)
-            )}
-            note="histori sumber perlu diperiksa"
-          />
-          <MetricCard
-            label="Selisih Factual"
-            value={String(
-              Number(summary.diagnosticFactualVariance || 0)
-            )}
-            note="Opening + IN - OUT tidak sama dengan SO"
-          />
+        <section className={styles.reconAuditStrip}>
+          <div>
+            <span>SO kosong</span>
+            <strong>{Number(summary.diagnosticSoNotSaved || 0)}</strong>
+          </div>
+          <div>
+            <span>Beda referensi</span>
+            <strong>{Number(summary.diagnosticReferenceDiff || 0)}</strong>
+          </div>
+          <div>
+            <span>Beda ledger</span>
+            <strong>{Number(summary.diagnosticRawDrift || 0)}</strong>
+          </div>
+          <div>
+            <span>Stok negatif</span>
+            <strong>{Number(summary.diagnosticSystemNegative || 0)}</strong>
+          </div>
+          <div>
+            <span>Beda dokumen</span>
+            <strong>{Number(summary.diagnosticFactualVariance || 0)}</strong>
+          </div>
         </section>
 
         <DataTable
@@ -5808,14 +5838,16 @@ function Reports({
   /* RKN_PLASTIC_RECON_READABILITY_V2R7 */
   /* RKN_PLASTIC_SO_LIVE_RECON_PDF_V2R9 */
   type ReportTab =
+    | "BOSS_SUMMARY"
     | "RECON"
     | "STOCK"
+    | "STOCK_VALUE"
     | "INBOUND"
     | "OUTBOUND"
     | "RECEIVABLES"
     | "AUDIT";
 
-  const [reportTab, setReportTab] = useState<ReportTab>("RECON");
+  const [reportTab, setReportTab] = useState<ReportTab>("BOSS_SUMMARY");
 
   const stock = Array.isArray(data.stock) ? data.stock : [];
   const inbound = Array.isArray(data.inbound) ? data.inbound : [];
@@ -5831,6 +5863,25 @@ function Reports({
     data.auditOpeningDate || "2026-07-28"
   );
   const auditSoDate = String(data.auditSoDate || "2026-08-28");
+  const auditSo = data.auditSo || {};
+  const auditSoStatus = String(auditSo.status || "").toUpperCase();
+  const auditSoPosted = ["POSTED", "POSTED_LEGACY"].includes(
+    auditSoStatus
+  );
+  const auditSoNo = String(auditSo.soNo || "SO 28/08/2026");
+  const auditSoReason = String(auditSo.reason || "");
+  const checkpointStockRows = auditLedger
+    .filter(
+      (row: Row) =>
+        Number(row.soScope ?? 1) === 1 &&
+        Number(row.physicalEntered || 0) === 1
+    )
+    .map((row: Row) => ({
+      ...row,
+      qtyBase: Number(row.physicalQtyBase || 0),
+      checkpointDateKey: auditSoDate,
+      checkpointSource: "POSTED_SO_PHYSICAL",
+    }));
 
   const qtyText = (value: unknown) =>
     qtyFmt.format(Number(value || 0));
@@ -5875,6 +5926,55 @@ function Reports({
       .filter(Boolean)
       .join(" + ");
   };
+
+  const sellingValue = (row: Row) => {
+    const parts = decompose(row, row.qtyBase);
+    const basePrice = Number(row.defaultSellPriceBaseRp || 0);
+    const midPrice = Number(row.defaultSellPriceMidRp || 0);
+    const packPrice = Number(row.defaultSellPricePackRp || 0);
+    const missingPrice =
+      (parts.pack > 0.000001 && packPrice <= 0) ||
+      (parts.mid > 0.000001 && midPrice <= 0) ||
+      (parts.base > 0.000001 && basePrice <= 0);
+
+    return {
+      salesValueRp:
+        parts.pack * packPrice + parts.mid * midPrice + parts.base * basePrice,
+      salesPriceMissing: missingPrice ? 1 : 0,
+    };
+  };
+
+  const stockSellingRows = checkpointStockRows.map((row: Row) => ({
+    ...row,
+    ...sellingValue(row),
+  }));
+  const stockSellingValueRows = stockSellingRows.filter(
+    (row: Row) => Number(row.qtyBase || 0) > 0.000001
+  );
+  const stockSellingValueTotalRp = stockSellingValueRows.reduce(
+    (total: number, row: Row) => total + Number(row.salesValueRp || 0),
+    0
+  );
+  const stockSellingMissingPrice = stockSellingValueRows.filter(
+    (row: Row) => Number(row.salesPriceMissing || 0) === 1
+  ).length;
+
+  const baseSellPriceText = (row: Row) =>
+    Number(row.defaultSellPriceBaseRp || 0) > 0
+      ? `${money.format(Number(row.defaultSellPriceBaseRp || 0))} / ${row.baseUnit || "UNIT"}`
+      : "HARGA JUAL BELUM ADA";
+
+  const packSellPriceText = (row: Row) => {
+    if (!row.packUnit) return "-";
+    return Number(row.defaultSellPricePackRp || 0) > 0
+      ? `${money.format(Number(row.defaultSellPricePackRp || 0))} / ${row.packUnit}`
+      : "HARGA JUAL BELUM ADA";
+  };
+
+  const sellingValueText = (row: Row) =>
+    Number(row.salesPriceMissing || 0) === 1
+      ? "HARGA JUAL BELUM LENGKAP"
+      : money.format(Number(row.salesValueRp || 0));
 
 
   const reportQtyFmt = new Intl.NumberFormat("id-ID", {
@@ -6021,6 +6121,39 @@ function Reports({
   const reportReady =
     simpleRows.length > 0 && uncountedRows.length === 0;
 
+  /* RKN_PLASTIC_BOSS_REPORT_MODEL_V2R22 */
+  const inboundValueRp = inbound.reduce(
+    (total: number, row: Row) => total + Number(row.totalRp || 0),
+    0
+  );
+  const salesValueRp = outbound.reduce(
+    (total: number, row: Row) => total + Number(row.totalRp || 0),
+    0
+  );
+  const salesCogsRp = outbound.reduce(
+    (total: number, row: Row) => total + Number(row.cogsRp || 0),
+    0
+  );
+  const grossProfitRp = outbound.reduce(
+    (total: number, row: Row) => total + Number(row.grossProfitRp || 0),
+    0
+  );
+  const grossMarginPct =
+    salesValueRp > 0 ? (grossProfitRp / salesValueRp) * 100 : 0;
+  const receivableTotalRp = receivables.reduce(
+    (total: number, row: Row) => total + Number(row.outstandingRp || 0),
+    0
+  );
+  const topStockSellingValueRows = [...stockSellingValueRows].sort(
+    (left: Row, right: Row) =>
+      Number(right.salesValueRp || 0) - Number(left.salesValueRp || 0)
+  );
+  const bossSoStatus = auditSoPosted
+    ? "POSTED & SELESAI"
+    : reportReady
+      ? "SIAP DIREVIEW"
+      : "BELUM LENGKAP";
+
   const signedStock = (row: Row, value: unknown) => {
     const numberValue = Number(value || 0);
     if (Math.abs(numberValue) < 0.000001) return "0";
@@ -6065,7 +6198,7 @@ function Reports({
     ],
     [
       "differenceQtyBase",
-      "Selisih",
+      auditSoPosted ? "Adjustment SO" : "Selisih",
       (row) =>
         row.counted
           ? reportQtyCell(row, row.differenceQtyBase)
@@ -6108,6 +6241,10 @@ function Reports({
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const tableWidth = pageWidth - 8;
+    const generatedAt = new Date().toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
 
     let logoData = "";
     try {
@@ -6117,10 +6254,14 @@ function Reports({
     }
 
     const title =
-      reportTab === "RECON"
+      reportTab === "BOSS_SUMMARY"
+        ? "RINGKASAN MANAJEMEN"
+      : reportTab === "RECON"
         ? `REKONSILIASI STOK ${auditSoDate}`
         : reportTab === "STOCK"
-          ? "STOK LIVE"
+          ? "STOK FISIK 28/08/2026"
+          : reportTab === "STOCK_VALUE"
+            ? "POTENSI NILAI JUAL STOK"
           : reportTab === "INBOUND"
             ? "BARANG MASUK"
             : reportTab === "OUTBOUND"
@@ -6130,8 +6271,14 @@ function Reports({
                 : "AUDIT DETAIL";
 
     const subtitle =
-      reportTab === "RECON"
-        ? `OPENING ${auditOpeningDate} + MASUK - KELUAR = STOCK ${auditSoDate} / VS SO FISIK`
+      reportTab === "BOSS_SUMMARY"
+        ? `PERIODE ${period} / SO ${humanizeDisplay(auditSoStatus || "BELUM ADA")}`
+      : reportTab === "RECON"
+        ? auditSoPosted
+          ? `${auditSoNo} / POSTED / ${varianceRows.length} ADJUSTMENT`
+          : `OPENING + MASUK - KELUAR / SO FISIK`
+        : reportTab === "STOCK_VALUE"
+          ? `FISIK SO ${auditSoDate} / HARGA JUAL MASTER / POTENSI NILAI`
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
@@ -6163,7 +6310,7 @@ function Reports({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
       doc.text(subtitle, pageWidth - 6, 16, { align: "right" });
-      doc.text(`HALAMAN ${pageNo}`, pageWidth - 6, 22, {
+      doc.text(`DIBUAT ${generatedAt} · HALAMAN ${pageNo}`, pageWidth - 6, 22, {
         align: "right",
       });
       doc.setTextColor(25, 34, 46);
@@ -6211,6 +6358,81 @@ function Reports({
       });
     };
 
+    if (reportTab === "BOSS_SUMMARY") {
+      drawHeader(doc.getNumberOfPages());
+      doc.setTextColor(25, 34, 46);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("RINGKASAN EKSEKUTIF", 4, 34);
+
+      table(
+        ["Area", "Indikator", "Nilai", "Keterangan"],
+        [
+          ["Operasional", "Barang Masuk", money.format(inboundValueRp), `${inbound.length} baris`],
+          ["Operasional", "Penjualan", money.format(salesValueRp), `${outbound.length} baris`],
+          ["Profitabilitas", "HPP Penjualan", money.format(salesCogsRp), `Periode ${period}`],
+          ["Profitabilitas", "Gross Profit", money.format(grossProfitRp), `Margin ${reportQtyFmt.format(grossMarginPct)}%`],
+          ["Keuangan", "Piutang Aktif", money.format(receivableTotalRp), `${receivables.length} invoice belum lunas`],
+          ["Persediaan", "Potensi Nilai Jual Stok 28/08", money.format(stockSellingValueTotalRp), `${stockSellingValueRows.length} SKU fisik`],
+          ["Persediaan", "Harga Jual Belum Lengkap", `${stockSellingMissingPrice} SKU`, stockSellingMissingPrice ? "Perlu dilengkapi di master produk" : "Lengkap"],
+          ["Stock Opname", "Status SO", bossSoStatus, auditSoNo],
+          ["Stock Opname", "SKU Dihitung", `${countedRows.length} / ${simpleRows.length}`, `${uncountedRows.length} belum`],
+          ["Stock Opname", "Balance Awal", `${balanceRows.length} SKU`, "Tanpa adjustment"],
+          ["Stock Opname", "Adjustment", `${auditSoPosted ? varianceRows.length : 0} SKU`, auditSoPosted ? "Posted" : "Belum posted"],
+          ["Audit", "Status Audit", humanizeDisplay(data.finalStatus || "-") , `${Number(data.finalFailCount || 0)} perlu dicek`],
+        ],
+        38
+      );
+
+      if (topStockSellingValueRows.length) {
+        doc.addPage();
+        drawHeader(doc.getNumberOfPages());
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("POTENSI NILAI JUAL STOK FISIK 28/08/2026", 4, 34);
+
+        table(
+          ["Produk", "Warna", "Ukuran", "Stok", "Harga Jual / Unit", "Potensi Nilai Jual"],
+          [
+            ...topStockSellingValueRows.map((row: Row) => [
+              row.productName || row.category || "-",
+              row.color || "-",
+              row.size || "-",
+              stockHuman(row, row.qtyBase),
+              baseSellPriceText(row),
+              sellingValueText(row),
+            ]),
+            ["", "", "", "", "TOTAL POTENSI", money.format(stockSellingValueTotalRp)],
+          ],
+          38
+        );
+      }
+
+      if (receivables.length) {
+        doc.addPage();
+        drawHeader(doc.getNumberOfPages());
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("PIUTANG AKTIF", 4, 34);
+
+        table(
+          ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
+          [
+            ...receivables.map((row: Row) => [
+              row.dateKey || "-",
+              row.invoiceNo || "-",
+              row.customerName || "-",
+              money.format(Number(row.grandTotalRp || 0)),
+              money.format(Number(row.paidRp || 0)),
+              money.format(Number(row.outstandingRp || 0)),
+            ]),
+            ["", "", "TOTAL", "", "", money.format(receivableTotalRp)],
+          ],
+          38
+        );
+      }
+    }
+
     if (reportTab === "RECON") {
       const reconHead = [
         "Produk",
@@ -6221,7 +6443,7 @@ function Reports({
         "Keluar",
         `Stock ${auditSoDate.slice(5).split("-").reverse().join("/")}`,
         "SO Fisik",
-        "Selisih",
+        auditSoPosted ? "Adjustment SO" : "Selisih",
       ];
 
       const bodyFor = (rows: Row[]) =>
@@ -6253,11 +6475,15 @@ function Reports({
         rows: Row[];
       }> = [
         {
-          title: `MASIH SELISIH (${pdfVarianceRows.length} SKU)`,
+          title: auditSoPosted
+            ? `ADJUSTMENT (${pdfVarianceRows.length} SKU)`
+            : `MASIH SELISIH (${pdfVarianceRows.length} SKU)`,
           rows: pdfVarianceRows,
         },
         {
-          title: `SUDAH BALANCE (${pdfBalanceRows.length} SKU)`,
+          title: auditSoPosted
+            ? `BALANCE AWAL (${pdfBalanceRows.length} SKU)`
+            : `SUDAH BALANCE (${pdfBalanceRows.length} SKU)`,
           rows: pdfBalanceRows,
         },
         {
@@ -6286,62 +6512,128 @@ function Reports({
     }
 
     if (reportTab === "STOCK") {
+      const pdfStockRows = applyRknPlasticPdfFilter(stockSellingRows);
+      const pdfStockTotal = pdfStockRows.reduce(
+        (total: number, row: Row) => total + Number(row.salesValueRp || 0),
+        0
+      );
       table(
-        ["Produk", "Warna", "Ukuran", "Stok Live", "Avg HPP", "Nilai"],
-        applyRknPlasticPdfFilter(stock).map((row: Row) => [
-          row.productName || row.category || "-",
-          row.color || "-",
-          row.size || "-",
-          stockHuman(row, row.qtyBase),
-          money.format(Number(row.avgCostRp || 0)),
-          money.format(Number(row.stockValueRp || 0)),
-        ])
+        ["Produk", "Warna", "Ukuran", "Stok Fisik 28/08", "Harga Jual / Unit", "Potensi Nilai Jual"],
+        [
+          ...pdfStockRows.map((row: Row) => [
+            row.productName || row.category || "-",
+            row.color || "-",
+            row.size || "-",
+            stockHuman(row, row.qtyBase),
+            baseSellPriceText(row),
+            sellingValueText(row),
+          ]),
+          ["", "", "", "", "TOTAL POTENSI", money.format(pdfStockTotal)],
+        ]
+      );
+    }
+
+    if (reportTab === "STOCK_VALUE") {
+      const pdfStockValueRows = applyRknPlasticPdfFilter(stockSellingValueRows);
+      const pdfStockValueTotal = pdfStockValueRows.reduce(
+        (total: number, row: Row) => total + Number(row.salesValueRp || 0),
+        0
+      );
+
+      table(
+        [
+          "Supplier",
+          "Produk",
+          "Warna",
+          "Ukuran",
+          "Stok Fisik 28/08",
+          "Harga Jual / Unit",
+          "Harga Jual / Pack",
+          "Potensi Nilai Jual",
+        ],
+        [
+          ...pdfStockValueRows.map((row: Row) => [
+            row.lastSupplierName || "BELUM ADA",
+            row.productName || row.category || "-",
+            row.color || "-",
+            row.size || "-",
+            stockHuman(row, row.qtyBase),
+            baseSellPriceText(row),
+            packSellPriceText(row),
+            sellingValueText(row),
+          ]),
+          ["", "", "", "", "", "", "TOTAL POTENSI", money.format(pdfStockValueTotal)],
+        ]
       );
     }
 
     if (reportTab === "INBOUND") {
+      const pdfInboundRows = applyRknPlasticPdfFilter(inbound);
+      const pdfInboundTotal = pdfInboundRows.reduce(
+        (total: number, row: Row) => total + Number(row.totalRp || 0),
+        0
+      );
       table(
         ["Tanggal", "No. IN", "Produk", "Warna", "Ukuran", "Qty", "HPP", "Nilai"],
-        applyRknPlasticPdfFilter(inbound).map((row: Row) => [
-          row.dateKey || "-",
-          row.referenceNo || "-",
-          row.productName || "-",
-          row.color || "-",
-          row.size || "-",
-          `${qtyText(row.qty)} ${row.unit || ""}`,
-          money.format(Number(row.unitCostRp || 0)),
-          money.format(Number(row.totalRp || 0)),
-        ])
+        [
+          ...pdfInboundRows.map((row: Row) => [
+            row.dateKey || "-",
+            row.referenceNo || "-",
+            row.productName || "-",
+            row.color || "-",
+            row.size || "-",
+            `${qtyText(row.qty)} ${row.unit || ""}`,
+            money.format(Number(row.unitCostRp || 0)),
+            money.format(Number(row.totalRp || 0)),
+          ]),
+          ["", "", "", "", "", "", "TOTAL", money.format(pdfInboundTotal)],
+        ]
       );
     }
 
     if (reportTab === "OUTBOUND") {
+      const pdfOutboundRows = applyRknPlasticPdfFilter(outbound);
+      const pdfOutboundTotal = pdfOutboundRows.reduce(
+        (total: number, row: Row) => total + Number(row.totalRp || 0),
+        0
+      );
       table(
         ["Tanggal", "Invoice", "Customer", "Produk", "Warna", "Ukuran", "Qty", "Sales"],
-        applyRknPlasticPdfFilter(outbound).map((row: Row) => [
-          row.dateKey || "-",
-          row.referenceNo || "-",
-          row.customerName || "-",
-          row.productName || "-",
-          row.color || "-",
-          row.size || "-",
-          qtyText(row.qtyBase),
-          money.format(Number(row.totalRp || 0)),
-        ])
+        [
+          ...pdfOutboundRows.map((row: Row) => [
+            row.dateKey || "-",
+            row.referenceNo || "-",
+            row.customerName || "-",
+            row.productName || "-",
+            row.color || "-",
+            row.size || "-",
+            qtyText(row.qtyBase),
+            money.format(Number(row.totalRp || 0)),
+          ]),
+          ["", "", "", "", "", "", "TOTAL", money.format(pdfOutboundTotal)],
+        ]
       );
     }
 
     if (reportTab === "RECEIVABLES") {
+      const pdfReceivableRows = applyRknPlasticPdfFilter(receivables);
+      const pdfReceivableTotal = pdfReceivableRows.reduce(
+        (total: number, row: Row) => total + Number(row.outstandingRp || 0),
+        0
+      );
       table(
         ["Tanggal", "Invoice", "Customer", "Total", "Dibayar", "Sisa"],
-        applyRknPlasticPdfFilter(receivables).map((row: Row) => [
-          row.dateKey || "-",
-          row.invoiceNo || "-",
-          row.customerName || "-",
-          money.format(Number(row.grandTotalRp || 0)),
-          money.format(Number(row.paidRp || 0)),
-          money.format(Number(row.outstandingRp || 0)),
-        ])
+        [
+          ...pdfReceivableRows.map((row: Row) => [
+            row.dateKey || "-",
+            row.invoiceNo || "-",
+            row.customerName || "-",
+            money.format(Number(row.grandTotalRp || 0)),
+            money.format(Number(row.paidRp || 0)),
+            money.format(Number(row.outstandingRp || 0)),
+          ]),
+          ["", "", "TOTAL", "", "", money.format(pdfReceivableTotal)],
+        ]
       );
     }
 
@@ -6378,28 +6670,33 @@ function Reports({
     }
 
     const suffix =
-      reportTab === "RECON"
-        ? `REKONSILIASI_${auditOpeningDate}_${auditSoDate}`
-        : `${reportTab}_${period}`;
+      reportTab === "BOSS_SUMMARY"
+        ? `RINGKASAN-BOSS-${period}`
+      : reportTab === "RECON"
+        ? `REKONSILIASI-${auditOpeningDate}-${auditSoDate}`
+        : `${reportTab.replace(/_/g, "-")}-${period}`;
 
     const filterSuffix =
       rknPlasticPdfFilterSnapshot.search.trim()
-        ? `_${rknPlasticPdfFilterSnapshot.search
+        ? `-${rknPlasticPdfFilterSnapshot.search
             .trim()
-            .replace(/[^0-9A-Za-z]+/g, "_")
+            .replace(/[^0-9A-Za-z]+/g, "-")
             .slice(0, 32)}`
         : "";
 
     doc.save(
-      `RKN_${String(suffix)
-        .replace(/[^0-9A-Za-z_-]/g, "_")
+      `RKN-${String(suffix)
+        .replace(/[^0-9A-Za-z-]/g, "-")
+        .replace(/-+/g, "-")
         .toUpperCase()}${filterSuffix.toUpperCase()}.pdf`
     );
   };
 
   const tabs: [ReportTab, string][] = [
+    ["BOSS_SUMMARY", "Ringkasan Boss"],
     ["RECON", "Rekonsiliasi 28/08"],
-    ["STOCK", "Stok Live"],
+    ["STOCK", "Stok Fisik 28/08"],
+    ["STOCK_VALUE", "Nilai Jual Supplier 28/08"],
     ["INBOUND", "Barang Masuk"],
     ["OUTBOUND", "Barang Keluar"],
     ["RECEIVABLES", "Piutang"],
@@ -6411,10 +6708,7 @@ function Reports({
       <div className={styles.reportCenterHead}>
         <div>
           <strong>Report Center</strong>
-          <span>
-            Report utama dibuat sederhana: Opening + Masuk - Keluar = Stock,
-            lalu dibandingkan dengan SO fisik.
-          </span>
+          <span>Pilih laporan, lalu unduh PDF.</span>
         </div>
 
         <button
@@ -6422,7 +6716,7 @@ function Reports({
           className={styles.primaryButton}
           onClick={downloadPdf}
         >
-          Download PDF
+          Unduh PDF
         </button>
       </div>
 
@@ -6443,6 +6737,78 @@ function Reports({
         ))}
       </div>
 
+      {reportTab === "BOSS_SUMMARY" ? (
+        <>
+          <section className={styles.bossReportHero}>
+            <div>
+              <span>Ringkasan · {period}</span>
+              <strong>{bossSoStatus}</strong>
+              <small>
+                {auditSoNo} · {countedRows.length}/{simpleRows.length} SKU · {auditSoPosted ? varianceRows.length : 0} adjustment
+              </small>
+            </div>
+            <div className={styles.bossReportHeroValue}>
+              <span>Potensi Nilai Jual Stok Fisik 28/08/2026</span>
+              <strong>{money.format(stockSellingValueTotalRp)}</strong>
+              <small>{stockSellingValueRows.length} SKU fisik memiliki stok</small>
+            </div>
+          </section>
+
+          <section className={styles.bossReportGrid}>
+            <article>
+              <h3>Kinerja Periode</h3>
+              <div className={styles.bossMetricList}>
+                <div><span>Penjualan</span><strong>{money.format(salesValueRp)}</strong></div>
+                <div><span>HPP / COGS</span><strong>{money.format(salesCogsRp)}</strong></div>
+                <div><span>Gross Profit</span><strong>{money.format(grossProfitRp)}</strong></div>
+                <div><span>Gross Margin</span><strong>{reportQtyFmt.format(grossMarginPct)}%</strong></div>
+              </div>
+            </article>
+
+            <article>
+              <h3>Stok & Arus Barang</h3>
+              <div className={styles.bossMetricList}>
+                <div><span>Barang Masuk</span><strong>{money.format(inboundValueRp)}</strong></div>
+                <div><span>Potensi Nilai Jual 28/08</span><strong>{money.format(stockSellingValueTotalRp)}</strong></div>
+                <div><span>Piutang Aktif</span><strong>{money.format(receivableTotalRp)}</strong></div>
+                <div><span>Harga Jual Belum Lengkap</span><strong>{stockSellingMissingPrice} SKU</strong></div>
+              </div>
+            </article>
+
+            <article>
+              <h3>Hasil Stock Opname</h3>
+              <div className={styles.bossMetricList}>
+                <div><span>Status</span><strong>{bossSoStatus}</strong></div>
+                <div><span>Balance Awal</span><strong>{balanceRows.length} SKU</strong></div>
+                <div><span>Adjustment</span><strong>{auditSoPosted ? varianceRows.length : 0} SKU</strong></div>
+                <div><span>Belum Dihitung</span><strong>{uncountedRows.length} SKU</strong></div>
+              </div>
+            </article>
+          </section>
+
+          <Panel
+            title="Potensi Nilai Jual Fisik 28/08 Terbesar"
+            subtitle="12 SKU fisik hasil SO 28/08/2026 dengan potensi nilai jual terbesar berdasarkan master harga jual."
+          >
+            <DataTable
+              rows={topStockSellingValueRows.slice(0, 12)}
+              columns={[
+                ["productName", "Produk"],
+                ["color", "Warna"],
+                ["size", "Ukuran"],
+                ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
+                ["defaultSellPriceBaseRp", "Harga Jual / Unit", (row) => baseSellPriceText(row)],
+                [
+                  "salesValueRp",
+                  "Potensi Nilai Jual",
+                  (row) => sellingValueText(row),
+                ],
+              ]}
+            />
+          </Panel>
+        </>
+      ) : null}
+
       {reportTab === "RECON" ? (
         <>
           <div className={styles.reportInfoStrip}>
@@ -6450,43 +6816,69 @@ function Reports({
               <span>Rekonsiliasi Stok {auditSoDate}</span>
               <strong>
                 {reportReady
-                  ? varianceRows.length === 0
+                  ? auditSoPosted
+                    ? `POSTED · ${varianceRows.length} SKU DISELESAIKAN`
+                    : varianceRows.length === 0
                     ? "SEMUA BALANCE"
                     : `${varianceRows.length} SKU SELISIH`
                   : `${uncountedRows.length} SKU BELUM DIHITUNG`}
               </strong>
             </div>
             <small>
-              Rumus: Opening {auditOpeningDate} + Barang Masuk - Barang Keluar =
-              Stock Seharusnya {auditSoDate}, lalu dibandingkan dengan SO Fisik.
-              Barang Masuk dan Barang Keluar memakai dokumen transaksi resmi.
-              Raw movement lama hanya menjadi audit dan tidak boleh membuat angka transaksi hantu.
+              {auditSoPosted ? (
+                <>
+                  {auditSoNo} sudah posted. Selisih tersimpan sebagai audit.
+                  {auditSoReason ? ` ${auditSoReason}` : ""}
+                </>
+              ) : (
+                <>
+                  Opening + Masuk − Keluar dibandingkan dengan stok fisik.
+                </>
+              )}
             </small>
           </div>
 
-          <section className={styles.reportMetricGrid}>
-            <MetricCard
-              label="SKU Report"
-              value={qtyText(simpleRows.length)}
-            />
-            <MetricCard
-              label="Sudah Dihitung"
-              value={qtyText(countedRows.length)}
-            />
-            <MetricCard
-              label="Balance"
-              value={qtyText(balanceRows.length)}
-            />
-            <MetricCard
-              label="Selisih"
-              value={qtyText(varianceRows.length)}
-            />
+          <section className={styles.reportSummaryStrip}>
+            <div>
+              <span>Total SKU</span>
+              <strong>{qtyText(simpleRows.length)}</strong>
+            </div>
+            <div>
+              <span>Fisik dicatat</span>
+              <strong>{qtyText(countedRows.length)}</strong>
+            </div>
+            <div>
+              <span>Balance awal</span>
+              <strong>{qtyText(balanceRows.length)}</strong>
+            </div>
+            <div>
+              <span>{auditSoPosted ? "Adjustment" : "Selisih"}</span>
+              <strong>{qtyText(varianceRows.length)}</strong>
+            </div>
+            <div className={styles.reportSummaryResult}>
+              <span>Status akhir</span>
+              <strong>
+                {auditSoPosted && reportReady
+                  ? `${qtyText(simpleRows.length)} / ${qtyText(simpleRows.length)} SELESAI`
+                  : reportReady
+                    ? "SIAP DIREVIEW"
+                    : "BELUM LENGKAP"}
+              </strong>
+            </div>
           </section>
 
           {varianceRows.length ? (
             <Panel
-              title={`Masih Selisih · ${varianceRows.length} SKU`}
-              subtitle="Prioritas pengecekan. Angka minus/plus menunjukkan beda antara Stock Seharusnya dan SO Fisik."
+              title={
+                auditSoPosted
+                  ? `Adjustment · ${varianceRows.length} SKU`
+                  : `Masih Selisih · ${varianceRows.length} SKU`
+              }
+              subtitle={
+                auditSoPosted
+                  ? "Selisih lama yang sudah diselesaikan."
+                  : "Periksa beda stok sistem dan fisik."
+              }
             >
               <DataTable
                 rows={varianceRows}
@@ -6497,8 +6889,12 @@ function Reports({
 
           {balanceRows.length ? (
             <Panel
-              title={`Sudah Balance · ${balanceRows.length} SKU`}
-              subtitle="Stock Seharusnya sama dengan hasil SO Fisik."
+              title={
+                auditSoPosted
+                  ? `Balance Awal · ${balanceRows.length} SKU`
+                  : `Sudah Balance · ${balanceRows.length} SKU`
+              }
+              subtitle="Stok sistem sama dengan fisik."
             >
               <DataTable
                 rows={balanceRows}
@@ -6510,7 +6906,7 @@ function Reports({
           {uncountedRows.length ? (
             <Panel
               title={`Belum Dihitung · ${uncountedRows.length} SKU`}
-              subtitle="SKU ini belum memiliki input SO fisik."
+              subtitle="Belum ada stok fisik."
             >
               <DataTable
                 rows={uncountedRows}
@@ -6523,29 +6919,67 @@ function Reports({
 
       {reportTab === "STOCK" ? (
         <Panel
-          title="Stok Live"
-          subtitle="Saldo inventory live saat ini. Bukan cut-off SO 28/08."
+          title="Stok Fisik 28/08/2026"
+          subtitle="Hasil SO fisik yang sudah POSTED. Bukan saldo live setelah 28/08."
         >
           <DataTable
-            rows={stock}
+            rows={stockSellingRows}
             columns={[
               ["productName", "Produk"],
               ["color", "Warna"],
               ["size", "Ukuran"],
               ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
               [
-                "avgCostRp",
-                "Avg HPP",
-                (row) => money.format(Number(row.avgCostRp || 0)),
+                "defaultSellPriceBaseRp",
+                "Harga Jual / Unit",
+                (row) => baseSellPriceText(row),
               ],
               [
-                "stockValueRp",
-                "Nilai",
-                (row) => money.format(Number(row.stockValueRp || 0)),
+                "salesValueRp",
+                "Potensi Nilai Jual",
+                (row) => sellingValueText(row),
               ],
             ]}
           />
         </Panel>
+      ) : null}
+
+      {reportTab === "STOCK_VALUE" ? (
+        <>
+          <div className={styles.reportInfoStrip}>
+            <div>
+              <span>Potensi nilai jual stok fisik per 28/08/2026</span>
+              <strong>{money.format(stockSellingValueTotalRp)}</strong>
+            </div>
+            <small>
+              Qty berasal dari SO {auditSoNo} yang sudah {auditSoStatus || "-"} · {stockSellingValueRows.length} SKU
+              memiliki stok · {stockSellingMissingPrice} harga jual belum lengkap.
+            </small>
+          </div>
+
+          <Panel
+            title="Potensi Nilai Jual Fisik 28/08 per Produk"
+            subtitle="Qty SO fisik 28/08 × harga jual master. Supplier mengikuti penerimaan terakhir sampai tanggal 28/08."
+          >
+            <DataTable
+              rows={stockSellingValueRows}
+              columns={[
+                ["lastSupplierName", "Supplier", (row) => row.lastSupplierName || "BELUM ADA"],
+                ["productName", "Produk"],
+                ["color", "Warna"],
+                ["size", "Ukuran"],
+                ["qtyBase", "Stok", (row) => stockHuman(row, row.qtyBase)],
+                ["defaultSellPriceBaseRp", "Harga Jual / Unit", (row) => baseSellPriceText(row)],
+                ["defaultSellPricePackRp", "Harga Jual / Pack", (row) => packSellPriceText(row)],
+                [
+                  "salesValueRp",
+                  "Potensi Nilai Jual",
+                  (row) => sellingValueText(row),
+                ],
+              ]}
+            />
+          </Panel>
+        </>
       ) : null}
 
       {reportTab === "INBOUND" ? (
@@ -6626,7 +7060,7 @@ function Reports({
       {reportTab === "AUDIT" ? (
         <Panel
           title="Audit Detail"
-          subtitle="Detail teknis disimpan di sini agar report utama tetap sederhana."
+          subtitle="Data teknis untuk pemeriksaan."
         >
           <DataTable
             rows={auditLedger}
