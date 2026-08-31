@@ -4643,7 +4643,7 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                       fontWeight: 600,
                     }}
                   >
-                    ● Habis
+                    Habis
                   </span>
                 );
               }
@@ -4672,7 +4672,7 @@ function Inventory({ rows, isSupplier }: { rows: Row[]; isSupplier?: boolean }) 
                     fontWeight: 600,
                   }}
                 >
-                  ● Aman
+                  Aman
                 </span>
               );
             },
@@ -7431,11 +7431,11 @@ function Reports({
         : `PERIODE ${period}`;
 
     const drawHeader = (pageNo: number) => {
-      doc.setFillColor(15, 23, 42);
+      doc.setFillColor(11, 19, 30);
       doc.rect(0, 0, pageWidth, 27, "F");
 
-      doc.setFillColor(59, 130, 246);
-      doc.rect(0, 27, pageWidth, 1.2, "F");
+      doc.setFillColor(176, 141, 87);
+      doc.rect(0, 27, pageWidth, 1.4, "F");
 
       if (logoData) {
         doc.addImage(
@@ -7457,22 +7457,22 @@ function Reports({
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(212, 178, 125);
       doc.text("PLASTIC TRADING DIVISION - RKN GROUP", 31, 16.5);
       doc.text(`CUTOFF: ${auditSoDate} - 100% BALANCE`, 31, 22);
 
-      doc.setTextColor(255, 255, 255);
+      doc.setTextColor(252, 237, 197);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
       doc.text(title, pageWidth - 5, 8.5, { align: "right" });
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(197, 162, 106);
       doc.text(subtitle, pageWidth - 5, 14.5, { align: "right" });
 
       doc.setFontSize(6.8);
-      doc.setTextColor(100, 116, 139);
+      doc.setTextColor(148, 163, 184);
       doc.text(`${generatedAt} WIB`, pageWidth - 5, 21, {
         align: "right",
       });
@@ -7481,13 +7481,13 @@ function Reports({
 
     const drawFooter = (pageNo: number, totalPages: number) => {
       const pageHeight = doc.internal.pageSize.getHeight();
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.15);
+      doc.setDrawColor(176, 141, 87);
+      doc.setLineWidth(0.2);
       doc.line(4, pageHeight - 7, pageWidth - 4, pageHeight - 7);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(6.5);
-      doc.setTextColor(100, 116, 139);
+      doc.setTextColor(148, 163, 184);
       doc.text("RKN ERP - Plastic Trading - RKN GROUP", 4, pageHeight - 3.5);
       doc.text(`Halaman ${pageNo} dari ${totalPages}`, pageWidth - 4, pageHeight - 3.5, { align: "right" });
     };
@@ -7519,25 +7519,25 @@ function Reports({
           fontSize: 6.8,
           textColor: [30, 41, 59],
           cellPadding: 1.4,
-          lineColor: [203, 213, 225],
+          lineColor: [212, 178, 125],
           lineWidth: 0.12,
           overflow: "linebreak",
           valign: "middle",
           halign: "center",
         },
         headStyles: {
-          fillColor: [30, 41, 59],
-          textColor: [255, 255, 255],
+          fillColor: [22, 35, 52],
+          textColor: [252, 237, 197],
           fontStyle: "bold",
-          lineColor: [203, 213, 225],
-          lineWidth: 0.12,
+          lineColor: [176, 141, 87],
+          lineWidth: 0.15,
           halign: "center",
         },
         bodyStyles: {
           halign: "center",
         },
         alternateRowStyles: {
-          fillColor: [248, 250, 252],
+          fillColor: [250, 248, 244],
         },
         didDrawPage: () => {
           drawHeader(doc.getNumberOfPages());
@@ -7547,7 +7547,7 @@ function Reports({
 
     if (reportTab === "BOSS_SUMMARY") {
       drawHeader(doc.getNumberOfPages());
-      doc.setTextColor(30, 41, 59);
+      doc.setTextColor(44, 62, 80);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 31);
@@ -7575,6 +7575,7 @@ function Reports({
       if (topStockSellingValueRows.length) {
         doc.addPage();
         drawHeader(doc.getNumberOfPages());
+        doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 31);
@@ -7597,8 +7598,8 @@ function Reports({
                 styles: {
                   halign: "right",
                   fontStyle: "bold",
-                  fillColor: [241, 245, 249],
-                  textColor: [30, 41, 59],
+                  fillColor: [243, 237, 224],
+                  textColor: [140, 110, 61],
                 },
               },
               {
@@ -7606,8 +7607,8 @@ function Reports({
                 styles: {
                   halign: "center",
                   fontStyle: "bold",
-                  fillColor: [241, 245, 249],
-                  textColor: [30, 41, 59],
+                  fillColor: [243, 237, 224],
+                  textColor: [140, 110, 61],
                 },
               },
             ],
@@ -7619,6 +7620,7 @@ function Reports({
       if (receivables.length) {
         doc.addPage();
         drawHeader(doc.getNumberOfPages());
+        doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 31);
@@ -7641,8 +7643,8 @@ function Reports({
                 styles: {
                   halign: "right",
                   fontStyle: "bold",
-                  fillColor: [241, 245, 249],
-                  textColor: [30, 41, 59],
+                  fillColor: [243, 237, 224],
+                  textColor: [140, 110, 61],
                 },
               },
               {
@@ -7650,8 +7652,8 @@ function Reports({
                 styles: {
                   halign: "center",
                   fontStyle: "bold",
-                  fillColor: [241, 245, 249],
-                  textColor: [30, 41, 59],
+                  fillColor: [243, 237, 224],
+                  textColor: [140, 110, 61],
                 },
               },
             ],
@@ -7714,18 +7716,18 @@ function Reports({
           { content: "STATUS", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
         ],
       ];
 
@@ -7776,7 +7778,7 @@ function Reports({
       const allReconRows = [...pdfBalanceRows, ...pdfVarianceRows];
 
       drawHeader(doc.getNumberOfPages());
-      doc.setTextColor(30, 41, 59);
+      doc.setTextColor(44, 62, 80);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU - 100% BALANCE)`, 4, 31);
@@ -7790,6 +7792,7 @@ function Reports({
       if (pdfOutsideSoRows.length > 0) {
         doc.addPage();
         drawHeader(doc.getNumberOfPages());
+        doc.setTextColor(44, 62, 80);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
         doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 31);
@@ -7819,8 +7822,8 @@ function Reports({
           { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
         ],
       ];
 
@@ -7846,8 +7849,8 @@ function Reports({
               styles: {
                 halign: "right",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
             {
@@ -7855,8 +7858,8 @@ function Reports({
               styles: {
                 halign: "center",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
           ],
@@ -7884,8 +7887,8 @@ function Reports({
           { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
         ],
       ];
 
@@ -7913,8 +7916,8 @@ function Reports({
               styles: {
                 halign: "right",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
             {
@@ -7922,8 +7925,8 @@ function Reports({
               styles: {
                 halign: "center",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
           ],
@@ -7945,8 +7948,8 @@ function Reports({
           { content: "INPUT ASLI", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
         ],
       ];
 
@@ -7988,8 +7991,8 @@ function Reports({
           { content: "TOTAL PENJUALAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
         ],
       ];
 
@@ -8017,8 +8020,8 @@ function Reports({
               styles: {
                 halign: "right",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
             {
@@ -8026,8 +8029,8 @@ function Reports({
               styles: {
                 halign: "center",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
           ],
@@ -8060,8 +8063,8 @@ function Reports({
               styles: {
                 halign: "right",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
             {
@@ -8069,8 +8072,8 @@ function Reports({
               styles: {
                 halign: "center",
                 fontStyle: "bold",
-                fillColor: [241, 245, 249],
-                textColor: [30, 41, 59],
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
               },
             },
           ],
