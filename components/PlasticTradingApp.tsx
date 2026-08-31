@@ -2186,7 +2186,7 @@ function Dashboard({ data }: { data: Row }) {
                     <strong>{totalSo} SKU</strong>
                   </div>
                   <div>
-                    <i className={styles.legendLess} style={{ background: "#245da7" }} />
+                    <i className={styles.legendLess} style={{ background: "linear-gradient(135deg, #2c3e50, #1a2530)", border: "1px solid rgba(176, 141, 87, 0.4)" }} />
                     <span>Balance Awal</span>
                     <strong>{Number(so.preSoBalance || 27)}</strong>
                   </div>
@@ -2232,30 +2232,38 @@ function Dashboard({ data }: { data: Row }) {
           title="Penjualan Harian"
           subtitle={`Total ${money.format(filteredSalesTotalRp)} · ${daily.length} hari transaksi.`}
         >
-          <div style={{ display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
             {[
               ["ALL", "Semua (14 Hari)"],
               ["7D", "7 Hari Terakhir"],
               ["TODAY", "Hari Ini"],
-            ].map(([fKey, fLabel]) => (
-              <button
-                key={fKey}
-                type="button"
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: "7px",
-                  border: dailyFilter === fKey ? "1px solid #b08d57" : "1px solid rgba(176, 141, 87, 0.2)",
-                  background: dailyFilter === fKey ? "rgba(176, 141, 87, 0.2)" : "rgba(15, 23, 42, 0.6)",
-                  color: dailyFilter === fKey ? "#d4b27d" : "#94a3b8",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-                onClick={() => setDailyFilter(fKey as any)}
-              >
-                {fLabel}
-              </button>
-            ))}
+            ].map(([fKey, fLabel]) => {
+              const isActive = dailyFilter === fKey;
+              return (
+                <button
+                  key={fKey}
+                  type="button"
+                  style={{
+                    padding: "5px 13px",
+                    borderRadius: "8px",
+                    border: isActive ? "1px solid #fae2ab" : "1px solid rgba(176, 141, 87, 0.22)",
+                    background: isActive
+                      ? "linear-gradient(135deg, #b08d57 0%, #d4b27d 50%, #8c6e3d 100%)"
+                      : "linear-gradient(145deg, rgba(44, 62, 80, 0.35) 0%, rgba(14, 23, 35, 0.6) 100%)",
+                    color: isActive ? "#0b131e" : "#cbd5e1",
+                    boxShadow: isActive ? "0 3px 14px rgba(176, 141, 87, 0.45)" : "none",
+                    fontSize: "10.5px",
+                    fontWeight: isActive ? 800 : 650,
+                    letterSpacing: "0.03em",
+                    cursor: "pointer",
+                    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                  }}
+                  onClick={() => setDailyFilter(fKey as any)}
+                >
+                  {fLabel}
+                </button>
+              );
+            })}
           </div>
 
           {daily.length ? (
@@ -2263,7 +2271,7 @@ function Dashboard({ data }: { data: Row }) {
               {daily.map((row: Row) => {
                 const value = Number(row.salesRp || 0);
                 const height = Math.max(
-                  5,
+                  6,
                   Math.round((value / maxSales) * 100)
                 );
 
@@ -2309,7 +2317,17 @@ function Dashboard({ data }: { data: Row }) {
             [
               "outstandingRp",
               "Sisa",
-              (row) => money.format(Number(row.outstandingRp || 0)),
+              (row) => (
+                <span
+                  style={{
+                    color: Number(row.outstandingRp || 0) > 0 ? "#d4b27d" : "#34d399",
+                    fontWeight: 750,
+                    fontFamily: "var(--font-jetbrains-mono, monospace)",
+                  }}
+                >
+                  {money.format(Number(row.outstandingRp || 0))}
+                </span>
+              ),
             ],
           ]}
         />

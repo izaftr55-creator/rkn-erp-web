@@ -2566,6 +2566,11 @@
   display: grid;
   align-content: center;
   gap: 18px;
+  padding: 14px;
+  background: rgba(11, 19, 30, 0.45);
+  border-radius: 12px;
+  border: 1px solid rgba(176, 141, 87, 0.15);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .soChartTop {
@@ -2576,24 +2581,32 @@
 }
 
 .soChartTop strong {
-  font-size: clamp(34px, 5vw, 58px);
+  font-size: clamp(36px, 5vw, 56px);
   line-height: 1;
-  letter-spacing: -.05em;
+  letter-spacing: -0.04em;
+  font-weight: 850;
+  background: linear-gradient(135deg, #ffffff 0%, #fae2ab 30%, #d4b27d 65%, #b08d57 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(176, 141, 87, 0.4));
 }
 
 .soChartTop span {
-  color: #7186a4;
-  font-size: 10px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
 }
 
 .soSegmentBar {
   width: 100%;
-  height: 14px;
+  height: 16px;
   display: flex;
   overflow: hidden;
   border-radius: 999px;
-  background: #07121f;
-  border: 1px solid #1c3554;
+  background: rgba(7, 18, 31, 0.9);
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7), 0 0 14px rgba(176, 141, 87, 0.15);
 }
 
 .soSegmentBar > span {
@@ -2603,87 +2616,113 @@
 }
 
 .soBalanceSegment {
-  background: #2d8a64;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 35%, #d4b27d 75%, #b08d57 100%);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.5);
 }
 
 .soLessSegment {
-  background: #a65555;
+  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
 }
 
 .soMoreSegment {
-  background: #b8893a;
+  background: linear-gradient(90deg, #d4b27d 0%, #b08d57 100%);
 }
 
 .soLegend {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .soLegend > div {
   min-width: 0;
-  padding: 10px;
+  padding: 10px 12px;
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
-  border: 1px solid #172c47;
-  border-radius: 9px;
-  background: #081522;
+  gap: 8px;
+  border: 1px solid rgba(176, 141, 87, 0.24);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(44, 62, 80, 0.4) 0%, rgba(14, 23, 35, 0.75) 100%);
+  box-shadow: inset 0 1px 0 rgba(212, 178, 125, 0.15), 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.soLegend > div:hover {
+  border-color: rgba(176, 141, 87, 0.5);
+  background: linear-gradient(145deg, rgba(44, 62, 80, 0.55) 0%, rgba(14, 23, 35, 0.9) 100%);
+  transform: translateY(-1px);
 }
 
 .soLegend i {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
 }
 
 .legendBalance {
-  background: #2d8a64;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
 }
 
 .legendLess {
-  background: #a65555;
+  background: linear-gradient(135deg, #2c3e50, #1a2530);
+  border: 1px solid rgba(176, 141, 87, 0.4);
 }
 
 .legendMore {
-  background: #b8893a;
+  background: linear-gradient(135deg, #d4b27d, #b08d57);
+  box-shadow: 0 0 8px rgba(176, 141, 87, 0.6);
 }
 
 .soLegend span {
-  color: #7388a6;
-  font-size: 9px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .soLegend strong {
-  font-size: 12px;
+  font-size: 13px;
+  color: #f1f5f9;
+  font-weight: 750;
+  font-family: var(--font-jetbrains-mono), monospace;
 }
 
 .activeSoStrip {
-  padding: 9px 10px;
+  padding: 10px 14px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  border: 1px solid #254a76;
-  border-radius: 9px;
-  background: #0c2038;
+  border: 1px solid rgba(176, 141, 87, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(44, 62, 80, 0.5) 0%, rgba(14, 23, 35, 0.8) 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .activeSoStrip span {
-  color: #7590b2;
-  font-size: 9px;
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .activeSoStrip strong {
-  font-size: 10px;
+  font-size: 11px;
+  color: #d4b27d;
+  font-family: var(--font-jetbrains-mono), monospace;
 }
 
 .salesBars {
   min-height: 220px;
   display: flex;
   align-items: flex-end;
-  gap: 7px;
-  padding: 12px 2px 0;
+  gap: 8px;
+  padding: 16px 8px 4px;
+  background: rgba(11, 19, 30, 0.45);
+  border-radius: 12px;
+  border: 1px solid rgba(176, 141, 87, 0.15);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .salesBarItem {
@@ -2694,7 +2733,13 @@
   grid-template-rows: 1fr 18px;
   align-items: end;
   justify-items: center;
-  gap: 4px;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.salesBarItem:hover {
+  transform: translateY(-4px);
 }
 
 .salesBarTrack {
@@ -2703,28 +2748,49 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-bottom: 1px solid #1c3554;
+  background: linear-gradient(180deg, rgba(44, 62, 80, 0.3) 0%, rgba(20, 32, 46, 0.1) 100%);
+  border-radius: 8px 8px 3px 3px;
+  border: 1px solid rgba(176, 141, 87, 0.15);
+  border-bottom: 2px solid rgba(176, 141, 87, 0.4);
+  position: relative;
+  overflow: hidden;
 }
 
 .salesBarTrack span {
-  width: min(68%, 28px);
-  min-height: 4px;
+  width: min(72%, 28px);
+  min-height: 5px;
   display: block;
-  border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, #4f86d7, #28558e);
+  border-radius: 7px 7px 2px 2px;
+  background: linear-gradient(180deg, #fcedc5 0%, #d4b27d 22%, #b08d57 55%, #2c3e50 100%);
+  box-shadow:
+    0 -2px 10px rgba(245, 215, 153, 0.6),
+    0 0 16px rgba(176, 141, 87, 0.45),
+    inset 0 1px 2px rgba(255, 255, 255, 0.7);
+  transition: all 0.25s ease;
+}
+
+.salesBarItem:hover .salesBarTrack span {
+  background: linear-gradient(180deg, #ffffff 0%, #fae2ab 15%, #d4b27d 45%, #b08d57 85%, #3e5368 100%);
+  box-shadow:
+    0 -4px 18px rgba(252, 237, 197, 0.9),
+    0 0 24px rgba(212, 178, 125, 0.8),
+    inset 0 1px 3px #ffffff;
 }
 
 .salesBarItem small {
-  color: #607795;
-  font-size: 8px;
+  color: #cbd5e1;
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  font-family: var(--font-jetbrains-mono), monospace;
 }
 
 .chartEmpty {
   min-height: 220px;
   display: grid;
   place-items: center;
-  color: #60728d;
-  font-size: 10px;
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .soStartGrid {
@@ -6036,17 +6102,17 @@
    DESIGN TOKENS
    --------------------------------------------------------- */
 .shell {
-  --rkn-bg-0: #06111d;
-  --rkn-bg-1: #081725;
-  --rkn-bg-2: #0a1b2d;
-  --rkn-bg-3: #0d2238;
-  --rkn-border: #234563;
-  --rkn-border-strong: #315f87;
-  --rkn-text: #eef6ff;
-  --rkn-text-soft: #aac1d8;
-  --rkn-text-muted: #6f91b7;
-  --rkn-accent: #69b6ff;
-  --rkn-focus: rgba(78, 164, 255, .28);
+  --rkn-bg-0: #0b131e;
+  --rkn-bg-1: #121e2d;
+  --rkn-bg-2: #18283c;
+  --rkn-bg-3: #20354f;
+  --rkn-border: rgba(176, 141, 87, 0.22);
+  --rkn-border-strong: rgba(176, 141, 87, 0.45);
+  --rkn-text: #f8fafc;
+  --rkn-text-soft: #cbd5e1;
+  --rkn-text-muted: #94a3b8;
+  --rkn-accent: #d4b27d;
+  --rkn-focus: rgba(176, 141, 87, 0.35);
   --rkn-danger-bg: rgba(92, 22, 34, .52);
   --rkn-danger-border: rgba(231, 89, 107, .52);
   --rkn-success-bg: rgba(12, 82, 66, .42);
@@ -6102,7 +6168,7 @@
 .shell input:disabled,
 .shell select:disabled,
 .shell textarea:disabled {
-  border-color: rgba(47, 78, 106, .55) !important;
+  border-color: rgba(176, 141, 87, 0.2) !important;
   background-color: #07131f !important;
   color: #6e8499 !important;
   -webkit-text-fill-color: #6e8499 !important;
@@ -6159,8 +6225,8 @@
   padding-right: 34px !important;
   background-color: var(--rkn-bg-1) !important;
   background-image:
-    linear-gradient(45deg, transparent 50%, #82bdf2 50%),
-    linear-gradient(135deg, #82bdf2 50%, transparent 50%) !important;
+    linear-gradient(45deg, transparent 50%, #d4b27d 50%),
+    linear-gradient(135deg, #d4b27d 50%, transparent 50%) !important;
   background-position:
     calc(100% - 16px) 50%,
     calc(100% - 11px) 50% !important;
@@ -6217,8 +6283,9 @@
    --------------------------------------------------------- */
 .shell .smartFilterBar {
   border: 1px solid var(--rkn-border) !important;
-  background: var(--rkn-bg-0) !important;
-  box-shadow: none !important;
+  background: linear-gradient(145deg, rgba(20, 32, 46, 0.8) 0%, rgba(11, 18, 28, 0.9) 100%) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 10px !important;
 }
 
 .shell .smartFilterBar input,
@@ -6245,11 +6312,15 @@
 }
 
 .shell .smartFilterLabel {
-  color: #7fa6ce !important;
+  color: #d4b27d !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
 }
 
 .shell .smartFilterCount {
-  color: #8eb9e4 !important;
+  color: #cbd5e1 !important;
+  font-weight: 750 !important;
+  font-family: var(--font-jetbrains-mono), monospace !important;
 }
 
 /* ---------------------------------------------------------
@@ -6259,26 +6330,36 @@
 .shell .panel,
 .shell .lineSection,
 .shell .tableWrap {
-  border-color: var(--rkn-border) !important;
-  background-color: var(--rkn-bg-0) !important;
+  border: 1px solid rgba(176, 141, 87, 0.24) !important;
+  background: linear-gradient(145deg, rgba(30, 48, 70, 0.7) 0%, rgba(14, 22, 34, 0.9) 100%) !important;
+  backdrop-filter: blur(20px) !important;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(212, 178, 125, 0.18) !important;
+  border-radius: 14px !important;
 }
 
 .shell .panelHead,
-.shell .lineSectionHead,
+.shell .lineSectionHead {
+  border-bottom: 1px solid rgba(176, 141, 87, 0.18) !important;
+  background: transparent !important;
+}
+
 .shell .dataTable thead th {
-  border-color: rgba(49, 84, 117, .65) !important;
-  background-color: var(--rkn-bg-2) !important;
-  color: var(--rkn-text-soft) !important;
+  border-bottom: 1px solid rgba(176, 141, 87, 0.28) !important;
+  background: linear-gradient(90deg, rgba(44, 62, 80, 0.6) 0%, rgba(20, 32, 46, 0.85) 100%) !important;
+  color: #d4b27d !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
 }
 
 .shell .dataTable tbody td {
-  border-color: rgba(35, 69, 99, .72) !important;
-  background-color: var(--rkn-bg-0) !important;
-  color: var(--rkn-text) !important;
+  border-bottom: 1px solid rgba(176, 141, 87, 0.1) !important;
+  background: transparent !important;
+  color: #f1f5f9 !important;
 }
 
 .shell .dataTable tbody tr:hover td {
-  background-color: var(--rkn-bg-2) !important;
+  background: linear-gradient(90deg, rgba(176, 141, 87, 0.12) 0%, rgba(44, 62, 80, 0.25) 50%, rgba(176, 141, 87, 0.06) 100%) !important;
 }
 
 /* ---------------------------------------------------------

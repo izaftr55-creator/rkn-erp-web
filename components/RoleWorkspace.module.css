@@ -1,12 +1,12 @@
 .shell {
-  --bg: #030713;
-  --panel: rgba(10, 17, 36, 0.86);
-  --line: rgba(109, 133, 255, 0.18);
-  --line-strong: rgba(109, 133, 255, 0.34);
-  --blue: #6987ff;
-  --blue-bright: #91a6ff;
-  --text: #f4f7ff;
-  --muted: #7583a4;
+  --bg: #0b131e;
+  --panel: rgba(22, 35, 52, 0.85);
+  --line: rgba(176, 141, 87, 0.2);
+  --line-strong: rgba(176, 141, 87, 0.35);
+  --blue: #b08d57;
+  --blue-bright: #d4b27d;
+  --text: #f8fafc;
+  --muted: #94a3b8;
 
   min-height: 100vh;
 
@@ -19,19 +19,19 @@
   background:
     radial-gradient(
       circle at 72% -8%,
-      rgba(61, 87, 255, 0.14),
+      rgba(176, 141, 87, 0.12),
       transparent 32%
     ),
     radial-gradient(
       circle at 95% 100%,
-      rgba(89, 55, 255, 0.08),
+      rgba(44, 62, 80, 0.4),
       transparent 30%
     ),
     linear-gradient(
       145deg,
-      #02040c 0%,
-      #050a16 48%,
-      #071021 100%
+      #080e16 0%,
+      #0e1724 48%,
+      #162334 100%
     );
 }
 

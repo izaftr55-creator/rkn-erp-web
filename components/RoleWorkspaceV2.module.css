@@ -5,9 +5,9 @@
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   background:
-    radial-gradient(circle at 75% 0%, rgba(37, 99, 235, 0.12), transparent 34%),
-    #050b16;
-  color: #eef3ff;
+    radial-gradient(circle at 75% 0%, rgba(176, 141, 87, 0.12), transparent 34%),
+    #0b131e;
+  color: #f8fafc;
 }
 
 .sidebar {
@@ -16,8 +16,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border-right: 1px solid rgba(93, 129, 214, 0.16);
-  background: rgba(5, 11, 22, 0.96);
+  border-right: 1px solid rgba(176, 141, 87, 0.2);
+  background: rgba(11, 18, 28, 0.96);
 }
 
 .brand {
@@ -39,7 +39,7 @@
 
 .brand small {
   margin-top: 3px;
-  color: #6f7d99;
+  color: #94a3b8;
   font-size: 10px;
   letter-spacing: 0.08em;
 }
@@ -49,18 +49,18 @@
   height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(96, 165, 250, 0.38);
+  border: 1px solid rgba(176, 141, 87, 0.38);
   border-radius: 11px;
-  background: linear-gradient(145deg, #0c1a34, #07101f);
-  color: #73a9ff;
+  background: linear-gradient(145deg, #162334, #0b131e);
+  color: #d4b27d;
   font-weight: 900;
 }
 
 .roleCard {
   padding: 13px;
-  border: 1px solid rgba(78, 123, 217, 0.18);
+  border: 1px solid rgba(176, 141, 87, 0.22);
   border-radius: 13px;
-  background: #091426;
+  background: rgba(22, 35, 52, 0.85);
 }
 
 .roleCard span,
@@ -71,7 +71,7 @@
 
 .roleCard span,
 .roleCard small {
-  color: #7887a3;
+  color: #94a3b8;
   font-size: 10px;
   letter-spacing: 0.08em;
 }
@@ -79,6 +79,7 @@
 .roleCard strong {
   margin: 6px 0;
   font-size: 13px;
+  color: #ffffff;
 }
 
 .nav {
@@ -98,19 +99,22 @@
   border-radius: 11px;
   border: 1px solid transparent;
   background: transparent;
-  color: #aab5ca;
+  color: #94a3b8;
   text-align: left;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .navButton:hover {
-  background: rgba(22, 43, 80, 0.56);
+  background: rgba(176, 141, 87, 0.1);
+  color: #ffffff;
 }
 
 .navActive {
-  border-color: rgba(74, 127, 234, 0.34);
-  background: linear-gradient(135deg, rgba(21, 53, 108, 0.84), rgba(10, 25, 50, 0.94));
+  border-color: #b08d57;
+  background: linear-gradient(135deg, rgba(176, 141, 87, 0.25), rgba(22, 35, 52, 0.9));
   color: #ffffff;
+  box-shadow: 0 4px 14px rgba(176, 141, 87, 0.15);
 }
 
 .navButton span,
@@ -143,14 +147,15 @@
   justify-content: space-between;
   gap: 20px;
   padding: 16px 18px;
-  border: 1px solid rgba(93, 129, 214, 0.17);
+  border: 1px solid rgba(176, 141, 87, 0.22);
   border-radius: 15px;
-  background: rgba(8, 18, 35, 0.88);
+  background: rgba(14, 23, 35, 0.9);
 }
 
 .kicker {
-  color: #5e82c4;
+  color: #c5a26a;
   font-size: 10px;
+  font-weight: 700;
   letter-spacing: 0.12em;
 }
 
@@ -191,9 +196,9 @@
 .metric {
   min-width: 0;
   padding: 13px;
-  border: 1px solid rgba(93, 129, 214, 0.14);
+  border: 1px solid rgba(176, 141, 87, 0.2);
   border-radius: 13px;
-  background: #091426;
+  background: rgba(22, 35, 52, 0.85);
 }
 
 .metric span,
@@ -203,7 +208,7 @@
 }
 
 .metric span {
-  color: #71809b;
+  color: #94a3b8;
   font-size: 9px;
   letter-spacing: 0.08em;
 }
@@ -212,11 +217,12 @@
   margin: 10px 0 7px;
   overflow: hidden;
   font-size: 18px;
+  color: #ffffff;
   text-overflow: ellipsis;
 }
 
 .metric small {
-  color: #56637a;
+  color: #94a3b8;
   font-size: 9px;
 }
 
@@ -230,20 +236,20 @@
 .panel {
   min-width: 0;
   padding: 16px;
-  border: 1px solid rgba(93, 129, 214, 0.16);
+  border: 1px solid rgba(176, 141, 87, 0.22);
   border-radius: 14px;
-  background: rgba(8, 18, 35, 0.9);
+  background: rgba(14, 23, 35, 0.9);
 }
 
 .panel h2 {
   margin: 0 0 13px;
-  color: #9fb6df;
+  color: #c5a26a;
   font-size: 11px;
   letter-spacing: 0.08em;
 }
 
 .panel p {
-  color: #7d8aa2;
+  color: #94a3b8;
   font-size: 12px;
   line-height: 1.6;
 }
@@ -263,12 +269,13 @@
   gap: 16px;
   padding: 7px 9px;
   border-radius: 9px;
-  background: rgba(12, 28, 53, 0.64);
+  background: rgba(22, 35, 52, 0.6);
+  border: 1px solid rgba(176, 141, 87, 0.12);
 }
 
 .definition dt,
 .capabilityList span {
-  color: #7d8ba6;
+  color: #94a3b8;
   font-size: 10px;
 }
 
@@ -276,6 +283,7 @@
   margin: 0;
   font-size: 11px;
   font-weight: 800;
+  color: #ffffff;
 }
 
 .scopeList {
@@ -290,20 +298,22 @@
   gap: 10px;
   padding: 9px 10px;
   border-radius: 9px;
-  background: rgba(12, 28, 53, 0.64);
+  background: rgba(22, 35, 52, 0.6);
+  border: 1px solid rgba(176, 141, 87, 0.12);
 }
 
 .scopeList strong {
   font-size: 10px;
+  color: #ffffff;
 }
 
 .scopeList span {
-  color: #8694ad;
+  color: #94a3b8;
   font-size: 10px;
 }
 
 .scopeList small {
-  color: #5d86d4;
+  color: #d4b27d;
   font-size: 9px;
 }
 
@@ -395,20 +405,20 @@
 
 /* RKN_GLOBAL_UI_UX_V2 */
 .sidebar {
-  border-right-color: rgba(116, 154, 214, 0.16) !important;
-  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.12);
+  border-right-color: rgba(176, 141, 87, 0.2) !important;
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.2);
 }
 
 .topbar {
-  border-bottom-color: rgba(116, 154, 214, 0.14) !important;
+  border-color: rgba(176, 141, 87, 0.22) !important;
   backdrop-filter: blur(14px);
 }
 
 .roleCard {
-  border-color: rgba(116, 154, 214, 0.2) !important;
+  border-color: rgba(176, 141, 87, 0.25) !important;
   background:
-    linear-gradient(145deg, rgba(16, 34, 58, 0.96), rgba(9, 22, 39, 0.98)) !important;
+    linear-gradient(145deg, rgba(22, 35, 52, 0.96), rgba(14, 23, 35, 0.98)) !important;
   box-shadow:
-    0 12px 26px rgba(0, 0, 0, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    0 12px 26px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
