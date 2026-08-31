@@ -1,0 +1,19 @@
+{
+  "name": "RKN ERP - Plastic Trading",
+  "short_name": "RKN ERP",
+  "description": "RKN Group Plastic Trading Management System",
+  "start_url": "/plastic-trading",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050811",
+  "theme_color": "#050811",
+  "icons": [
+    {
+      "src": "/rkn-logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

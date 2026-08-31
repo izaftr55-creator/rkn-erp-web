@@ -1841,6 +1841,103 @@ const [nextView, nextDashboard] = await Promise.all([
           ) : null}
         </div>
       </main>
+
+      {/* RKN_PLASTIC_MOBILE_BOTTOM_NAV_V2R25 (REVOA-style mobile navigation) */}
+      <nav className={styles.mobileBottomNav} aria-label="Mobile Navigation">
+        {isSupplier ? (
+          <>
+            <button
+              type="button"
+              className={tab === "INVENTORY" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("INVENTORY");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="inventory" />
+              <span>Stok</span>
+            </button>
+            <button
+              type="button"
+              className={tab === "INBOUND" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("INBOUND");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="inbound" />
+              <span>Masuk</span>
+            </button>
+            <button
+              type="button"
+              className={mobileNavOpen ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+            >
+              <MenuIcon name="audit" />
+              <span>Menu</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={tab === "DASHBOARD" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("DASHBOARD");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="dashboard" />
+              <span>Dashboard</span>
+            </button>
+            <button
+              type="button"
+              className={tab === "INVENTORY" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("INVENTORY");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="inventory" />
+              <span>Stok</span>
+            </button>
+            <button
+              type="button"
+              className={tab === "INBOUND" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("INBOUND");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="inbound" />
+              <span>Masuk</span>
+            </button>
+            <button
+              type="button"
+              className={tab === "OUTBOUND" ? styles.mobileBottomActive : styles.mobileBottomItem}
+              onClick={() => {
+                setTab("OUTBOUND");
+                setMobileNavOpen(false);
+              }}
+            >
+              <MenuIcon name="outbound" />
+              <span>Keluar</span>
+            </button>
+            <button
+              type="button"
+              className={
+                ["RECONCILIATION", "REPORTS", "OPNAME", "PRODUCTS", "CUSTOMERS", "RECEIVABLES", "CLOSING", "AUDIT"].includes(tab) || mobileNavOpen
+                  ? styles.mobileBottomActive
+                  : styles.mobileBottomItem
+              }
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+            >
+              <MenuIcon name="reconciliation" />
+              <span>Lainnya</span>
+            </button>
+          </>
+        )}
+      </nav>
     </div>
   );
 }

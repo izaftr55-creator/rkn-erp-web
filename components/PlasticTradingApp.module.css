@@ -35,23 +35,45 @@
 }
 
 .brand {
-  min-height: 54px;
+  min-height: 64px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 8px;
+  gap: 14px;
+  padding: 0 4px;
+}
+
+.brandLogo {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(12, 22, 38, 0.95);
+  border: 1.5px solid rgba(56, 189, 248, 0.65);
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  padding: 5px;
+  overflow: hidden;
+}
+
+.brandLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.6));
 }
 
 .brandMark {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(56, 189, 248, 0.5);
   border-radius: 12px;
   background: linear-gradient(135deg, #1e3a8a, #0f172a);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
   box-shadow: 0 0 24px rgba(56, 189, 248, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
@@ -981,37 +1003,132 @@
   }
 }
 
+.mobileBottomNav {
+  display: none;
+}
+
 @media (max-width: 760px) {
   .shell {
     display: block;
+    min-height: 100vh;
   }
 
   .sidebar {
-    position: relative;
-    width: 100%;
-    height: auto;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 290px;
+    max-width: 86vw;
+    height: 100vh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 10px 0 50px rgba(0, 0, 0, 0.9);
+    border-right: 1px solid rgba(56, 189, 248, 0.35);
   }
 
-  .nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .sidebarOpen {
+    transform: translateX(0);
   }
 
-  .navGroupLabel {
-    grid-column: 1 / -1;
+  .mobileOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 95;
+    border: none;
+    cursor: pointer;
   }
 
   .main {
-    padding: 12px;
+    padding: 14px 14px 84px 14px;
+    width: 100%;
+    overflow-x: hidden;
   }
 
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(12, 22, 38, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+
+  .topbarTitle h1 {
+    font-size: 16px;
+  }
+
+  .topbarTitle p {
+    display: none;
   }
 
   .topbarTools {
-    width: 100%;
-    align-items: flex-end;
+    width: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobileBottomNav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(5, 8, 17, 0.94);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(56, 189, 248, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 90;
+    padding: 0 4px calc(env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.7);
+  }
+
+  .mobileBottomItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    padding: 6px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 54px;
+  }
+
+  .mobileBottomActive {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 6px 12px;
+    border-radius: 12px;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.28);
+    cursor: pointer;
+    min-width: 54px;
   }
 
   .metricGrid,
