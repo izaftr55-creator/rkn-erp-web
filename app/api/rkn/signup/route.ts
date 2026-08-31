@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { NextResponse } from "next/server";
 
 import { getAuth } from "@/lib/auth";
+import { sendSignupReceivedEmail, sendAdminSignupAlertEmail } from "@/lib/zohoMailer";
 
 export const dynamic = "force-dynamic";
 
@@ -355,6 +356,22 @@ export async function POST(
         requestedRole,
       }
     );
+
+    // Send asynchronous notifications via Zoho Business Email
+    sendSignupReceivedEmail({
+      to: email,
+      fullName,
+      username,
+      requestedRole,
+    }).catch((err) => console.error("ZOHO_SIGNUP_USER_EMAIL_ERR:", err));
+
+    sendAdminSignupAlertEmail({
+      fullName,
+      username,
+      email,
+      whatsapp,
+      requestedRole,
+    }).catch((err) => console.error("ZOHO_SIGNUP_ADMIN_ALERT_ERR:", err));
 
     return back(
       request,

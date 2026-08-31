@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getAuth } from "@/lib/auth";
 import { getErpCoreRpcStub, type RknRpcAccessLevel } from "@/lib/erpCoreRpc";
+import { sendAccountApprovedEmail } from "@/lib/zohoMailer";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,7 @@ export async function POST(
         id,
         user_id,
         full_name,
+        email,
         status
       FROM rkn_signup_request
       WHERE id = ?
@@ -152,6 +154,15 @@ export async function POST(
         requestId
       )
       .run();
+
+    if (signup.email) {
+      sendAccountApprovedEmail({
+        to: String(signup.email),
+        fullName: String(signup.full_name || "User"),
+        roleCode,
+        accessLevel,
+      }).catch((err) => console.error("ZOHO_APPROVE_USER_EMAIL_ERR:", err));
+    }
 
     return back(
       request,
