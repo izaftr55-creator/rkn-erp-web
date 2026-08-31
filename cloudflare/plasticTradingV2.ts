@@ -2155,6 +2155,22 @@ if(view==='OPNAME'){
     period
   ).toArray()[0]??null;
 
+  /* RKN_PLASTIC_POSTED_SO_CORRECTION_VIEW_V2R24
+     A posted SO stays immutable in the ordinary DRAFT/REVIEW flow, but its
+     latest snapshot must remain inspectable for a separately audited factual
+     correction. */
+  const latestPosted=sql.exec(
+    `SELECT so_id soId,so_no soNo,period_key periodKey,date_key dateKey,status,
+            reason,legacy_opname_id legacyOpnameId,actor_user_id actorUserId,
+            created_at createdAt,updated_at updatedAt,posted_at postedAt
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC'
+       AND period_key=? AND status='POSTED'
+     ORDER BY date_key DESC,posted_at DESC,created_at DESC
+     LIMIT 1`,
+    period
+  ).toArray()[0]??null;
+
   const activeSystemRows=active
     ? authoritativeSoStockRows(sql,String(active.dateKey||''))
     : [];
@@ -2197,6 +2213,46 @@ if(view==='OPNAME'){
       checkpointDateKey:authoritative?.checkpointDateKey||''
     };
   });
+  const postedSystemRows=latestPosted
+    ? authoritativeSoStockRows(sql,String(latestPosted.dateKey||''))
+    : [];
+  const postedSystemByVariant=new Map<string,any>();
+  for(const row of postedSystemRows as any[]){
+    postedSystemByVariant.set(T(row.variantId,120),row);
+  }
+  const postedLinesRaw=latestPosted
+    ? sql.exec(
+        `SELECT
+           l.line_id lineId,l.so_id soId,l.variant_id variantId,
+           l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
+           l.physical_entered physicalEntered,l.snapshot_unit_cost_rp snapshotUnitCostRp,l.note,
+           v.product_name productName,v.category,v.color,v.size,v.grade,
+           v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
+           COALESCE(v.units_per_mid,1) unitsPerMid,
+           COALESCE(v.units_per_pack,1) unitsPerPack
+         FROM plastic_so_session_line l
+         JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+         WHERE l.so_id=?
+           AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+         ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`,
+        String(latestPosted.soId),String(latestPosted.dateKey||'')
+      ).toArray()
+    : [];
+  const postedLines=(postedLinesRaw as any[]).map((row:any)=>{
+    const authoritative=postedSystemByVariant.get(T(row.variantId,120));
+    const storedSystemQtyBase=N(row.systemQtyBase);
+    return{
+      ...row,
+      storedSystemQtyBase,
+      systemQtyBase:authoritative
+        ? N(authoritative.systemQtyBase)
+        : storedSystemQtyBase,
+      systemSnapshotDriftQtyBase:authoritative
+        ? storedSystemQtyBase-N(authoritative.systemQtyBase)
+        : 0,
+      systemSource:authoritative?.systemSource||'STORED_SO_SNAPSHOT'
+    };
+  });
   const sessionsRaw=sql.exec(
     `SELECT s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
             COUNT(l.line_id) totalSku,
@@ -2236,6 +2292,8 @@ if(view==='OPNAME'){
     actor:a,
     active,
     activeLines,
+    latestPosted,
+    postedLines,
     systemBasisReady:active?1:0,
     systemBasis:'OFFICIAL_DOCUMENTS_AS_OF_SO_DATE',
     systemBasisDateKey:active?String(active.dateKey||''):'',
@@ -3920,6 +3978,235 @@ if(cmd==='POST_SO_ADJUSTMENT'){
       balanceSku:balanceCount,
       lessSku:lessCount,
       moreSku:moreCount
+    };
+  });
+}
+
+/* RKN_PLASTIC_POSTED_SO_FACTUAL_CORRECTION_V2R24
+   Posted SO data cannot be edited through the ordinary draft workflow. This
+   command is the narrow, audited exception for a proven physical-count input
+   error. It refreshes the official system side for every SO line, replaces
+   only the requested physical values, rebuilds the derived SO adjustments,
+   and finally refreshes live stock from the corrected checkpoint. */
+if(cmd==='CORRECT_POSTED_SO'){
+  mg(a);
+  const soId=T(p.soId,160),reason=T(p.reason,500);
+  if(!soId)throw Error('PLASTIC_SO_REQUIRED');
+  if(!reason)throw Error('PLASTIC_REASON_REQUIRED');
+
+  const session=sql.exec(
+    `SELECT so_id soId,so_no soNo,period_key periodKey,date_key dateKey,status,
+            legacy_opname_id legacyOpnameId
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC' AND so_id=? LIMIT 1`,
+    soId
+  ).toArray()[0];
+
+  if(!session)throw Error('PLASTIC_SO_NOT_FOUND');
+  if(T(session.status,20).toUpperCase()!=='POSTED'){
+    throw Error('PLASTIC_SO_POSTED_REQUIRED');
+  }
+
+  const period=T(session.periodKey,7),date=DK(session.dateKey);
+  const legacyOpnameId=T(session.legacyOpnameId,160);
+  if(!legacyOpnameId)throw Error('PLASTIC_SO_LEGACY_SNAPSHOT_REQUIRED');
+  open(sql,period);
+
+  const requested=Array.isArray(p.lines)?p.lines:[];
+  if(!requested.length)throw Error('PLASTIC_SO_CORRECTION_LINES_REQUIRED');
+
+  const currentLines=sql.exec(
+    `SELECT line_id lineId,variant_id variantId,system_qty_base systemQtyBase,
+            physical_qty_base physicalQtyBase,physical_entered physicalEntered,
+            snapshot_unit_cost_rp snapshotUnitCostRp,note
+     FROM plastic_so_session_line
+     WHERE so_id=?
+       AND NOT (variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+     ORDER BY variant_id`,
+    soId,date
+  ).toArray();
+
+  if(!currentLines.length)throw Error('PLASTIC_SO_LINES_REQUIRED');
+  if(currentLines.some((row:any)=>Number(row.physicalEntered)!==1)){
+    throw Error('PLASTIC_SO_PHYSICAL_INCOMPLETE');
+  }
+
+  const currentByVariant=new Map<string,any>();
+  for(const row of currentLines as any[]){
+    currentByVariant.set(T(row.variantId,120),row);
+  }
+
+  const targetPhysicalByVariant=new Map<string,{target:number;expected:number|null;note:string}>();
+  for(const raw of requested as any[]){
+    const variantId=T(raw.variantId,120);
+    if(!variantId||targetPhysicalByVariant.has(variantId)){
+      throw Error('PLASTIC_SO_CORRECTION_VARIANT_DUPLICATE');
+    }
+    const current=currentByVariant.get(variantId);
+    if(!current)throw Error('PLASTIC_SO_VARIANT_NOT_FOUND');
+    const target=Number(raw.physicalQtyBase);
+    if(!Number.isFinite(target)||target<0){
+      throw Error('PLASTIC_SO_PHYSICAL_INVALID');
+    }
+    const hasExpected=Object.prototype.hasOwnProperty.call(raw,'expectedPhysicalQtyBase');
+    const expected=hasExpected?Number(raw.expectedPhysicalQtyBase):null;
+    if(hasExpected&&(!Number.isFinite(expected)||Number(expected)<0)){
+      throw Error('PLASTIC_SO_EXPECTED_PHYSICAL_INVALID');
+    }
+    const actual=N(current.physicalQtyBase);
+    if(expected!==null&&Math.abs(actual-expected)>0.000001&&Math.abs(actual-target)>0.000001){
+      throw Error('PLASTIC_SO_CORRECTION_CONFLICT');
+    }
+    targetPhysicalByVariant.set(variantId,{
+      target,
+      expected,
+      note:T(raw.note,500)
+    });
+  }
+
+  const authoritativeRows=authoritativeSoStockRows(sql,date);
+  const authoritativeByVariant=new Map<string,any>();
+  for(const row of authoritativeRows as any[]){
+    authoritativeByVariant.set(T(row.variantId,120),row);
+  }
+
+  const postingLines=(currentLines as any[]).map((row:any)=>{
+    const variantId=T(row.variantId,120);
+    const authoritative=authoritativeByVariant.get(variantId);
+    if(!authoritative)throw Error('PLASTIC_SO_AUTHORITATIVE_VARIANT_MISSING');
+    const correction=targetPhysicalByVariant.get(variantId);
+    return{
+      ...row,
+      variantId,
+      oldSystemQtyBase:N(row.systemQtyBase),
+      oldPhysicalQtyBase:N(row.physicalQtyBase),
+      systemQtyBase:N(authoritative.systemQtyBase),
+      physicalQtyBase:correction?correction.target:N(row.physicalQtyBase),
+      snapshotUnitCostRp:I(authoritative.avgCostRp),
+      note:correction?.note||T(row.note,500),
+      requestedCorrection:Boolean(correction)
+    };
+  });
+
+  const legacyLineCount=scalar(
+    sql,
+    `SELECT COUNT(*) value FROM plastic_stock_opname_line WHERE opname_id=?`,
+    legacyOpnameId
+  );
+  if(legacyLineCount!==postingLines.length){
+    throw Error('PLASTIC_SO_LEGACY_SNAPSHOT_INCOMPLETE');
+  }
+
+  const factualChanges=postingLines.filter((row:any)=>
+    row.requestedCorrection&&
+    Math.abs(N(row.oldPhysicalQtyBase)-N(row.physicalQtyBase))>0.000001
+  );
+  const systemChanges=postingLines.filter((row:any)=>
+    Math.abs(N(row.oldSystemQtyBase)-N(row.systemQtyBase))>0.000001
+  );
+
+  const summarize=(rows:any[])=>{
+    let balanceSku=0,lessSku=0,moreSku=0;
+    for(const row of rows){
+      const diff=N(row.physicalQtyBase)-N(row.systemQtyBase);
+      if(Math.abs(diff)<0.000001)balanceSku++;
+      else if(diff<0)lessSku++;
+      else moreSku++;
+    }
+    return{balanceSku,lessSku,moreSku};
+  };
+  const summary=summarize(postingLines);
+
+  if(!factualChanges.length&&!systemChanges.length){
+    return{
+      ok:true,soId,status:'POSTED',alreadyApplied:true,
+      totalSku:postingLines.length,...summary
+    };
+  }
+
+  return atomic(()=>{
+    const t=now();
+    const previousAdjustmentMovements=scalar(
+      sql,
+      `SELECT COUNT(*) value
+       FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND source_type='SO_SESSION' AND source_key=?`,
+      soId
+    );
+
+    sql.exec(
+      `DELETE FROM plastic_inventory_movement
+       WHERE business_unit_id='BU-PLASTIC'
+         AND source_type='SO_SESSION' AND source_key=?`,
+      soId
+    ).toArray();
+
+    let rebuiltAdjustmentMovements=0;
+    for(const row of postingLines){
+      const variantId=T(row.variantId,120);
+      const systemQtyBase=N(row.systemQtyBase);
+      const physicalQtyBase=N(row.physicalQtyBase);
+      const varianceQtyBase=physicalQtyBase-systemQtyBase;
+      const cost=I(row.snapshotUnitCostRp);
+
+      sql.exec(
+        `UPDATE plastic_so_session_line
+         SET system_qty_base=?,physical_qty_base=?,physical_entered=1,
+             snapshot_unit_cost_rp=?,note=?,updated_at=?
+         WHERE so_id=? AND variant_id=?`,
+        systemQtyBase,physicalQtyBase,cost,T(row.note,500),t,soId,variantId
+      ).toArray();
+
+      sql.exec(
+        `UPDATE plastic_stock_opname_line
+         SET system_qty_base=?,physical_qty_base=?,variance_qty_base=?
+         WHERE opname_id=? AND variant_id=?`,
+        systemQtyBase,physicalQtyBase,varianceQtyBase,legacyOpnameId,variantId
+      ).toArray();
+
+      if(Math.abs(varianceQtyBase)<0.000001)continue;
+      sql.exec(
+        `INSERT INTO plastic_inventory_movement(
+           movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,
+           qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at
+         ) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?)`,
+        crypto.randomUUID(),variantId,period,date,
+        varianceQtyBase>0?'ADJUSTMENT_IN':'ADJUSTMENT_OUT',
+        Math.abs(varianceQtyBase),cost,'SO_SESSION',soId,a.id,reason,t,t
+      ).toArray();
+      rebuiltAdjustmentMovements++;
+    }
+
+    sql.exec(
+      `UPDATE plastic_so_session SET updated_at=? WHERE so_id=?`,
+      t,soId
+    ).toArray();
+    syncAuthoritativeInventory(sql);
+
+    audit(sql,a,'PLASTIC_SO_POSTED_CORRECTION','PLASTIC_SO_SESSION',soId,reason,{
+      soNo:T(session.soNo,160),
+      dateKey:date,
+      legacyOpnameId,
+      physicalCorrections:factualChanges.map((row:any)=>({
+        variantId:T(row.variantId,120),
+        beforePhysicalQtyBase:N(row.oldPhysicalQtyBase),
+        afterPhysicalQtyBase:N(row.physicalQtyBase),
+        systemQtyBase:N(row.systemQtyBase)
+      })),
+      refreshedSystemSku:systemChanges.length,
+      previousAdjustmentMovements,
+      rebuiltAdjustmentMovements,
+      ...summary
+    });
+
+    return{
+      ok:true,soId,status:'POSTED',alreadyApplied:false,
+      correctedPhysicalSku:factualChanges.length,
+      refreshedSystemSku:systemChanges.length,
+      rebuiltAdjustmentMovements,
+      totalSku:postingLines.length,
+      ...summary
     };
   });
 }

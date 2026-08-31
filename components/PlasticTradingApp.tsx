@@ -4415,6 +4415,10 @@ function Opname({
     ? data.sessions
     : [];
   const history = Array.isArray(data.rows) ? data.rows : [];
+  const latestPosted = data.latestPosted || null;
+  const postedLines = Array.isArray(data.postedLines)
+    ? data.postedLines
+    : [];
   const authoritativeSystemReady =
     Number(data.systemBasisReady || 0) === 1 &&
     String(data.systemBasis || "") ===
@@ -4435,6 +4439,50 @@ function Opname({
   const [physicalUnit, setPhysicalUnit] = useState("");
   const [physicalNote, setPhysicalNote] = useState("");
   const [postReason, setPostReason] = useState("");
+
+  /* RKN_PLASTIC_POSTED_SO_FACTUAL_CORRECTION_UI_V2R24
+     These are the two physical-count corrections confirmed from the final
+     28/08 recap. Ordinary posted SO rows remain locked. */
+  const factualCorrectionSpecs = [
+    {
+      variantId: "PL-POLY-BIRU-20X30",
+      physicalQtyBase: 300,
+      confirmedQty: "6 BALL",
+    },
+    {
+      variantId: "PL-POLY-UNGU-17X30",
+      physicalQtyBase: 100,
+      confirmedQty: "2 BALL",
+    },
+  ];
+  const factualCorrectionRows =
+    String(latestPosted?.dateKey || "") === "2026-08-28"
+      ? factualCorrectionSpecs
+          .map((spec) => {
+            const row = postedLines.find(
+              (item: Row) =>
+                String(item.variantId) === spec.variantId
+            );
+            return row
+              ? {
+                  ...row,
+                  targetPhysicalQtyBase: spec.physicalQtyBase,
+                  confirmedQty: spec.confirmedQty,
+                  correctionStatus:
+                    Math.abs(
+                      Number(row.physicalQtyBase || 0) -
+                        spec.physicalQtyBase
+                    ) < 0.000001
+                      ? "SUDAH SESUAI"
+                      : "PERLU DIKOREKSI",
+                }
+              : null;
+          })
+          .filter(Boolean) as Row[]
+      : [];
+  const pendingFactualCorrections = factualCorrectionRows.filter(
+    (row: Row) => row.correctionStatus === "PERLU DIKOREKSI"
+  );
 
   const selected = lines.find(
     (row: Row) => String(row.variantId) === variantId
@@ -4923,6 +4971,50 @@ function Opname({
     setPostReason("");
   };
 
+  const correctPostedSo = async () => {
+    if (!latestPosted?.soId || !pendingFactualCorrections.length) {
+      return;
+    }
+
+    const detail = pendingFactualCorrections
+      .map(
+        (row: Row) =>
+          `${row.color} ${row.size}: ${qtyText(
+            row,
+            Number(row.physicalQtyBase || 0)
+          )} menjadi ${row.confirmedQty}`
+      )
+      .join("\n");
+
+    if (
+      !window.confirm(
+        `Terapkan koreksi faktual pada ${latestPosted.soNo}?\n\n${detail}\n\nSistem akan memperbarui snapshot SO, adjustment turunan, laporan, dan saldo live. Transaksi IN/OUT tidak dibuat.`
+      )
+    ) {
+      return;
+    }
+
+    await run(
+      "CORRECT_POSTED_SO",
+      {
+        soId: latestPosted.soId,
+        reason:
+          "Koreksi faktual rekap fisik final 28/08/2026: Biru 20x30 6 BALL; Ungu 17x30 2 BALL.",
+        lines: pendingFactualCorrections.map((row: Row) => ({
+          variantId: row.variantId,
+          expectedPhysicalQtyBase: Number(
+            row.physicalQtyBase || 0
+          ),
+          physicalQtyBase: Number(
+            row.targetPhysicalQtyBase || 0
+          ),
+          note: `Koreksi faktual fisik final: ${row.confirmedQty}`,
+        })),
+      },
+      "OPNAME"
+    );
+  };
+
   return (
     <>
       {!active ? (
@@ -5340,6 +5432,68 @@ function Opname({
           ) : null}
         </>
       )}
+
+      {latestPosted && factualCorrectionRows.length ? (
+        <Panel
+          title="Koreksi Faktual SO Posted"
+          subtitle={`Perbaikan resmi ${latestPosted.soNo}. Jejak audit disimpan dan transaksi IN/OUT tidak diubah.`}
+        >
+          <div
+            className={
+              pendingFactualCorrections.length
+                ? styles.soCorrectionNotice
+                : styles.soCorrectionComplete
+            }
+          >
+            <strong>
+              {pendingFactualCorrections.length
+                ? `${pendingFactualCorrections.length} ITEM PERLU KOREKSI`
+                : "KOREKSI FAKTUAL SUDAH DITERAPKAN"}
+            </strong>
+            <span>
+              Nilai yang disahkan: Biru 20x30 = 6 BALL dan Ungu
+              17x30 = 2 BALL. Sistem resmi dihitung ulang dari dokumen
+              sampai 28/08/2026.
+            </span>
+          </div>
+
+          <DataTable
+            rows={factualCorrectionRows}
+            columns={[
+              ["productName", "Produk"],
+              ["color", "Warna"],
+              ["size", "Ukuran"],
+              [
+                "physicalQtyBase",
+                "Fisik Saat Ini",
+                (row) =>
+                  qtyText(
+                    row,
+                    Number(row.physicalQtyBase || 0)
+                  ),
+              ],
+              ["confirmedQty", "Fisik Benar"],
+              ["correctionStatus", "Status"],
+            ]}
+          />
+
+          {pendingFactualCorrections.length ? (
+            <div className={styles.soCorrectionActions}>
+              <span>
+                Hanya pengelola yang dapat menjalankan koreksi ini.
+              </span>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                disabled={busy || !canManage}
+                onClick={correctPostedSo}
+              >
+                Terapkan Koreksi SO
+              </button>
+            </div>
+          ) : null}
+        </Panel>
+      ) : null}
 
       <Panel title="Riwayat SO">
         <DataTable

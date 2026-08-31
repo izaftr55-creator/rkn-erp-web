@@ -2607,6 +2607,55 @@
   line-height: 1.45;
 }
 
+/* RKN_PLASTIC_POSTED_SO_FACTUAL_CORRECTION_UI_V2R24 */
+.soCorrectionNotice,
+.soCorrectionComplete {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 11px 13px;
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.soCorrectionComplete {
+  border-color: rgba(46, 204, 145, 0.35);
+  background: rgba(16, 185, 129, 0.07);
+}
+
+.soCorrectionNotice strong,
+.soCorrectionComplete strong {
+  color: #f8c35f;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.soCorrectionComplete strong {
+  color: #55e6ad;
+}
+
+.soCorrectionNotice span,
+.soCorrectionComplete span {
+  color: rgba(219, 234, 254, 0.76);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.soCorrectionActions {
+  width: 100%;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.soCorrectionActions span {
+  color: #7890ad;
+  font-size: 9px;
+}
+
 @media (max-width: 820px) {
   .dashboardShell .metricGrid {
     grid-template-columns: 1fr !important;
@@ -2623,6 +2672,15 @@
 
   .soSessionHead {
     flex-direction: column;
+  }
+
+  .soCorrectionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .soCorrectionActions button {
+    width: 100%;
   }
 
   .soLegend {
