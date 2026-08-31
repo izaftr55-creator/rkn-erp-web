@@ -6576,24 +6576,31 @@ function Reports({
   };
 
   const sellingValue = (row: Row) => {
-    const parts = decompose(row, row.qtyBase);
+    const qty = Number(row.qtyBase || 0);
+    const parts = decompose(row, qty);
     const prices = effectiveSellPrices(row);
     const missingPrice =
       (parts.pack > 0.000001 && prices.packPriceRp <= 0) ||
       (parts.mid > 0.000001 && prices.midPriceRp <= 0) ||
       (parts.base > 0.000001 && prices.basePriceRp <= 0);
 
+    const val =
+      Number(row.stockValueRp || 0) > 0
+        ? Number(row.stockValueRp)
+        : Math.round(
+            parts.pack * prices.packPriceRp +
+              parts.mid * prices.midPriceRp +
+              parts.base * prices.basePriceRp
+          );
+
     return {
-      salesValueRp: Math.round(
-        parts.pack * prices.packPriceRp +
-          parts.mid * prices.midPriceRp +
-          parts.base * prices.basePriceRp
-      ),
+      salesValueRp: val,
       salesPriceMissing: missingPrice ? 1 : 0,
     };
   };
 
-  const stockSellingRows = checkpointStockRows.map((row: Row) => ({
+  const liveStockRows = stock.length ? stock : checkpointStockRows;
+  const stockSellingRows = liveStockRows.map((row: Row) => ({
     ...row,
     ...sellingValue(row),
   }));

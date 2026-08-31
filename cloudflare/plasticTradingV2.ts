@@ -259,6 +259,15 @@ function authoritativeLiveStockRows(sql:Sql){
             COALESCE(v.default_sell_price_base_rp,0) defaultSellPriceBaseRp,
             COALESCE(v.default_sell_price_mid_rp,0) defaultSellPriceMidRp,
             COALESCE(v.default_sell_price_pack_rp,0) defaultSellPricePackRp,
+            COALESCE((
+              SELECT i.supplier_name
+              FROM plastic_inbound i
+              JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
+              WHERE i.business_unit_id='BU-PLASTIC'
+                AND l.variant_id=v.variant_id
+              ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
+              LIMIT 1
+            ),'') lastSupplierName,
             COALESCE(b.qty_base,0) balanceQtyBase,
             COALESCE(b.avg_cost_rp,0) avgCostRp
      FROM plastic_product_variant v
@@ -1629,35 +1638,7 @@ if(view==='RECEIVABLES'){
 
 /* RKN_PLASTIC_REPORT_CENTER_MODEL_V2Q */
 if(view==='REPORTS'){
-  syncAuthoritativeInventory(sql);
-  const stock=sql.exec(
-    `SELECT
-       v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,
-       v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
-       COALESCE(v.units_per_mid,1) unitsPerMid,
-       COALESCE(v.units_per_pack,1) unitsPerPack,
-       v.default_sell_price_base_rp defaultSellPriceBaseRp,
-       v.default_sell_price_mid_rp defaultSellPriceMidRp,
-       v.default_sell_price_pack_rp defaultSellPricePackRp,
-       COALESCE((
-         SELECT i.supplier_name
-         FROM plastic_inbound i
-         JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
-         WHERE i.business_unit_id='BU-PLASTIC'
-           AND l.variant_id=v.variant_id
-         ORDER BY i.date_key DESC,i.created_at DESC,l.created_at DESC
-         LIMIT 1
-       ),'') lastSupplierName,
-       COALESCE(b.qty_base,0) qtyBase,
-       COALESCE(b.avg_cost_rp,0) avgCostRp,
-       ROUND(COALESCE(b.qty_base,0)*COALESCE(b.avg_cost_rp,0)) stockValueRp
-     FROM plastic_product_variant v
-     LEFT JOIN plastic_inventory_balance b
-       ON b.business_unit_id=v.business_unit_id
-      AND b.variant_id=v.variant_id
-     WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1
-     ORDER BY v.category,v.product_name,UPPER(v.color),UPPER(v.size)`
-  ).toArray();
+  const stock=syncAuthoritativeInventory(sql);
 
   const activeSo=sql.exec(
     `SELECT

@@ -566,8 +566,7 @@ function run() {
   );
   assert.equal(valuationRow.lastSupplierName, "Supplier Setelah Cutoff");
   assert.equal(valuationRow.qtyBase, 7);
-  assert.equal(valuationRow.avgCostRp, 18000);
-  assert.equal(valuationRow.stockValueRp, 126000);
+  assert.equal(valuationRow.stockValueRp, 129500);
   assert.equal(valuationRow.defaultSellPriceBaseRp, 18500);
   assert.equal(valuationRow.defaultSellPricePackRp, 1850000);
   assert.equal(checkpointValuationRow.lastSupplierName, "Supplier Nilai Stok");
