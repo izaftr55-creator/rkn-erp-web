@@ -3525,12 +3525,34 @@ function Inbound({
               "lineTotalRp",
               "Total Nilai",
               (row) => {
-                const total = Number(row.lineTotalRp || 0);
-                if (total > 0) return money.format(total);
-                const prices = effectiveSellPrices(row);
-                const qty = Number(row.qtyBase || 0);
-                const val = qty * prices.basePriceRp;
-                return val > 0 ? money.format(val) : "-";
+                const product =
+                  products.find(
+                    (p) => p.variantId === row.variantId
+                  ) || row;
+                const prices = effectiveSellPrices({
+                  ...product,
+                  ...row,
+                });
+                const unitsPerPack = Math.max(
+                  1,
+                  Number(
+                    product.unitsPerPack ||
+                      row.unitsPerPack ||
+                      1
+                  )
+                );
+                const qty = Number(
+                  row.qtyBase ||
+                    Number(row.qtyInput || 0) *
+                      unitsPerPack
+                );
+                const val =
+                  prices.basePriceRp > 0
+                    ? qty * prices.basePriceRp
+                    : Number(row.lineTotalRp || 0);
+                return val > 0
+                  ? money.format(val)
+                  : "-";
               },
             ],
             [
