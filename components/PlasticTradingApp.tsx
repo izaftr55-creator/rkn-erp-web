@@ -6417,7 +6417,7 @@ function Reconciliation({
           </div>
           <div>
             <span>DASAR REKONSILIASI</span>
-            <strong style={{ fontSize: "12px", color: "#38bdf8" }}>SO FISIK 28/08</strong>
+            <strong style={{ color: "#38bdf8" }}>SO FISIK 28/08</strong>
           </div>
           <div>
             <span>ANOMALI TRANSAKSI</span>

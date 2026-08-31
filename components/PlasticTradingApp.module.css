@@ -6608,17 +6608,18 @@
 .reconAuditStrip span,
 .reportSummaryStrip span {
   color: #7895b2;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .05em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
   text-transform: uppercase;
 }
 
 .reconAuditStrip strong,
 .reportSummaryStrip strong {
   color: #f0f6ff;
-  font-size: 17px;
-  line-height: 1.2;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .reconAuditStrip small {
