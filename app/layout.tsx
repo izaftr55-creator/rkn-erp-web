@@ -29,6 +29,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="id">
       <head>
+        <link rel="icon" type="image/png" sizes="192x192" href="/rkn-logo.png" />
+        <link rel="icon" type="image/png" sizes="64x64" href="/rkn-logo.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/rkn-logo.png" />
+        <link rel="shortcut icon" href="/rkn-logo.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/rkn-logo.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

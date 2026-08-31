@@ -6894,10 +6894,10 @@ function Reports({
 
     const drawHeader = (pageNo: number) => {
       doc.setFillColor(15, 23, 42);
-      doc.rect(0, 0, pageWidth, 24, "F");
+      doc.rect(0, 0, pageWidth, 27, "F");
 
       doc.setFillColor(59, 130, 246);
-      doc.rect(0, 24, pageWidth, 1.2, "F");
+      doc.rect(0, 27, pageWidth, 1.2, "F");
 
       if (logoData) {
         doc.addImage(
@@ -6905,8 +6905,8 @@ function Reports({
           "PNG",
           5,
           2.5,
-          19,
-          19,
+          22,
+          22,
           "RKN_LOGO",
           "FAST"
         );
@@ -6915,13 +6915,13 @@ function Reports({
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
-      doc.text("RKN ERP", 28, 9);
+      doc.text("RKN ERP", 31, 9.5);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
-      doc.text("PLASTIC TRADING DIVISION · RKN GROUP", 28, 15.5);
-      doc.text(`CUTOFF: ${auditSoDate} · 100% BALANCE`, 28, 20);
+      doc.text("PLASTIC TRADING DIVISION · RKN GROUP", 31, 16.5);
+      doc.text(`CUTOFF: ${auditSoDate} · 100% BALANCE`, 31, 22);
 
       doc.setTextColor(255, 255, 255);
       doc.setFont("helvetica", "bold");
@@ -6935,7 +6935,7 @@ function Reports({
 
       doc.setFontSize(6.8);
       doc.setTextColor(100, 116, 139);
-      doc.text(`DICETAK: ${generatedAt} WIB · HALAMAN ${pageNo}`, pageWidth - 5, 20, {
+      doc.text(`DICETAK: ${generatedAt} WIB · HALAMAN ${pageNo}`, pageWidth - 5, 21, {
         align: "right",
       });
       doc.setTextColor(30, 41, 59);
@@ -6957,7 +6957,7 @@ function Reports({
     const table = (
       head: any,
       body: any[][],
-      startY = 29,
+      startY = 32,
       columnStyles?: any
     ) => {
       autoTable(doc, {
@@ -6967,16 +6967,14 @@ function Reports({
         margin: {
           left: 4,
           right: 4,
-          top: 29,
+          top: 32,
           bottom: 10,
         },
         head: Array.isArray(head[0]) ? head : [head],
         body,
         columnStyles: columnStyles || {},
         didParseCell: (data: any) => {
-          if (columnStyles && columnStyles[data.column.index]?.halign) {
-            data.cell.styles.halign = columnStyles[data.column.index].halign;
-          }
+          data.cell.styles.halign = "center";
         },
         styles: {
           font: "helvetica",
@@ -6987,6 +6985,7 @@ function Reports({
           lineWidth: 0.12,
           overflow: "linebreak",
           valign: "middle",
+          halign: "center",
         },
         headStyles: {
           fillColor: [30, 41, 59],
@@ -6994,6 +6993,7 @@ function Reports({
           fontStyle: "bold",
           lineColor: [203, 213, 225],
           lineWidth: 0.12,
+          halign: "center",
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252],
@@ -7009,7 +7009,7 @@ function Reports({
       doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 30);
+      doc.text("RINGKASAN EKSEKUTIF & INDIKATOR KUNCI", 4, 31);
 
       table(
         ["Pilar Bisnis", "Indikator Utama", "Nilai / Realisasi", "Catatan Eksekutif & Status"],
@@ -7028,13 +7028,7 @@ function Reports({
               ]]
             : []),
         ],
-        33,
-        {
-          0: { halign: "left", fontStyle: "bold" },
-          1: { halign: "left" },
-          2: { halign: "right", fontStyle: "bold" },
-          3: { halign: "left" },
-        }
+        33
       );
 
       if (topStockSellingValueRows.length) {
@@ -7042,7 +7036,7 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
-        doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 30);
+        doc.text("VALUASI NILAI JUAL STOK FISIK 28/08/2026 (PERINGKAT TERBESAR)", 4, 31);
 
         table(
           ["Produk", "Warna", "Ukuran", "Stok Fisik", "Harga Jual Utama", "Nilai Jual Total"],
@@ -7057,15 +7051,7 @@ function Reports({
             ]),
             ["", "", "", "", "TOTAL NILAI JUAL", money.format(stockSellingValueTotalRp)],
           ],
-          33,
-          {
-            0: { halign: "left" },
-            1: { halign: "left" },
-            2: { halign: "center" },
-            3: { halign: "right" },
-            4: { halign: "right" },
-            5: { halign: "right", fontStyle: "bold" },
-          }
+          33
         );
       }
 
@@ -7074,7 +7060,7 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
-        doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 30);
+        doc.text("BUKU PIUTANG AKTIF PELANGGAN", 4, 31);
 
         table(
           ["Tanggal", "No. Invoice", "Nama Pelanggan", "Total Tagihan", "Sudah Dibayar", "Sisa Piutang"],
@@ -7089,15 +7075,7 @@ function Reports({
             ]),
             ["", "", "TOTAL", "", "", money.format(receivableTotalRp)],
           ],
-          33,
-          {
-            0: { halign: "center" },
-            1: { halign: "center" },
-            2: { halign: "left" },
-            3: { halign: "right" },
-            4: { halign: "right" },
-            5: { halign: "right", fontStyle: "bold" },
-          }
+          33
         );
       }
     }
@@ -7143,8 +7121,8 @@ function Reports({
     if (reportTab === "RECON") {
       const reconHead = [
         [
-          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: `OPENING (${auditOpeningDate.slice(5).split("-").reverse().join("/")})`, colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
           { content: "BARANG MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
@@ -7155,18 +7133,18 @@ function Reports({
           { content: "STATUS", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "BALL/DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL/PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL/DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL/PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
         ],
       ];
 
@@ -7220,30 +7198,12 @@ function Reports({
       doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU ✓ 100% BALANCE)`, 4, 30);
+      doc.text(`HASIL REKONSILIASI STOK RESMI (${allReconRows.length} SKU ✓ 100% BALANCE)`, 4, 31);
 
       table(
         reconHead,
         bodyFor(allReconRows),
-        33,
-        {
-          0: { halign: "left" },
-          1: { halign: "left" },
-          2: { halign: "center" },
-          3: { halign: "right" },
-          4: { halign: "right" },
-          5: { halign: "right" },
-          6: { halign: "right" },
-          7: { halign: "right" },
-          8: { halign: "right" },
-          9: { halign: "right" },
-          10: { halign: "right" },
-          11: { halign: "right" },
-          12: { halign: "right" },
-          13: { halign: "right" },
-          14: { halign: "right" },
-          15: { halign: "center", fontStyle: "bold" },
-        }
+        33
       );
 
       if (pdfOutsideSoRows.length > 0) {
@@ -7251,30 +7211,12 @@ function Reports({
         drawHeader(doc.getNumberOfPages());
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
-        doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 30);
+        doc.text(`TRANSAKSI DI LUAR SO FISIK (${pdfOutsideSoRows.length} SKU)`, 4, 31);
 
         table(
           reconHead,
           bodyFor(pdfOutsideSoRows),
-          33,
-          {
-            0: { halign: "left" },
-            1: { halign: "left" },
-            2: { halign: "center" },
-            3: { halign: "right" },
-            4: { halign: "right" },
-            5: { halign: "right" },
-            6: { halign: "right" },
-            7: { halign: "right" },
-            8: { halign: "right" },
-            9: { halign: "right" },
-            10: { halign: "right" },
-            11: { halign: "right" },
-            12: { halign: "right" },
-            13: { halign: "right" },
-            14: { halign: "right" },
-            15: { halign: "center" },
-          }
+          33
         );
       }
     }
@@ -7288,16 +7230,16 @@ function Reports({
 
       const stockHead = [
         [
-          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "STOK FISIK GUDANG", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "HARGA JUAL UTAMA", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
-          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "HARGA JUAL UTAMA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
         ],
       ];
 
@@ -7318,16 +7260,7 @@ function Reports({
           }),
           ["", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockTotal)],
         ],
-        33,
-        {
-          0: { halign: "left" },
-          1: { halign: "left" },
-          2: { halign: "center" },
-          3: { halign: "right" },
-          4: { halign: "right" },
-          5: { halign: "right" },
-          6: { halign: "right", fontStyle: "bold" },
-        }
+        33
       );
     }
 
@@ -7340,18 +7273,18 @@ function Reports({
 
       const stockValueHead = [
         [
-          { content: "SUPPLIER", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "SUPPLIER", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "STOK FISIK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "HARGA / ROLL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
-          { content: "HARGA / BALL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
-          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "HARGA / ROLL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "HARGA / BALL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "NILAI JUAL TOTAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
         ],
       ];
 
@@ -7374,18 +7307,7 @@ function Reports({
           }),
           ["", "", "", "", "", "", "TOTAL NILAI JUAL", money.format(pdfStockValueTotal)],
         ],
-        33,
-        {
-          0: { halign: "left" },
-          1: { halign: "left" },
-          2: { halign: "left" },
-          3: { halign: "center" },
-          4: { halign: "right" },
-          5: { halign: "right" },
-          6: { halign: "right" },
-          7: { halign: "right" },
-          8: { halign: "right", fontStyle: "bold" },
-        }
+        33
       );
     }
 
@@ -7395,15 +7317,15 @@ function Reports({
         [
           { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "NO. DOKUMEN IN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
-          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "BARANG MASUK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
           { content: "INPUT ASLI", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
         ],
       ];
 
@@ -7422,17 +7344,7 @@ function Reports({
             `${qtyText(row.qty)} ${row.unit || ""}`,
           ];
         }),
-        33,
-        {
-          0: { halign: "center" },
-          1: { halign: "center" },
-          2: { halign: "left" },
-          3: { halign: "left" },
-          4: { halign: "center" },
-          5: { halign: "right" },
-          6: { halign: "right" },
-          7: { halign: "center" },
-        }
+        33
       );
     }
 
@@ -7447,16 +7359,16 @@ function Reports({
         [
           { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "NO. INVOICE", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
-          { content: "NAMA CUSTOMER", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
-          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+          { content: "NAMA CUSTOMER", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "PRODUK", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+          { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
           { content: "BARANG KELUAR", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
-          { content: "TOTAL PENJUALAN", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          { content: "TOTAL PENJUALAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
         ],
         [
-          { content: "BALL / DUS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
-          { content: "ROLL / PCS", styles: { halign: "right", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
+          { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [30, 41, 59] } },
         ],
       ];
 
@@ -7479,18 +7391,7 @@ function Reports({
           }),
           ["", "", "", "", "", "", "", "TOTAL PENJUALAN", money.format(pdfOutboundTotal)],
         ],
-        33,
-        {
-          0: { halign: "center" },
-          1: { halign: "center" },
-          2: { halign: "left" },
-          3: { halign: "left" },
-          4: { halign: "left" },
-          5: { halign: "center" },
-          6: { halign: "right" },
-          7: { halign: "right" },
-          8: { halign: "right", fontStyle: "bold" },
-        }
+        33
       );
     }
 
@@ -7513,15 +7414,7 @@ function Reports({
           ]),
           ["", "", "TOTAL PIUTANG", "", "", money.format(pdfReceivableTotal)],
         ],
-        33,
-        {
-          0: { halign: "center" },
-          1: { halign: "center" },
-          2: { halign: "left" },
-          3: { halign: "right" },
-          4: { halign: "right" },
-          5: { halign: "right", fontStyle: "bold" },
-        }
+        33
       );
     }
 
@@ -7554,19 +7447,7 @@ function Reports({
             : stockHuman(row, row.systemSnapshotQtyBase),
           stockHuman(row, row.liveOnHandQtyBase),
         ]),
-        33,
-        {
-          0: { halign: "left" },
-          1: { halign: "left" },
-          2: { halign: "center" },
-          3: { halign: "right" },
-          4: { halign: "right" },
-          5: { halign: "right" },
-          6: { halign: "right" },
-          7: { halign: "right" },
-          8: { halign: "right" },
-          9: { halign: "right" },
-        }
+        33
       );
     }
 
