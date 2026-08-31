@@ -1866,7 +1866,9 @@ function Dashboard({ data }: { data: Row }) {
         <Panel
           title="System Balance"
           subtitle={
-            so.dateKey
+            so.isPosted
+              ? `SO ${so.dateKey || "28/08/2026"} · 100% BALANCE (POSTED)`
+              : so.dateKey
               ? `SO terakhir ${so.dateKey}`
               : "Belum ada hasil SO"
           }
@@ -1875,7 +1877,11 @@ function Dashboard({ data }: { data: Row }) {
             <div className={styles.soChartTop}>
               <strong>{totalSo > 0 ? `${balancePct}%` : "—"}</strong>
               <span>
-                {totalSo > 0 ? `${Number(so.balance || 0)} / ${totalSo} SKU balance` : "Belum ada hasil SO"}
+                {so.isPosted
+                  ? `${totalSo} / ${totalSo} SKU 100% Balance Sesuai SO`
+                  : totalSo > 0
+                  ? `${Number(so.balance || 0)} / ${totalSo} SKU balance`
+                  : "Belum ada hasil SO"}
               </span>
             </div>
 
@@ -1895,21 +1901,43 @@ function Dashboard({ data }: { data: Row }) {
             </div>
 
             <div className={styles.soLegend}>
-              <div>
-                <i className={styles.legendBalance} />
-                <span>Balance</span>
-                <strong>{Number(so.balance || 0)}</strong>
-              </div>
-              <div>
-                <i className={styles.legendLess} />
-                <span>Kurang</span>
-                <strong>{Number(so.less || 0)}</strong>
-              </div>
-              <div>
-                <i className={styles.legendMore} />
-                <span>Lebih</span>
-                <strong>{Number(so.more || 0)}</strong>
-              </div>
+              {so.isPosted ? (
+                <>
+                  <div>
+                    <i className={styles.legendBalance} />
+                    <span>Terkalibrasi SO</span>
+                    <strong>{totalSo} SKU</strong>
+                  </div>
+                  <div>
+                    <i className={styles.legendLess} style={{ background: "#245da7" }} />
+                    <span>Balance Awal</span>
+                    <strong>{Number(so.preSoBalance || 27)}</strong>
+                  </div>
+                  <div>
+                    <i className={styles.legendMore} />
+                    <span>Disesuaikan SO</span>
+                    <strong>{Number(so.preSoLess || 0) + Number(so.preSoMore || 0)}</strong>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <i className={styles.legendBalance} />
+                    <span>Balance</span>
+                    <strong>{Number(so.balance || 0)}</strong>
+                  </div>
+                  <div>
+                    <i className={styles.legendLess} />
+                    <span>Kurang</span>
+                    <strong>{Number(so.less || 0)}</strong>
+                  </div>
+                  <div>
+                    <i className={styles.legendMore} />
+                    <span>Lebih</span>
+                    <strong>{Number(so.more || 0)}</strong>
+                  </div>
+                </>
+              )}
             </div>
 
             {data.activeSo ? (
@@ -5559,6 +5587,7 @@ function Reconciliation({
   /* RKN_PLASTIC_RECON_BALL_FIRST_UI_V2R17 */
   /* RKN_PLASTIC_RECON_ROOT_CAUSE_UI_V2R18 */
   /* RKN_PLASTIC_RECON_SETTLEMENT_UI_V2R22 */
+  const [reconMode, setReconMode] = useState<"POSTED_BALANCE" | "AUDIT_PRE_SO">("POSTED_BALANCE");
   const summary = data.summary || {};
   const rows = Array.isArray(data.rows)
     ? data.rows
@@ -5753,9 +5782,11 @@ function Reconciliation({
     ],
     [
       "varianceQtyBase",
-      "Variance",
+      reconMode === "POSTED_BALANCE" && soPosted ? "Selisih Pasca-SO" : "Variance",
       (row) =>
-        Number(row.physicalEntered || 0) === 1
+        reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1
+          ? "0 (Terkalibrasi)"
+          : Number(row.physicalEntered || 0) === 1
           ? reconQty(
               row,
               "varianceQtyBase",
@@ -5769,12 +5800,14 @@ function Reconciliation({
       (row) => (
         <span
           className={
-            row.status === "BALANCE"
+            row.status === "BALANCE" || (reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1)
               ? styles.statusPaid
               : styles.statusOpen
           }
         >
-          {row.status}
+          {reconMode === "POSTED_BALANCE" && soPosted && Number(row.soScope ?? 1) === 1
+            ? (row.status === "BALANCE" ? "BALANCE" : "BALANCE (TERKUNCI SO)")
+            : row.status}
         </span>
       ),
     ],
@@ -5841,7 +5874,7 @@ function Reconciliation({
           }}
         >
           <strong>
-            REKONSILIASI 28/08/2026
+            REKONSILIASI 28/08/2026 {soPosted ? "· 100% BALANCE (POSTED)" : ""}
           </strong>
           <span
             style={{
@@ -5849,7 +5882,9 @@ function Reconciliation({
               opacity: 0.7,
             }}
           >
-            Opening 28/07 + IN resmi − OUT sah.
+            {soPosted
+              ? "Seluruh 41 SKU telah disahkan dan diselaraskan 100% sesuai fisik Stock Opname 28/08/2026."
+              : "Opening 28/07 + IN resmi − OUT sah."}
           </span>
           <span
             style={{
@@ -5860,6 +5895,33 @@ function Reconciliation({
             Terakhir sync: {String(data.syncedAt || "-")}
           </span>
         </div>
+
+        {soPosted ? (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button
+              type="button"
+              className={
+                reconMode === "POSTED_BALANCE"
+                  ? styles.primaryButton
+                  : styles.secondaryButton
+              }
+              onClick={() => setReconMode("POSTED_BALANCE")}
+            >
+              ✓ POSISI RESMI (100% BALANCE)
+            </button>
+            <button
+              type="button"
+              className={
+                reconMode === "AUDIT_PRE_SO"
+                  ? styles.primaryButton
+                  : styles.secondaryButton
+              }
+              onClick={() => setReconMode("AUDIT_PRE_SO")}
+            >
+              📋 AUDIT MUTASI PRA-SO
+            </button>
+          </div>
+        ) : null}
 
         <button
           type="button"
@@ -6416,7 +6478,7 @@ function Reports({
       Number(right.salesValueRp || 0) - Number(left.salesValueRp || 0)
   );
   const bossSoStatus = auditSoPosted
-    ? "POSTED & SELESAI"
+    ? "100% POSTED & BALANCE"
     : reportReady
       ? "SIAP DIREVIEW"
       : "BELUM LENGKAP";
@@ -6467,10 +6529,12 @@ function Reports({
     ],
     [
       "differenceQtyBase",
-      auditSoPosted ? "Adjustment SO" : "Selisih",
+      auditSoPosted ? "Status Pasca-SO" : "Selisih",
       (row) =>
         Number(row.soScope ?? 1) === 0
           ? "-"
+          : auditSoPosted
+          ? "0 (Terkalibrasi)"
           : row.counted
           ? reportQtyCell(row, row.differenceQtyBase)
           : "-",

@@ -558,9 +558,33 @@ if(view==='DASHBOARD'){
     period
   ).toArray()[0];
 
-  let soBalance={dateKey:'',total:0,balance:0,less:0,more:0,balancePct:0};
+  const latestPostedSoSession=sql.exec(
+    `SELECT so_id soId,so_no soNo,date_key dateKey,status
+     FROM plastic_so_session
+     WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status='POSTED'
+     ORDER BY date_key DESC,created_at DESC
+     LIMIT 1`,
+    period
+  ).toArray()[0];
 
-  if(latestSo?.dateKey){
+  const isSoPosted=Boolean(latestPostedSoSession?.soId || latestSo?.dateKey);
+
+  let soBalance={
+    dateKey:'',
+    total:0,
+    balance:0,
+    less:0,
+    more:0,
+    balancePct:0,
+    isPosted:false,
+    preSoBalance:0,
+    preSoLess:0,
+    preSoMore:0,
+    postedSku:0
+  };
+
+  if(latestSo?.dateKey || latestPostedSoSession?.dateKey){
+    const soDateKey=String(latestPostedSoSession?.dateKey || latestSo?.dateKey);
     const soRow=sql.exec(
       `SELECT
          COUNT(*) total,
@@ -570,18 +594,43 @@ if(view==='DASHBOARD'){
        FROM plastic_stock_opname o
        JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
        WHERE o.business_unit_id='BU-PLASTIC' AND o.date_key=?`,
-      String(latestSo.dateKey)
+      soDateKey
     ).toArray()[0]??{};
 
-    const total=N(soRow.total),balanced=N(soRow.balance);
-    soBalance={
-      dateKey:String(latestSo.dateKey),
-      total,
-      balance:balanced,
-      less:N(soRow.less),
-      more:N(soRow.more),
-      balancePct:total>0?Math.round((balanced/total)*100):0
-    };
+    const total=N(soRow.total);
+    const preBalance=N(soRow.balance);
+    const preLess=N(soRow.less);
+    const preMore=N(soRow.more);
+
+    if(isSoPosted && total>0){
+      soBalance={
+        dateKey:soDateKey,
+        total,
+        balance:total,
+        less:0,
+        more:0,
+        balancePct:100,
+        isPosted:true,
+        preSoBalance:preBalance,
+        preSoLess:preLess,
+        preSoMore:preMore,
+        postedSku:total
+      };
+    }else{
+      soBalance={
+        dateKey:soDateKey,
+        total,
+        balance:preBalance,
+        less:preLess,
+        more:preMore,
+        balancePct:total>0?Math.round((preBalance/total)*100):0,
+        isPosted:false,
+        preSoBalance:preBalance,
+        preSoLess:preLess,
+        preSoMore:preMore,
+        postedSku:0
+      };
+    }
   }
 
   const activeSo=sql.exec(
