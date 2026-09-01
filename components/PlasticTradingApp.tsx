@@ -4031,8 +4031,35 @@ function Outbound({
                 );
                 const units = unitOptions(selected);
 
+                const availableBase = Math.max(0, Number(selected?.qtyBase || 0));
+                const currentPackUnit = String(selected?.packUnit || "").toUpperCase();
+                const currentMidUnit = String(selected?.midUnit || "").toUpperCase();
+                const unitsPerPack = Math.max(1, Number(selected?.unitsPerPack || 1));
+                const unitsPerMid = Math.max(1, Number(selected?.unitsPerMid || 1));
+
+                let requestedBase = Number(line.qty || 0);
+                const chosenUnit = String(line.unit || "").toUpperCase();
+                if (chosenUnit === currentPackUnit && currentPackUnit) {
+                  requestedBase = Number(line.qty || 0) * unitsPerPack;
+                } else if (chosenUnit === currentMidUnit && currentMidUnit) {
+                  requestedBase = Number(line.qty || 0) * unitsPerMid;
+                }
+
+                const isInsufficient =
+                  Boolean(selected) &&
+                  Number(line.qty || 0) > 0 &&
+                  requestedBase > availableBase + 1e-9;
+
+                const stockDisplay = selected
+                  ? formatBallDusQty(selected, selected.qtyBase)
+                  : "-";
+                const isOutOfStock = selected ? availableBase <= 0 : false;
+
                 return (
-                  <div className={styles.lineItem} key={index}>
+                  <div
+                    className={`${styles.lineItem} ${styles.outboundLineItem}`}
+                    key={index}
+                  >
                     <span className={styles.lineNo}>
                       {String(index + 1).padStart(2, "0")}
                     </span>
@@ -4064,7 +4091,32 @@ function Outbound({
                       }}
                     />
 
-                    <Field label="Qty">
+                    <Field label="Stok" className={styles.stockField}>
+                      <input
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        disabled={!selected}
+                        value={stockDisplay}
+                        title={
+                          selected
+                            ? `Stok Gudang Real: ${stockDisplay} (${stockText(selected)})`
+                            : "Pilih produk untuk melihat ketersediaan stok"
+                        }
+                        className={
+                          !selected
+                            ? styles.stockInputDisabled
+                            : isOutOfStock
+                            ? styles.stockInputEmpty
+                            : styles.stockInput
+                        }
+                      />
+                    </Field>
+
+                    <Field
+                      label="Qty"
+                      className={isInsufficient ? styles.qtyFieldWarning : ""}
+                    >
                       <input
                         required
                         type="number"
@@ -4080,6 +4132,11 @@ function Outbound({
                           setLines(next);
                         }}
                       />
+                      {isInsufficient ? (
+                        <small className={styles.stockWarningNote}>
+                          Melebihi stok ({stockDisplay})
+                        </small>
+                      ) : null}
                     </Field>
 
                     <Field label="UOM">
