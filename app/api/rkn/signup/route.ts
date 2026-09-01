@@ -250,6 +250,7 @@ export async function POST(
           displayUsername:
             username,
         } as any,
+        headers: request.headers,
       });
 
     const userId =

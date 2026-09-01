@@ -351,10 +351,14 @@
   font: inherit;
   font-size: 13px;
   font-weight: 500;
+  text-transform: none !important;
+  font-variant: normal !important;
+  font-variant-caps: normal !important;
 }
 
 .field input::placeholder {
   color: #64748b;
+  text-transform: none !important;
 }
 
 .field input:disabled {
