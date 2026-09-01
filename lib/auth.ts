@@ -4,17 +4,36 @@ import { username } from "better-auth/plugins";
 
 
 export function getAuth() {
-  const { env } = getCloudflareContext();
-  const runtimeEnv = env as any;
+  let runtimeEnv: any = {};
+  try {
+    const { env } = getCloudflareContext();
+    runtimeEnv = env || {};
+  } catch {}
 
-  if (!runtimeEnv.AUTH_DB) {
+  const authDb = runtimeEnv.AUTH_DB;
+  const secret =
+    typeof runtimeEnv.BETTER_AUTH_SECRET === "string" &&
+    runtimeEnv.BETTER_AUTH_SECRET.length >= 32
+      ? runtimeEnv.BETTER_AUTH_SECRET
+      : typeof process.env.BETTER_AUTH_SECRET === "string" &&
+        process.env.BETTER_AUTH_SECRET.length >= 32
+      ? process.env.BETTER_AUTH_SECRET
+      : "";
+
+  const baseUrl =
+    typeof runtimeEnv.BETTER_AUTH_URL === "string" &&
+    runtimeEnv.BETTER_AUTH_URL.trim().length > 0
+      ? runtimeEnv.BETTER_AUTH_URL.trim()
+      : typeof process.env.BETTER_AUTH_URL === "string" &&
+        process.env.BETTER_AUTH_URL.trim().length > 0
+      ? process.env.BETTER_AUTH_URL.trim()
+      : undefined;
+
+  if (!authDb) {
     throw new Error("AUTH_DB binding is required.");
   }
 
-  if (
-    typeof runtimeEnv.BETTER_AUTH_SECRET !== "string" ||
-    runtimeEnv.BETTER_AUTH_SECRET.length < 32
-  ) {
+  if (!secret) {
     throw new Error("BETTER_AUTH_SECRET binding is required and must be at least 32 characters.");
   }
 
@@ -40,13 +59,10 @@ export function getAuth() {
       ? ["http://localhost:3000"]
       : []),
   ],
-  baseURL:
-    typeof runtimeEnv.BETTER_AUTH_URL === "string"
-      ? runtimeEnv.BETTER_AUTH_URL
-      : undefined,
+  baseURL: baseUrl,
 
-  database: runtimeEnv.AUTH_DB,
-  secret: runtimeEnv.BETTER_AUTH_SECRET,
+  database: authDb,
+  secret: secret,
 
   /*
    * RKN_PENDING_ACCOUNT_SESSION_GATE_V1
