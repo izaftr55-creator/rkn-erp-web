@@ -220,6 +220,116 @@ VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'T
 `).toArray();
 
 
+
+/* RKN_PLASTIC_V2L_INVOICE_TRANSACTION_RECONCILIATION */
+sql.exec(`
+-- 1. Perbaiki spesifik invoice PTR-20260826-A9E605 menjadi Thermal Goldwin (+ Rp 60.000)
+UPDATE plastic_sales_line
+SET variant_id = 'PL-THERMAL-THERMAL-GOLDWIN',
+    unit_price_rp = CASE WHEN unit_price_rp > 0 THEN unit_price_rp + 30000 ELSE 370000 END,
+    line_total_rp = qty_input * (CASE WHEN unit_price_rp > 0 THEN unit_price_rp + 30000 ELSE 370000 END)
+WHERE invoice_id IN (
+  SELECT invoice_id FROM plastic_sales_invoice
+  WHERE invoice_no = 'PTR-20260826-A9E605' OR invoice_no LIKE '%A9E605%'
+) AND (variant_id LIKE '%THERMAL%' AND variant_id <> 'PL-THERMAL-THERMAL-GOLDWIN');
+
+-- 2. Sinkronkan harga dan baris penjualan Putih A yang dulunya tercatat isi 50 roll per ball
+UPDATE plastic_sales_line
+SET unit_price_rp = (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 1880000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    ),
+    line_total_rp = qty_input * (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 1880000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    )
+WHERE variant_id = 'PL-POLY-PUTIH-A-17X30'
+  AND UPPER(input_unit) = 'BALL'
+  AND unit_price_rp = 1175000;
+
+UPDATE plastic_sales_line
+SET unit_price_rp = (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 2080000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    ),
+    line_total_rp = qty_input * (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 2080000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    )
+WHERE variant_id = 'PL-POLY-PUTIH-A-20X30'
+  AND UPPER(input_unit) = 'BALL'
+  AND unit_price_rp = 1300000;
+
+UPDATE plastic_sales_line
+SET unit_price_rp = (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 1950000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    ),
+    line_total_rp = qty_input * (
+      SELECT COALESCE(v.default_sell_price_pack_rp, 1950000)
+      FROM plastic_product_variant v
+      WHERE v.variant_id = plastic_sales_line.variant_id
+    )
+WHERE variant_id = 'PL-POLY-PUTIH-A-25X35'
+  AND UPPER(input_unit) = 'BALL'
+  AND (unit_price_rp = 1560000 OR unit_price_rp = 1350000);
+
+-- 3. Sinkronkan harga dan baris penjualan Putih B yang dulunya tercatat isi 50 roll per ball
+UPDATE plastic_sales_line
+SET unit_price_rp = 1560000,
+    line_total_rp = qty_input * 1560000
+WHERE variant_id = 'PL-POLY-PUTIH-B-17X30'
+  AND UPPER(input_unit) = 'BALL'
+  AND unit_price_rp = 975000;
+
+UPDATE plastic_sales_line
+SET unit_price_rp = 1760000,
+    line_total_rp = qty_input * 1760000
+WHERE variant_id = 'PL-POLY-PUTIH-B-20X30'
+  AND UPPER(input_unit) = 'BALL'
+  AND unit_price_rp = 1100000;
+
+-- 4. Sinkronkan harga dan baris penjualan Warna 25x35 yang dulunya tercatat isi 50 roll per ball (menjadi 40 roll)
+UPDATE plastic_sales_line
+SET unit_price_rp = 1560000,
+    line_total_rp = qty_input * 1560000
+WHERE variant_id LIKE 'PL-POLY-%-25X35'
+  AND variant_id NOT LIKE '%HITAM%'
+  AND variant_id NOT LIKE '%PUTIH%'
+  AND UPPER(input_unit) = 'BALL'
+  AND unit_price_rp = 1950000;
+
+-- 5. Hitung ulang subtotal dan grand total untuk seluruh sales invoice yang tidak VOID
+UPDATE plastic_sales_invoice
+SET subtotal_rp = (
+      SELECT COALESCE(SUM(l.line_total_rp), 0)
+      FROM plastic_sales_line l
+      WHERE l.invoice_id = plastic_sales_invoice.invoice_id
+    ),
+    grand_total_rp = (
+      SELECT COALESCE(SUM(l.line_total_rp), 0)
+      FROM plastic_sales_line l
+      WHERE l.invoice_id = plastic_sales_invoice.invoice_id
+    ) - discount_rp + shipping_rp,
+    updated_at = CURRENT_TIMESTAMP
+WHERE status <> 'VOID';
+
+-- 6. Sesuaikan status pelunasan (PAID / PARTIAL / OPEN) sesuai pembayaran riil yang sudah tercatat
+UPDATE plastic_sales_invoice
+SET status = CASE
+      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') >= grand_total_rp THEN 'PAID'
+      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') > 0 THEN 'PARTIAL'
+      ELSE 'OPEN'
+    END,
+    updated_at = CURRENT_TIMESTAMP
+WHERE status <> 'VOID';
+`).toArray();
+
 /* RKN_PLASTIC_V2K_HISTORICAL_TRANSACTION_RECALC */
 sql.exec(`
 -- Update plastic_inbound_line qty_base based on correct units_per_pack
