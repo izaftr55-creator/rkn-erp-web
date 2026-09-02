@@ -1560,12 +1560,15 @@ if(view==='OUTBOUND')return{
      LEFT JOIN plastic_customer c
        ON c.customer_id=i.customer_id
      WHERE i.business_unit_id='BU-PLASTIC'
-       AND (i.period_key=? OR substr(i.date_key,1,7)=?)
-       AND i.status<>'VOID'
-     ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
-     LIMIT 1600`,
-    period,
-    period
+        AND (?='ALL' OR ?='' OR ? IS NULL OR i.period_key=? OR substr(i.date_key,1,7)=?)
+        AND i.status<>'VOID'
+      ORDER BY i.date_key DESC,i.created_at DESC,l.created_at,l.line_id
+      LIMIT 3000`,
+     period,
+     period,
+     period,
+     period,
+     period
   ).toArray(),
   payments: sql.exec(
     `SELECT p.payment_id paymentId,p.invoice_id invoiceId,p.date_key dateKey,
@@ -1691,11 +1694,11 @@ if(view==='REPORTS'){
        so_id soId,so_no soNo,date_key dateKey,status,reason,created_at createdAt
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
-       AND period_key=?
-       AND status IN('DRAFT','REVIEW')
-     ORDER BY date_key DESC,created_at DESC
-     LIMIT 1`,
-    period
+        AND (?='ALL' OR period_key=?)
+        AND status IN('DRAFT','REVIEW')
+      ORDER BY date_key DESC,created_at DESC
+      LIMIT 1`,
+     period,period
   ).toArray()[0]??null;
 
   const soPrep=activeSo
@@ -1725,11 +1728,11 @@ if(view==='REPORTS'){
        SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
      FROM plastic_so_session s
      LEFT JOIN plastic_so_session_line l ON l.so_id=s.so_id
-     WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
-     GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
-     ORDER BY s.date_key DESC,s.created_at DESC
-     LIMIT 24`,
-    period
+     WHERE s.business_unit_id='BU-PLASTIC' AND (?='ALL' OR s.period_key=?)
+      GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+      ORDER BY s.date_key DESC,s.created_at DESC
+      LIMIT 50`,
+     period,period
   ).toArray();
 
   const opname=sql.exec(
@@ -1746,10 +1749,10 @@ if(view==='REPORTS'){
      FROM plastic_stock_opname o
      JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
      JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-     WHERE o.business_unit_id='BU-PLASTIC' AND o.period_key=?
-     ORDER BY o.date_key DESC,o.created_at DESC,v.category,v.product_name,UPPER(v.color),UPPER(v.size)
-     LIMIT 1200`,
-    period
+     WHERE o.business_unit_id='BU-PLASTIC' AND (?='ALL' OR o.period_key=?)
+      ORDER BY o.date_key DESC,o.created_at DESC,v.category,v.product_name,UPPER(v.color),UPPER(v.size)
+      LIMIT 2500`,
+     period,period
   ).toArray();
 
   const receivables=sql.exec(
@@ -1786,9 +1789,9 @@ if(view==='REPORTS'){
      JOIN plastic_inbound_line l ON l.inbound_id=i.inbound_id
      JOIN plastic_product_variant v ON v.variant_id=l.variant_id
      WHERE i.business_unit_id='BU-PLASTIC'
-       AND (i.period_key=? OR substr(i.date_key,1,7)=?)
-     ORDER BY i.date_key,i.created_at`,
-    period,period
+        AND (?='ALL' OR ?='' OR ? IS NULL OR i.period_key=? OR substr(i.date_key,1,7)=?)
+      ORDER BY i.date_key,i.created_at`,
+     period,period,period,period,period
   ).toArray();
 
   const outbound=sql.exec(
@@ -2441,11 +2444,11 @@ if(view==='OPNAME'){
      LEFT JOIN plastic_so_session_line l
        ON l.so_id=s.so_id
       AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')
-     WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
-     GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
-     ORDER BY s.date_key DESC,s.created_at DESC
-     LIMIT 24`,
-    period
+     WHERE s.business_unit_id='BU-PLASTIC' AND (?='ALL' OR s.period_key=?)
+      GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+      ORDER BY s.date_key DESC,s.created_at DESC
+      LIMIT 50`,
+     period,period
   ).toArray();
   const sessions=(sessionsRaw as any[]).map((session:any)=>{
     if(!active||T(session.soId,160)!==T(active.soId,160))return session;
@@ -2502,11 +2505,11 @@ if(view==='OPNAME'){
             actor_user_id actorUserId,created_at createdAt,updated_at updatedAt
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
-       AND period_key=?
-       AND status IN('DRAFT','REVIEW')
-     ORDER BY date_key DESC,created_at DESC
-     LIMIT 1`,
-    period
+        AND (?='ALL' OR period_key=?)
+        AND status IN('DRAFT','REVIEW')
+      ORDER BY date_key DESC,created_at DESC
+      LIMIT 1`,
+     period,period
   ).toArray()[0]??null;
 
   const activeLines=active
@@ -2542,11 +2545,11 @@ if(view==='OPNAME'){
               SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
        FROM plastic_so_session s
        LEFT JOIN plastic_so_session_line l ON l.so_id=s.so_id
-       WHERE s.business_unit_id='BU-PLASTIC' AND s.period_key=?
-       GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
-       ORDER BY s.date_key DESC,s.created_at DESC
-       LIMIT 24`,
-      period
+       WHERE s.business_unit_id='BU-PLASTIC' AND (?='ALL' OR s.period_key=?)
+      GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
+      ORDER BY s.date_key DESC,s.created_at DESC
+      LIMIT 50`,
+     period,period
     ).toArray(),
     rows:sql.exec(
       `SELECT o.opname_no opnameNo,o.date_key dateKey,o.reason,l.variant_id variantId,
