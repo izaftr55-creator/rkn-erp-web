@@ -1921,7 +1921,15 @@ const [nextView, nextDashboard] = await Promise.all([
           ) : (
             <>
               <div className={styles.navGroupLabel}>OPERASI</div>
-              {menus.slice(0, 8).filter(([key]) => !(isSupervisor && key === "RECEIVABLES")).map(([key, label, glyph]) => (
+              {[
+                ["DASHBOARD", "Dashboard", "dashboard"],
+                ["OPENING", "Opening", "opening"],
+                ["INBOUND", "Barang Masuk", "inbound"],
+                ["OUTBOUND", "Barang Keluar", "outbound"],
+                ["INVENTORY", "Stok Gudang", "inventory"],
+                ["PRODUCTS", "Master Produk", "products"],
+                ["CUSTOMERS", "Data Customer", "customers"],
+              ].map(([key, label, glyph]) => (
                 <button
                   key={key}
                   type="button"
@@ -1938,8 +1946,37 @@ const [nextView, nextDashboard] = await Promise.all([
                 </button>
               ))}
 
-              <div className={styles.navGroupLabel}>KONTROL</div>
-              {menus.slice(8).filter(([key]) => !(key === "ACCESS" && !isAdminOrOwner)).map(([key, label, glyph]) => (
+              <div className={styles.navGroupLabel}>KEUANGAN & KOMISI</div>
+              {[
+                ["RECEIVABLES", "Piutang Customer", "receivables"],
+                ["PAYABLES", "Hutang Supplier", "receivables"],
+                ["COMMISSION", "Komisi Sales", "reports"],
+              ].filter(([key]) => !(isSupervisor && key === "RECEIVABLES")).map(([key, label, glyph]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    tab === key ? styles.navActive : styles.navButton
+                  }
+                  onClick={() => {
+                    setTab(key);
+                    setMobileNavOpen(false);
+                  }}
+                >
+                  <span className={styles.navGlyph}><MenuIcon name={glyph} /></span>
+                  <span>{label}</span>
+                </button>
+              ))}
+
+              <div className={styles.navGroupLabel}>KONTROL & LAPORAN</div>
+              {[
+                ["OPNAME", "Stock Opname", "opname"],
+                ["RECONCILIATION", "Rekonsiliasi", "reconciliation"],
+                ["REPORTS", "Laporan & Laba", "reports"],
+                ["CLOSING", "Tutup Buku", "closing"],
+                ["AUDIT", "Audit Log", "audit"],
+                ["ACCESS", "Akses Pengguna", "access"],
+              ].filter(([key]) => !(key === "ACCESS" && !isAdminOrOwner)).map(([key, label, glyph]) => (
                 <button
                   key={key}
                   type="button"
