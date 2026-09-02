@@ -2790,7 +2790,6 @@ export class RknErpCore
           AND i.status <> 'VOID'
         GROUP BY i.customer_id, c.customer_name
         ORDER BY salesRp DESC
-        LIMIT 5
         `,
         periodKey
       ).toArray() as any[];
@@ -2815,7 +2814,6 @@ export class RknErpCore
           AND v.active = 1
           AND COALESCE(b.qty_base, 0) <= v.low_stock_base_qty
         ORDER BY COALESCE(b.qty_base, 0), v.product_name, v.color, v.size
-        LIMIT 8
         `
       ).toArray() as any[];
 

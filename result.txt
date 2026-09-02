@@ -1,0 +1,4 @@
+Total Inbound Rupiah All (Actual 80): 261980000
+Total Inbound Rupiah All (Buggy 50): 222785000
+Total Inbound Rupiah July-Aug (Actual 80): 237860000
+Total Inbound Rupiah July-Aug (Buggy 50): 198665000
