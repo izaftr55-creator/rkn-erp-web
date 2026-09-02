@@ -221,6 +221,99 @@ VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'T
 
 
 
+
+/* RKN_PLASTIC_V2M_EXACT_EXCEL_AUDIT_SYNC */
+sql.exec(`
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260729-DBF139' OR invoice_no LIKE '%DBF139%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 333000, subtotal_rp = 333000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260729-A99467' OR invoice_no LIKE '%A99467%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 26000, subtotal_rp = 26000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260729-01F9D6' OR invoice_no LIKE '%01F9D6%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260729-BACFC7' OR invoice_no LIKE '%BACFC7%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7920000, subtotal_rp = 7920000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260730-FE5337' OR invoice_no LIKE '%FE5337%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 47000, subtotal_rp = 47000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260730-BC549E' OR invoice_no LIKE '%BC549E%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260730-53FC9F' OR invoice_no LIKE '%53FC9F%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3960000, subtotal_rp = 3960000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260730-A4769A' OR invoice_no LIKE '%A4769A%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7920000, subtotal_rp = 7920000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260730-AC6275' OR invoice_no LIKE '%AC6275%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260731-FC8ACB' OR invoice_no LIKE '%FC8ACB%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4950000, subtotal_rp = 4950000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260731-100B28' OR invoice_no LIKE '%100B28%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260731-A66C54' OR invoice_no LIKE '%A66C54%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260801-9469AF' OR invoice_no LIKE '%9469AF%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 49500, subtotal_rp = 49500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260801-8E8237' OR invoice_no LIKE '%8E8237%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 94000, subtotal_rp = 94000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260801-5580AF' OR invoice_no LIKE '%5580AF%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260803-8D42DB' OR invoice_no LIKE '%8D42DB%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 120000, subtotal_rp = 120000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260803-A8FEB2' OR invoice_no LIKE '%A8FEB2%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2370000, subtotal_rp = 2370000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260803-3DE6F1' OR invoice_no LIKE '%3DE6F1%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 141000, subtotal_rp = 141000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260803-275E3D' OR invoice_no LIKE '%275E3D%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 6125000, subtotal_rp = 6125000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260804-A3D01B' OR invoice_no LIKE '%A3D01B%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 8800000, subtotal_rp = 8800000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260804-4FD192' OR invoice_no LIKE '%4FD192%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260804-AE47F3' OR invoice_no LIKE '%AE47F3%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 840000, subtotal_rp = 840000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260804-E9B8DF' OR invoice_no LIKE '%E9B8DF%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 800000, subtotal_rp = 800000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260805-FE7225' OR invoice_no LIKE '%FE7225%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260805-D7B973' OR invoice_no LIKE '%D7B973%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 164500, subtotal_rp = 164500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260805-3F8291' OR invoice_no LIKE '%3F8291%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 116000, subtotal_rp = 116000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260805-C65CF3' OR invoice_no LIKE '%C65CF3%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 6250000, subtotal_rp = 6250000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260805-0AB429' OR invoice_no LIKE '%0AB429%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 200000, subtotal_rp = 200000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260806-BD99DA' OR invoice_no LIKE '%BD99DA%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1012000, subtotal_rp = 1012000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260806-5C4F50' OR invoice_no LIKE '%5C4F50%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 164500, subtotal_rp = 164500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260807-E2B2D4' OR invoice_no LIKE '%E2B2D4%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 23500, subtotal_rp = 23500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260807-BAFF75' OR invoice_no LIKE '%BAFF75%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5200000, subtotal_rp = 5200000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260808-552ADD' OR invoice_no LIKE '%552ADD%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 26000, subtotal_rp = 26000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260808-EB9343' OR invoice_no LIKE '%EB9343%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 117500, subtotal_rp = 117500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260810-E0F72F' OR invoice_no LIKE '%E0F72F%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1990000, subtotal_rp = 1990000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260810-E940E5' OR invoice_no LIKE '%E940E5%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2350000, subtotal_rp = 2350000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260811-1D67CD' OR invoice_no LIKE '%1D67CD%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5840000, subtotal_rp = 5840000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260811-3F19FB' OR invoice_no LIKE '%3F19FB%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260811-CC57F8' OR invoice_no LIKE '%CC57F8%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 97500, subtotal_rp = 97500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260811-406F7F' OR invoice_no LIKE '%406F7F%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260811-183836' OR invoice_no LIKE '%183836%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4000000, subtotal_rp = 4000000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260812-48EFB3' OR invoice_no LIKE '%48EFB3%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260812-0E3F3B' OR invoice_no LIKE '%0E3F3B%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 8400000, subtotal_rp = 8400000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260812-E091E1' OR invoice_no LIKE '%E091E1%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260813-A82E84' OR invoice_no LIKE '%A82E84%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 96500, subtotal_rp = 96500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260813-7AB6F9' OR invoice_no LIKE '%7AB6F9%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 31000, subtotal_rp = 31000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260814-CAF7DA' OR invoice_no LIKE '%CAF7DA%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260815-F62C10' OR invoice_no LIKE '%F62C10%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 70500, subtotal_rp = 70500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260815-BCA6EE' OR invoice_no LIKE '%BCA6EE%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 800000, subtotal_rp = 800000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260815-AAE5D9' OR invoice_no LIKE '%AAE5D9%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 15500, subtotal_rp = 15500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260816-016B9D' OR invoice_no LIKE '%016B9D%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260817-37CCB2' OR invoice_no LIKE '%37CCB2%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7050000, subtotal_rp = 7050000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260818-FD67AF' OR invoice_no LIKE '%FD67AF%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260818-C637B1' OR invoice_no LIKE '%C637B1%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4700000, subtotal_rp = 4700000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260818-A2B0E8' OR invoice_no LIKE '%A2B0E8%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 286000, subtotal_rp = 286000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260818-A9675D' OR invoice_no LIKE '%A9675D%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 216000, subtotal_rp = 216000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260818-ADD6F2' OR invoice_no LIKE '%ADD6F2%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260819-AE1959' OR invoice_no LIKE '%AE1959%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260819-258EBA' OR invoice_no LIKE '%258EBA%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260819-903AD3' OR invoice_no LIKE '%903AD3%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 77500, subtotal_rp = 77500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260820-BABE85' OR invoice_no LIKE '%BABE85%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4200000, subtotal_rp = 4200000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260821-CA8421' OR invoice_no LIKE '%CA8421%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 77500, subtotal_rp = 77500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260821-E7842B' OR invoice_no LIKE '%E7842B%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 135500, subtotal_rp = 135500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260821-12121F' OR invoice_no LIKE '%12121F%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3960000, subtotal_rp = 3960000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260822-3BBB13' OR invoice_no LIKE '%3BBB13%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3360000, subtotal_rp = 3360000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260822-BFF96C' OR invoice_no LIKE '%BFF96C%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260822-851967' OR invoice_no LIKE '%851967%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 47000, subtotal_rp = 47000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260823-6A119F' OR invoice_no LIKE '%6A119F%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260824-499920' OR invoice_no LIKE '%499920%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260824-B0D5D7' OR invoice_no LIKE '%B0D5D7%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 23500, subtotal_rp = 23500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260824-3097F4' OR invoice_no LIKE '%3097F4%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260825-793E4D' OR invoice_no LIKE '%793E4D%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2080000, subtotal_rp = 2080000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260825-3BE337' OR invoice_no LIKE '%3BE337%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5200000, subtotal_rp = 5200000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260825-9143EA' OR invoice_no LIKE '%9143EA%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-72430A' OR invoice_no LIKE '%72430A%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2630000, subtotal_rp = 2630000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-A9E605' OR invoice_no LIKE '%A9E605%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 131500, subtotal_rp = 131500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-5BEC1A' OR invoice_no LIKE '%5BEC1A%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3150000, subtotal_rp = 3150000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-591270' OR invoice_no LIKE '%591270%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 11880000, subtotal_rp = 11880000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-8BCD5C' OR invoice_no LIKE '%8BCD5C%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 16600000, subtotal_rp = 16600000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260826-864117' OR invoice_no LIKE '%864117%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 27000, subtotal_rp = 27000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260828-72FB62' OR invoice_no LIKE '%72FB62%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 27000, subtotal_rp = 27000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260828-2F59B7' OR invoice_no LIKE '%2F59B7%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260830-2B29F2' OR invoice_no LIKE '%2B29F2%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 97500, subtotal_rp = 97500, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260830-CA52B2' OR invoice_no LIKE '%CA52B2%';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4700000, subtotal_rp = 4700000, updated_at = CURRENT_TIMESTAMP WHERE invoice_no = 'PTR-20260831-29FF95' OR invoice_no LIKE '%29FF95%';
+
+-- Pastikan transaksi September 2026 tetap terjaga
+-- Hitung ulang piutang dan pembayaran
+`).toArray();
+
 /* RKN_PLASTIC_V2L_INVOICE_TRANSACTION_RECONCILIATION */
 sql.exec(`
 -- 1. Perbaiki spesifik invoice PTR-20260826-A9E605 menjadi Thermal Goldwin (+ Rp 60.000)
@@ -977,7 +1070,7 @@ if(view==='DASHBOARD'){
   const stockRows=syncAuthoritativeInventory(sql);
   const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?) AND status<>'VOID'`,period,period);
   const cogs=sales;
-  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
+  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND (?='ALL' OR i.period_key=?) AND i.status<>'VOID'`,period,period);
   let stockValue=0;
   let stockQty=0;
   for(const row of stockRows as any[]){
