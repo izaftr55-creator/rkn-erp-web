@@ -210,13 +210,13 @@ VALUES('HIST-HITAM-25X35-20260901','BU-PLASTIC','PL-POLY-HITAM-25X35','2026-09-0
 INSERT OR IGNORE INTO plastic_supplier_payable(payable_id,business_unit_id,supplier_name,date_key,reference_no,payable_type,total_amount_rp,note,actor_user_id,created_at)
 VALUES('PAY-OPENING-20260729','BU-PLASTIC','KMS PACKAGING','2026-07-29','SALDO-AWAL','OPENING_BALANCE',44333500,'Sisa Hutang Supplier sebelum periode 30 Juli 2026','SYSTEM','2026-07-29T00:00:00.000Z');
 
--- Seed Pembayaran Supplier via Paman
+-- Seed setoran hasil penjualan customer ke KMS via rekening Paman
 INSERT OR IGNORE INTO plastic_supplier_payment(payment_id,business_unit_id,supplier_name,date_key,amount_rp,funding_source,reference_no,note,actor_user_id,created_at)
-VALUES('SPAY-PAMAN-20260831','BU-PLASTIC','KMS PACKAGING','2026-08-31',159500000,'PAMAN_FUNDING','TRANSFER-PAMAN','Pembayaran tagihan supplier ditalangi Paman s/d 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
+VALUES('SPAY-PAMAN-20260831','BU-PLASTIC','KMS PACKAGING','2026-08-31',159500000,'PAMAN_FUNDING','TRANSFER-PAMAN','Setoran hasil penjualan customer ke KMS via rekening Paman s/d 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
 
--- Seed Posisi Talangan Paman di Buku Modal
+-- Seed buku mutasi setoran ke KMS via rekening Paman
 INSERT OR IGNORE INTO plastic_paman_funding_ledger(entry_id,business_unit_id,date_key,entry_type,amount_rp,reference_no,note,actor_user_id,created_at)
-VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'TALANGAN-MODAL','Talangan pembayaran supplier periode Juli - 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
+VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'SETORAN-KMS','Setoran hasil penjualan customer ke KMS periode Juli - 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
 `).toArray();
 
 
@@ -331,8 +331,79 @@ SET status = CASE
 WHERE status <> 'VOID';
 `).toArray();
 
+/* RKN_PLASTIC_V2H_MASTER_UOM_SYNC */
+sql.exec(`
+UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1700000 WHERE variant_id = 'PL-POLY-HITAM-15X25';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1520000 WHERE variant_id = 'PL-POLY-HITAM-17X30';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1760000 WHERE variant_id = 'PL-POLY-HITAM-20X30';
+UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1350000 WHERE variant_id = 'PL-POLY-HITAM-25X35';
 
-/* RKN_PLASTIC_V2M_EXACT_EXCEL_AUDIT_SYNC */
+UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1850000 WHERE variant_id IN ('PL-POLY-PINK-15X25','PL-POLY-KUNING-15X25','PL-POLY-ORANGE-15X25','PL-POLY-BIRU-15X25','PL-POLY-HIJAU-15X25','PL-POLY-UNGU-15X25','PL-POLY-TOSCA-15X25');
+UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1175000 WHERE variant_id IN ('PL-POLY-PINK-17X30','PL-POLY-KUNING-17X30','PL-POLY-ORANGE-17X30','PL-POLY-BIRU-17X30','PL-POLY-HIJAU-17X30','PL-POLY-UNGU-17X30','PL-POLY-TOSCA-17X30');
+UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1300000 WHERE variant_id IN ('PL-POLY-PINK-20X30','PL-POLY-KUNING-20X30','PL-POLY-ORANGE-20X30','PL-POLY-BIRU-20X30','PL-POLY-HIJAU-20X30','PL-POLY-UNGU-20X30','PL-POLY-TOSCA-20X30');
+UPDATE plastic_product_variant SET units_per_pack = 40, default_sell_price_pack_rp = 1560000 WHERE variant_id IN ('PL-POLY-PINK-25X35','PL-POLY-KUNING-25X35','PL-POLY-ORANGE-25X35','PL-POLY-BIRU-25X35','PL-POLY-HIJAU-25X35','PL-POLY-UNGU-25X35','PL-POLY-TOSCA-25X35');
+
+UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1550000 WHERE variant_id = 'PL-POLY-PUTIH-B-15X25';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1560000 WHERE variant_id = 'PL-POLY-PUTIH-B-17X30';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1800000 WHERE variant_id = 'PL-POLY-PUTIH-B-20X30';
+
+UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1850000 WHERE variant_id = 'PL-POLY-PUTIH-A-15X25';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1880000 WHERE variant_id = 'PL-POLY-PUTIH-A-17X30';
+UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 2080000 WHERE variant_id = 'PL-POLY-PUTIH-A-20X30';
+UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1950000 WHERE variant_id = 'PL-POLY-PUTIH-A-25X35';
+`).toArray();
+
+/* RKN_PLASTIC_V2K_HISTORICAL_TRANSACTION_RECALC */
+sql.exec(`
+-- Recalculate historical base quantities only after the master UOM is final.
+UPDATE plastic_inbound_line
+SET qty_base = qty_input * (
+  SELECT COALESCE(v.units_per_pack, 1)
+  FROM plastic_product_variant v
+  WHERE v.variant_id = plastic_inbound_line.variant_id
+)
+WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
+
+UPDATE plastic_sales_line
+SET qty_base = qty_input * (
+  SELECT COALESCE(v.units_per_pack, 1)
+  FROM plastic_product_variant v
+  WHERE v.variant_id = plastic_sales_line.variant_id
+)
+WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
+`).toArray();
+
+/* RKN_PLASTIC_V2G_MASTER_TEXT_NORMALIZATION */
+sql.exec(`
+UPDATE plastic_product_variant
+SET size = CASE
+  WHEN variant_id LIKE '%-15X25' THEN '15x25'
+  WHEN variant_id LIKE '%-17X30' THEN '17x30'
+  WHEN variant_id LIKE '%-20X30' THEN '20x30'
+  WHEN variant_id LIKE '%-25X35' THEN '25x35'
+  WHEN variant_id LIKE 'PL-THERMAL-%' THEN '100x150'
+  ELSE size
+END,
+color = TRIM(color),
+product_name = TRIM(product_name),
+updated_at = CURRENT_TIMESTAMP
+WHERE business_unit_id='BU-PLASTIC';
+`).toArray();
+
+/* RKN_PLASTIC_V2N_KMS_CONSIGNMENT_TERMINOLOGY_SYNC */
+sql.exec(`
+UPDATE plastic_supplier_payment
+SET note='Setoran hasil penjualan customer ke KMS via rekening Paman s/d 31 Agustus 2026'
+WHERE payment_id='SPAY-PAMAN-20260831';
+
+UPDATE plastic_paman_funding_ledger
+SET reference_no='SETORAN-KMS',
+    note='Setoran hasil penjualan customer ke KMS periode Juli - 31 Agustus 2026'
+WHERE entry_id='FUND-PAMAN-20260831';
+`).toArray();
+
+/* RKN_PLASTIC_V2M_EXACT_EXCEL_AUDIT_SYNC
+   Keep this after every migration that recalculates invoice monetary totals. */
 sql.exec(`
 UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-DBF139' OR invoice_no LIKE '%DBF139%') AND date_key <= '2026-08-31';
 UPDATE plastic_sales_invoice SET grand_total_rp = 333000, subtotal_rp = 333000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-A99467' OR invoice_no LIKE '%A99467%') AND date_key <= '2026-08-31';
@@ -431,67 +502,6 @@ SET status = CASE
 WHERE status <> 'VOID';
 `).toArray();
 
-
-/* RKN_PLASTIC_V2K_HISTORICAL_TRANSACTION_RECALC */
-sql.exec(`
--- Update plastic_inbound_line qty_base based on correct units_per_pack
-UPDATE plastic_inbound_line
-SET qty_base = qty_input * (
-  SELECT COALESCE(v.units_per_pack, 1)
-  FROM plastic_product_variant v
-  WHERE v.variant_id = plastic_inbound_line.variant_id
-)
-WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
-
--- Update plastic_sales_line qty_base based on correct units_per_pack
-UPDATE plastic_sales_line
-SET qty_base = qty_input * (
-  SELECT COALESCE(v.units_per_pack, 1)
-  FROM plastic_product_variant v
-  WHERE v.variant_id = plastic_sales_line.variant_id
-)
-WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
-`).toArray();
-
-/* RKN_PLASTIC_V2H_MASTER_UOM_SYNC */
-sql.exec(`
-UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1700000 WHERE variant_id = 'PL-POLY-HITAM-15X25';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1520000 WHERE variant_id = 'PL-POLY-HITAM-17X30';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1760000 WHERE variant_id = 'PL-POLY-HITAM-20X30';
-UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1350000 WHERE variant_id = 'PL-POLY-HITAM-25X35';
-
-UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1850000 WHERE variant_id IN ('PL-POLY-PINK-15X25','PL-POLY-KUNING-15X25','PL-POLY-ORANGE-15X25','PL-POLY-BIRU-15X25','PL-POLY-HIJAU-15X25','PL-POLY-UNGU-15X25','PL-POLY-TOSCA-15X25');
-UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1175000 WHERE variant_id IN ('PL-POLY-PINK-17X30','PL-POLY-KUNING-17X30','PL-POLY-ORANGE-17X30','PL-POLY-BIRU-17X30','PL-POLY-HIJAU-17X30','PL-POLY-UNGU-17X30','PL-POLY-TOSCA-17X30');
-UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1300000 WHERE variant_id IN ('PL-POLY-PINK-20X30','PL-POLY-KUNING-20X30','PL-POLY-ORANGE-20X30','PL-POLY-BIRU-20X30','PL-POLY-HIJAU-20X30','PL-POLY-UNGU-20X30','PL-POLY-TOSCA-20X30');
-UPDATE plastic_product_variant SET units_per_pack = 40, default_sell_price_pack_rp = 1560000 WHERE variant_id IN ('PL-POLY-PINK-25X35','PL-POLY-KUNING-25X35','PL-POLY-ORANGE-25X35','PL-POLY-BIRU-25X35','PL-POLY-HIJAU-25X35','PL-POLY-UNGU-25X35','PL-POLY-TOSCA-25X35');
-
-UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1550000 WHERE variant_id = 'PL-POLY-PUTIH-B-15X25';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1560000 WHERE variant_id = 'PL-POLY-PUTIH-B-17X30';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1800000 WHERE variant_id = 'PL-POLY-PUTIH-B-20X30';
-
-UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1850000 WHERE variant_id = 'PL-POLY-PUTIH-A-15X25';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 1880000 WHERE variant_id = 'PL-POLY-PUTIH-A-17X30';
-UPDATE plastic_product_variant SET units_per_pack = 80, default_sell_price_pack_rp = 2080000 WHERE variant_id = 'PL-POLY-PUTIH-A-20X30';
-UPDATE plastic_product_variant SET units_per_pack = 50, default_sell_price_pack_rp = 1950000 WHERE variant_id = 'PL-POLY-PUTIH-A-25X35';
-`).toArray();
-
-/* RKN_PLASTIC_V2G_MASTER_TEXT_NORMALIZATION */
-sql.exec(`
-UPDATE plastic_product_variant
-SET size = CASE
-  WHEN variant_id LIKE '%-15X25' THEN '15x25'
-  WHEN variant_id LIKE '%-17X30' THEN '17x30'
-  WHEN variant_id LIKE '%-20X30' THEN '20x30'
-  WHEN variant_id LIKE '%-25X35' THEN '25x35'
-  WHEN variant_id LIKE 'PL-THERMAL-%' THEN '100x150'
-  ELSE size
-END,
-color = TRIM(color),
-product_name = TRIM(product_name),
-updated_at = CURRENT_TIMESTAMP
-WHERE business_unit_id='BU-PLASTIC';
-`).toArray();
-
 /* RKN_PLASTIC_SO_2808_REFERENCE_SNAPSHOT */
 sql.exec(`
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-15X25','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-15X25','SO 28/08/2026', 400,'ROLL',400,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
@@ -561,6 +571,14 @@ const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',det
 const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND active=1 LIMIT 1`,id).toArray()[0];if(!r)throw Error('PLASTIC_VARIANT_NOT_FOUND');return r};
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
 const paid=(sql:Sql,invoiceId:string)=>scalar(sql,`SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?`,invoiceId);
+const paidForView=(sql:Sql,invoiceId:string,period:string)=>scalar(
+  sql,
+  `SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value
+   FROM plastic_payment
+   WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?
+     AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)`,
+  invoiceId,period,period,period,period
+);
 
 const PLASTIC_OPENING_DATE_KEY='2026-07-28';
 
@@ -1011,7 +1029,10 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
       outstandingPayables,
       pamanTotalFunded: pamanIn,
       pamanRepaid: pamanOut,
-      pamanOutstanding
+      pamanOutstanding,
+      kmsDepositedViaPaman: pamanIn,
+      kmsDepositCorrections: pamanOut,
+      kmsNetDepositsViaPaman: pamanOutstanding
     },
     openingPayables,
     inboundInvoices,
@@ -1079,7 +1100,7 @@ if(view==='DASHBOARD'){
   const stockRows=syncAuthoritativeInventory(sql);
   const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?) AND status<>'VOID'`,period,period,period,period);
   const cogs=sales;
-  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?) AND i.status<>'VOID'`,period,period,period,period);
+  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?) GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?) AND i.status<>'VOID'`,period,period,period,period,period,period,period,period);
   let stockValue=0;
   let stockQty=0;
   for(const row of stockRows as any[]){
@@ -1204,12 +1225,12 @@ if(view==='DASHBOARD'){
       `SELECT date_key dateKey,SUM(grand_total_rp) salesRp
        FROM plastic_sales_invoice
        WHERE business_unit_id='BU-PLASTIC'
-         AND (?='ALL' OR period_key=?)
+         AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
          AND status<>'VOID'
        GROUP BY date_key
        ORDER BY date_key DESC
        LIMIT 30`,
-      period,period
+      period,period,period,period
     ).toArray(),
     topReceivables:sql.exec(
       `SELECT i.customer_id customerId,COALESCE(c.customer_name,'') customerName,
@@ -1222,6 +1243,7 @@ if(view==='DASHBOARD'){
          SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid
          FROM plastic_payment
          WHERE business_unit_id='BU-PLASTIC'
+           AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
@@ -1229,7 +1251,7 @@ if(view==='DASHBOARD'){
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
        ORDER BY outstandingRp DESC`,
-      period,period,period,period
+      period,period,period,period,period,period,period,period
     ).toArray()
   };
 }
@@ -2070,7 +2092,7 @@ if(view==='RECEIVABLES'){
      ORDER BY i.date_key DESC,i.invoice_no DESC`,
     period,period,period,period
   ).toArray().map((r:any)=>{
-    const p=paid(sql,String(r.invoiceId));
+    const p=paidForView(sql,String(r.invoiceId),period);
     return{...r,paidRp:p,outstandingRp:Math.max(0,N(r.grandTotalRp)-p)};
   }).filter((r:any)=>r.outstandingRp>0);
 
@@ -2110,6 +2132,7 @@ if(view==='RECEIVABLES'){
          SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid
          FROM plastic_payment
          WHERE business_unit_id='BU-PLASTIC'
+           AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
@@ -2117,7 +2140,7 @@ if(view==='RECEIVABLES'){
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
        ORDER BY outstandingRp DESC,customerName`,
-      period,period,period,period
+      period,period,period,period,period,period,period,period
     ).toArray(),
     payments:sql.exec(
       `SELECT p.payment_id paymentId,p.invoice_id invoiceId,i.invoice_no invoiceNo,p.customer_id customerId,
@@ -2127,8 +2150,11 @@ if(view==='RECEIVABLES'){
        JOIN plastic_sales_invoice i ON i.invoice_id=p.invoice_id
        LEFT JOIN plastic_customer c ON c.customer_id=p.customer_id
        WHERE p.business_unit_id='BU-PLASTIC'
+         AND (?='ALL' OR (?='2026-08' AND p.date_key<='2026-08-31') OR (?='2026-09' AND p.date_key>='2026-09-01') OR p.period_key=?)
+         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
        ORDER BY p.created_at DESC
-       LIMIT 500`
+       LIMIT 500`,
+      period,period,period,period,period,period,period,period
     ).toArray(),
     ledger:sql.exec(
       `SELECT * FROM(
@@ -2138,6 +2164,7 @@ if(view==='RECEIVABLES'){
          FROM plastic_sales_invoice i
          LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
          WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
+           AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
          UNION ALL
          SELECT p.customer_id customerId,COALESCE(c.customer_name,'') customerName,
                 p.date_key dateKey,p.created_at createdAt,
@@ -2148,9 +2175,14 @@ if(view==='RECEIVABLES'){
          JOIN plastic_sales_invoice i ON i.invoice_id=p.invoice_id
          LEFT JOIN plastic_customer c ON c.customer_id=p.customer_id
          WHERE p.business_unit_id='BU-PLASTIC'
+           AND (?='ALL' OR (?='2026-08' AND p.date_key<='2026-08-31') OR (?='2026-09' AND p.date_key>='2026-09-01') OR p.period_key=?)
+           AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
        )
        ORDER BY createdAt DESC
-       LIMIT 1000`
+       LIMIT 1000`,
+      period,period,period,period,
+      period,period,period,period,
+      period,period,period,period
     ).toArray()
   };
 }
@@ -4469,12 +4501,12 @@ if(cmd==='ADD_SUPPLIER_PAYMENT'){
     paymentId, supplierName, dateKey, amountRp, fundingSource, referenceNo, note, a.id, t
   ).toArray();
 
-  // If funded by Paman, automatically record to paman funding ledger
+  // A transfer through Paman's account is a customer-sales deposit to KMS.
   if(fundingSource === 'PAMAN_FUNDING'){
     sql.exec(
       `INSERT INTO plastic_paman_funding_ledger(entry_id,business_unit_id,date_key,entry_type,amount_rp,reference_no,note,actor_user_id,created_at)
        VALUES(?,'BU-PLASTIC',?,'FUNDING_IN',?,?,?,?,?)`,
-      'FUND-' + paymentId, dateKey, amountRp, referenceNo || paymentId, 'Talangan Pembayaran ke ' + supplierName + ': ' + note, a.id, t
+      'FUND-' + paymentId, dateKey, amountRp, referenceNo || paymentId, 'Setoran hasil penjualan ke ' + supplierName + ' via rekening Paman: ' + note, a.id, t
     ).toArray();
   }
 
@@ -4487,7 +4519,7 @@ if(cmd==='RECORD_PAMAN_REPAYMENT'){
   const dateKey=DK(p.dateKey);
   const amountRp=I(p.amountRp);
   const referenceNo=T(p.referenceNo,160);
-  const note=T(p.note,300) || 'Pengembalian dana talangan modal Paman';
+  const note=T(p.note,300) || 'Koreksi setoran ke KMS via rekening Paman';
 
   if(amountRp<=0)throw Error('PLASTIC_PAYMENT_INVALID');
 

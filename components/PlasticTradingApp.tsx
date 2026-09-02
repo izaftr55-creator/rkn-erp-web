@@ -1444,7 +1444,7 @@ function Payables({
       dateKey: repayDateKey,
       amountRp: Number(repayAmountRp),
       referenceNo: repayRefNo,
-      note: repayNote || "Pengembalian dana talangan Paman",
+      note: repayNote || "Koreksi setoran ke KMS via rekening Paman",
     }, "PAYABLES");
     setRepayAmountRp("");
     setRepayRefNo("");
@@ -1459,23 +1459,23 @@ function Payables({
       <section className={styles.metricGrid}>
         <MetricCard
           label="Total Tagihan Supplier"
-          value={money.format(summary.totalBills || 235725000)}
+          value={money.format(summary.totalBills ?? 0)}
           note="Saldo Awal Rp 44,3jt + Belanja Rp 191,3jt"
         />
         <MetricCard
-          label="Sudah Dibayar (Paman/Kas)"
-          value={money.format(summary.totalPaid || 159500000)}
-          note="Total transfer ke KMS Packaging"
+          label="Total Pembayaran ke KMS"
+          value={money.format(summary.totalPaid ?? 0)}
+          note="Setoran hasil penjualan customer ke KMS"
         />
         <MetricCard
           label="Sisa Hutang ke Supplier"
-          value={money.format(summary.outstandingPayables || 76225000)}
+          value={money.format(summary.outstandingPayables ?? 0)}
           note="Kewajiban aktif ke supplier"
         />
         <MetricCard
-          label="Total Pembayaran ke KMS"
-          value={money.format(summary.totalPaid || 159500000)}
-          note="Uang penjualan disetorkan ke KMS"
+          label="Setoran ke KMS via Rekening Paman"
+          value={money.format(summary.kmsDepositedViaPaman ?? summary.pamanTotalFunded ?? 0)}
+          note="Rekening Paman hanya sebagai perantara setoran"
         />
       </section>
 
@@ -1516,22 +1516,22 @@ function Payables({
         ) : null}
 
         {canWrite ? (
-          <Panel title="Pengembalian Dana ke Paman" subtitle="Catat uang toko yang diserahkan kembali ke Paman.">
+          <Panel title="Koreksi Setoran via Rekening Paman" subtitle="Catat koreksi atau pengembalian atas setoran ke KMS.">
             <form onSubmit={submitRepayment} className={styles.formGrid}>
-              <Field label="Tanggal Pengembalian">
+              <Field label="Tanggal Koreksi">
                 <input type="date" required value={repayDateKey} onChange={(e) => setRepayDateKey(e.target.value)} />
               </Field>
-              <Field label="Jumlah Pengembalian">
+              <Field label="Jumlah Koreksi">
                 <RupiahInput required value={repayAmountRp} onChange={setRepayAmountRp} placeholder="Rp. 0" />
               </Field>
               <Field label="No. Referensi / Bukti">
                 <input placeholder="Contoh: TRF-BALIK-001" value={repayRefNo} onChange={(e) => setRepayRefNo(e.target.value)} />
               </Field>
               <Field label="Catatan">
-                <input placeholder="Keterangan pengembalian" value={repayNote} onChange={(e) => setRepayNote(e.target.value)} />
+                <input placeholder="Keterangan koreksi setoran" value={repayNote} onChange={(e) => setRepayNote(e.target.value)} />
               </Field>
               <div className={styles.actions} style={{ gridColumn: "1 / -1" }}>
-                <button className={styles.primaryButton} disabled={busy}>Catat Pengembalian ke Paman</button>
+                <button className={styles.primaryButton} disabled={busy}>Catat Koreksi Setoran</button>
               </div>
             </form>
           </Panel>
@@ -1557,7 +1557,7 @@ function Payables({
           rows={pamanLedger}
           columns={[
             ["dateKey", "Tanggal"],
-            ["entryType", "Jenis Mutasi", (r) => r.entryType === "FUNDING_IN" ? "+ Talangan Masuk" : "- Pengembalian"],
+            ["entryType", "Jenis Mutasi", (r) => r.entryType === "FUNDING_IN" ? "+ Setoran ke KMS" : "- Koreksi Setoran"],
             ["amountRp", "Nominal", (r) => money.format(r.amountRp)],
             ["referenceNo", "No. Ref"],
             ["note", "Catatan"],
