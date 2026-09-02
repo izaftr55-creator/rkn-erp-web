@@ -1473,9 +1473,9 @@ function Payables({
           note="Kewajiban aktif ke supplier"
         />
         <MetricCard
-          label="Posisi Talangan Paman"
-          value={money.format(summary.pamanOutstanding || 159500000)}
-          note="Dana talangan yang belum dikembalikan"
+          label="Total Pembayaran ke KMS"
+          value={money.format(summary.totalPaid || 159500000)}
+          note="Uang penjualan disetorkan ke KMS"
         />
       </section>
 
@@ -1498,7 +1498,7 @@ function Payables({
               </Field>
               <Field label="Sumber Dana">
                 <select value={fundingSource} onChange={(e) => setFundingSource(e.target.value)}>
-                  <option value="PAMAN_FUNDING">Talangan Paman (Buku Modal Paman)</option>
+                  <option value="PAMAN_FUNDING">Transfer via Rekening Paman</option>
                   <option value="RKN_INTERNAL_CASH">Kas Operasional RKN (Hasil Penjualan)</option>
                 </select>
               </Field>
@@ -1544,7 +1544,7 @@ function Payables({
           columns={[
             ["dateKey", "Tanggal"],
             ["supplierName", "Supplier"],
-            ["fundingSource", "Sumber Dana", (r) => r.fundingSource === "PAMAN_FUNDING" ? "Talangan Paman" : "Kas RKN"],
+            ["fundingSource", "Metode Transfer", (r) => r.fundingSource === "PAMAN_FUNDING" ? "Rekening Paman" : "Kas Toko"],
             ["amountRp", "Nominal", (r) => money.format(r.amountRp)],
             ["referenceNo", "No. Ref"],
             ["note", "Catatan"],
@@ -1552,7 +1552,7 @@ function Payables({
         />
       </Panel>
 
-      <Panel title="Buku Mutasi Modal & Talangan Paman">
+      <Panel title="Buku Mutasi Setoran ke KMS (via Rekening Paman)">
         <DataTable
           rows={pamanLedger}
           columns={[
