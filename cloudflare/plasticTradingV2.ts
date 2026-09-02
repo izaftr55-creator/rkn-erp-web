@@ -219,6 +219,28 @@ INSERT OR IGNORE INTO plastic_paman_funding_ledger(entry_id,business_unit_id,dat
 VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'TALANGAN-MODAL','Talangan pembayaran supplier periode Juli - 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
 `).toArray();
 
+
+/* RKN_PLASTIC_V2K_HISTORICAL_TRANSACTION_RECALC */
+sql.exec(`
+-- Update plastic_inbound_line qty_base based on correct units_per_pack
+UPDATE plastic_inbound_line
+SET qty_base = qty_input * (
+  SELECT COALESCE(v.units_per_pack, 1)
+  FROM plastic_product_variant v
+  WHERE v.variant_id = plastic_inbound_line.variant_id
+)
+WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
+
+-- Update plastic_sales_line qty_base based on correct units_per_pack
+UPDATE plastic_sales_line
+SET qty_base = qty_input * (
+  SELECT COALESCE(v.units_per_pack, 1)
+  FROM plastic_product_variant v
+  WHERE v.variant_id = plastic_sales_line.variant_id
+)
+WHERE UPPER(input_unit) IN ('BALL', 'DUS', 'PACK');
+`).toArray();
+
 /* RKN_PLASTIC_V2H_MASTER_UOM_SYNC */
 sql.exec(`
 UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1700000 WHERE variant_id = 'PL-POLY-HITAM-15X25';

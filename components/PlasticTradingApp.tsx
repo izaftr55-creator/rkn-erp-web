@@ -1456,28 +1456,28 @@ function Payables({
 
   return (
     <div className={styles.sectionStack}>
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span>Total Tagihan Supplier</span>
-          <strong>{money.format(summary.totalBills || 235725000)}</strong>
-          <small>Saldo Awal Rp 44,3jt + Pembelian Rp 191,3jt</small>
-        </div>
-        <div className={styles.statCard}>
-          <span>Sudah Dibayar (Paman/Kas)</span>
-          <strong style={{ color: "#16a34a" }}>{money.format(summary.totalPaid || 159500000)}</strong>
-          <small>Total transfer pelunasan ke supplier</small>
-        </div>
-        <div className={styles.statCard}>
-          <span>Sisa Hutang Supplier</span>
-          <strong style={{ color: "#dc2626" }}>{money.format(summary.outstandingPayables || 76225000)}</strong>
-          <small>Kewajiban berjalan ke KMS Packaging</small>
-        </div>
-        <div className={styles.statCard}>
-          <span>Posisi Talangan Paman</span>
-          <strong style={{ color: "#d97706" }}>{money.format(summary.pamanOutstanding || 159500000)}</strong>
-          <small>Dana talangan yang belum dikembalikan</small>
-        </div>
-      </div>
+      <section className={styles.metricGrid}>
+        <MetricCard
+          label="Total Tagihan Supplier"
+          value={money.format(summary.totalBills || 235725000)}
+          note="Saldo Awal Rp 44,3jt + Belanja Rp 191,3jt"
+        />
+        <MetricCard
+          label="Sudah Dibayar (Paman/Kas)"
+          value={money.format(summary.totalPaid || 159500000)}
+          note="Total transfer ke KMS Packaging"
+        />
+        <MetricCard
+          label="Sisa Hutang ke Supplier"
+          value={money.format(summary.outstandingPayables || 76225000)}
+          note="Kewajiban aktif ke supplier"
+        />
+        <MetricCard
+          label="Posisi Talangan Paman"
+          value={money.format(summary.pamanOutstanding || 159500000)}
+          note="Dana talangan yang belum dikembalikan"
+        />
+      </section>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1rem" }}>
         {canWrite ? (
@@ -1577,8 +1577,6 @@ function CommissionCalculator({
   const rows = Array.isArray(data.rows) ? data.rows : [];
   const [filterDateFrom, setFilterDateFrom] = useState(today().slice(0, 7) + "-01");
   const [filterDateTo, setFilterDateTo] = useState(today());
-  const [polyRate, setPolyRate] = useState("200");
-  const [thermalStackRate, setThermalStackRate] = useState("250");
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -1601,33 +1599,31 @@ function CommissionCalculator({
     return totalThermalStacks / 20;
   }, [totalThermalStacks]);
 
-  const totalCommissionRp = useMemo(() => {
-    const polyComm = totalPolyRolls * Number(polyRate || 0);
-    const thermalComm = totalThermalStacks * Number(thermalStackRate || 0);
-    return polyComm + thermalComm;
-  }, [totalPolyRolls, totalThermalStacks, polyRate, thermalStackRate]);
+  const totalInvoices = useMemo(() => {
+    return new Set(filtered.map((r) => r.invoiceId)).size;
+  }, [filtered]);
 
   return (
     <div className={styles.sectionStack}>
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span>Total Polymailer Terjual</span>
-          <strong style={{ color: "#2563eb" }}>{qtyText(totalPolyRolls)} Roll</strong>
-          <small>Akumulasi seluruh ukuran & warna</small>
-        </div>
-        <div className={styles.statCard}>
-          <span>Total Thermal Terjual</span>
-          <strong style={{ color: "#0891b2" }}>{qtyText(totalThermalStacks)} Stacks ({qtyText(totalThermalDus)} Dus)</strong>
-          <small>Goldwin, Dus Panjang & Dus Kotak</small>
-        </div>
-        <div className={styles.statCard}>
-          <span>Estimasi Total Komisi</span>
-          <strong style={{ color: "#16a34a" }}>{money.format(totalCommissionRp)}</strong>
-          <small>Berdasarkan tarif komisi aktif</small>
-        </div>
-      </div>
+      <section className={styles.metricGrid}>
+        <MetricCard
+          label="Total Polymailer Terjual"
+          value={`${qtyText(totalPolyRolls)} Roll`}
+          note="Akumulasi seluruh ukuran & warna"
+        />
+        <MetricCard
+          label="Total Thermal Terjual"
+          value={`${qtyText(totalThermalStacks)} Stacks`}
+          note={`Setara ${qtyText(totalThermalDus)} Dus (20 stacks/dus)`}
+        />
+        <MetricCard
+          label="Total Nota Penjualan"
+          value={`${qtyText(totalInvoices)} Faktur`}
+          note="Transaksi barang keluar periode ini"
+        />
+      </section>
 
-      <Panel title="Pengaturan Tarif & Periode Komisi" subtitle="Sesuaikan rentang tanggal dan nominal komisi per roll / stack.">
+      <Panel title="Filter Periode Penjualan Fisik" subtitle="Pilih rentang tanggal untuk merekap volume fisik Roll & Stacks yang keluar.">
         <div className={styles.formGrid}>
           <Field label="Dari Tanggal">
             <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
@@ -1635,16 +1631,10 @@ function CommissionCalculator({
           <Field label="Sampai Tanggal">
             <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
           </Field>
-          <Field label="Tarif Komisi Polymailer (Rp / Roll)">
-            <RupiahInput value={polyRate} onChange={setPolyRate} placeholder="Contoh: 200" />
-          </Field>
-          <Field label="Tarif Komisi Thermal (Rp / Stack)">
-            <RupiahInput value={thermalStackRate} onChange={setThermalStackRate} placeholder="Contoh: 250" />
-          </Field>
         </div>
       </Panel>
 
-      <Panel title="Rincian Transaksi Penjualan Fisik">
+      <Panel title="Rincian Transaksi Penjualan Fisik (Roll & Stacks)">
         <DataTable
           rows={filtered}
           columns={[
@@ -1654,10 +1644,9 @@ function CommissionCalculator({
             ["productName", "Produk"],
             ["color", "Warna"],
             ["size", "Ukuran"],
-            ["qtyInput", "Input Asli", (r) => `${qtyText(r.qtyInput)} ${r.inputUnit}`],
-            ["displayRollQty", "Roll (Poly)", (r) => r.displayRollQty > 0 ? `${qtyText(r.displayRollQty)} Roll` : "-"],
-            ["displayStackQty", "Stack (Thermal)", (r) => r.displayStackQty > 0 ? `${qtyText(r.displayStackQty)} Stack` : "-"],
-            ["lineTotalRp", "Total Sales", (r) => money.format(r.lineTotalRp)],
+            ["qtyInput", "Input Nota", (r) => `${qtyText(r.qtyInput)} ${r.inputUnit}`],
+            ["displayRollQty", "Total Roll (Poly)", (r) => r.displayRollQty > 0 ? `${qtyText(r.displayRollQty)} Roll` : "-"],
+            ["displayStackQty", "Total Stack (Thermal)", (r) => r.displayStackQty > 0 ? `${qtyText(r.displayStackQty)} Stack` : "-"],
           ]}
         />
       </Panel>
