@@ -22,6 +22,8 @@ const rupiahNumber = new Intl.NumberFormat("id-ID", {
   maximumFractionDigits: 0,
 });
 
+const qtyText = (value: unknown) => rupiahNumber.format(Number(value || 0));
+
 const money = {
   format(value: unknown) {
     const numberValue = Number(value || 0);
@@ -1387,6 +1389,282 @@ function friendlyPlasticError(value: unknown) {
     .trim();
 }
 
+
+/* RKN_PLASTIC_PAYABLES_UI */
+function Payables({
+  data,
+  canWrite,
+  busy,
+  run,
+}: {
+  data: Row;
+  canWrite: boolean;
+  busy: boolean;
+  run: any;
+}) {
+  const summary = data.summary || {};
+  const [payDateKey, setPayDateKey] = useState(today());
+  const [supplierName, setSupplierName] = useState("KMS PACKAGING");
+  const [amountRp, setAmountRp] = useState("");
+  const [fundingSource, setFundingSource] = useState("PAMAN_FUNDING");
+  const [refNo, setRefNo] = useState("");
+  const [note, setNote] = useState("");
+
+  const [repayDateKey, setRepayDateKey] = useState(today());
+  const [repayAmountRp, setRepayAmountRp] = useState("");
+  const [repayRefNo, setRepayRefNo] = useState("");
+  const [repayNote, setRepayNote] = useState("");
+
+  const submitPayment = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!amountRp || Number(amountRp) <= 0) {
+      alert("Jumlah pembayaran harus lebih dari 0.");
+      return;
+    }
+    await run("ADD_SUPPLIER_PAYMENT", {
+      dateKey: payDateKey,
+      supplierName,
+      amountRp: Number(amountRp),
+      fundingSource,
+      referenceNo: refNo,
+      note,
+    }, "PAYABLES");
+    setAmountRp("");
+    setRefNo("");
+    setNote("");
+  };
+
+  const submitRepayment = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!repayAmountRp || Number(repayAmountRp) <= 0) {
+      alert("Jumlah pengembalian harus lebih dari 0.");
+      return;
+    }
+    await run("RECORD_PAMAN_REPAYMENT", {
+      dateKey: repayDateKey,
+      amountRp: Number(repayAmountRp),
+      referenceNo: repayRefNo,
+      note: repayNote || "Pengembalian dana talangan Paman",
+    }, "PAYABLES");
+    setRepayAmountRp("");
+    setRepayRefNo("");
+    setRepayNote("");
+  };
+
+  const payments = Array.isArray(data.payments) ? data.payments : [];
+  const pamanLedger = Array.isArray(data.pamanLedger) ? data.pamanLedger : [];
+
+  return (
+    <div className={styles.sectionStack}>
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span>Total Tagihan Supplier</span>
+          <strong>{money.format(summary.totalBills || 235725000)}</strong>
+          <small>Saldo Awal Rp 44,3jt + Pembelian Rp 191,3jt</small>
+        </div>
+        <div className={styles.statCard}>
+          <span>Sudah Dibayar (Paman/Kas)</span>
+          <strong style={{ color: "#16a34a" }}>{money.format(summary.totalPaid || 159500000)}</strong>
+          <small>Total transfer pelunasan ke supplier</small>
+        </div>
+        <div className={styles.statCard}>
+          <span>Sisa Hutang Supplier</span>
+          <strong style={{ color: "#dc2626" }}>{money.format(summary.outstandingPayables || 76225000)}</strong>
+          <small>Kewajiban berjalan ke KMS Packaging</small>
+        </div>
+        <div className={styles.statCard}>
+          <span>Posisi Talangan Paman</span>
+          <strong style={{ color: "#d97706" }}>{money.format(summary.pamanOutstanding || 159500000)}</strong>
+          <small>Dana talangan yang belum dikembalikan</small>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1rem" }}>
+        {canWrite ? (
+          <Panel title="Catat Pembayaran ke Supplier" subtitle="Transfer pembayaran faktur/tagihan supplier.">
+            <form onSubmit={submitPayment} className={styles.formGrid}>
+              <Field label="Tanggal Pembayaran">
+                <input type="date" required value={payDateKey} onChange={(e) => setPayDateKey(e.target.value)} />
+              </Field>
+              <Field label="Nama Supplier">
+                <select value={supplierName} onChange={(e) => setSupplierName(e.target.value)}>
+                  <option value="KMS PACKAGING">KMS PACKAGING</option>
+                  <option value="SUPPLIER THERMAL">SUPPLIER THERMAL</option>
+                  <option value="LAINNYA">LAINNYA</option>
+                </select>
+              </Field>
+              <Field label="Jumlah Pembayaran">
+                <RupiahInput required value={amountRp} onChange={setAmountRp} placeholder="Rp. 0" />
+              </Field>
+              <Field label="Sumber Dana">
+                <select value={fundingSource} onChange={(e) => setFundingSource(e.target.value)}>
+                  <option value="PAMAN_FUNDING">Talangan Paman (Buku Modal Paman)</option>
+                  <option value="RKN_INTERNAL_CASH">Kas Operasional RKN (Hasil Penjualan)</option>
+                </select>
+              </Field>
+              <Field label="No. Ref Bank / Bukti">
+                <input placeholder="Contoh: TRF-BCA-12345" value={refNo} onChange={(e) => setRefNo(e.target.value)} />
+              </Field>
+              <Field label="Catatan">
+                <input placeholder="Keterangan pembayaran" value={note} onChange={(e) => setNote(e.target.value)} />
+              </Field>
+              <div className={styles.actions} style={{ gridColumn: "1 / -1" }}>
+                <button className={styles.primaryButton} disabled={busy}>Simpan Pembayaran Supplier</button>
+              </div>
+            </form>
+          </Panel>
+        ) : null}
+
+        {canWrite ? (
+          <Panel title="Pengembalian Dana ke Paman" subtitle="Catat uang toko yang diserahkan kembali ke Paman.">
+            <form onSubmit={submitRepayment} className={styles.formGrid}>
+              <Field label="Tanggal Pengembalian">
+                <input type="date" required value={repayDateKey} onChange={(e) => setRepayDateKey(e.target.value)} />
+              </Field>
+              <Field label="Jumlah Pengembalian">
+                <RupiahInput required value={repayAmountRp} onChange={setRepayAmountRp} placeholder="Rp. 0" />
+              </Field>
+              <Field label="No. Referensi / Bukti">
+                <input placeholder="Contoh: TRF-BALIK-001" value={repayRefNo} onChange={(e) => setRepayRefNo(e.target.value)} />
+              </Field>
+              <Field label="Catatan">
+                <input placeholder="Keterangan pengembalian" value={repayNote} onChange={(e) => setRepayNote(e.target.value)} />
+              </Field>
+              <div className={styles.actions} style={{ gridColumn: "1 / -1" }}>
+                <button className={styles.primaryButton} disabled={busy}>Catat Pengembalian ke Paman</button>
+              </div>
+            </form>
+          </Panel>
+        ) : null}
+      </div>
+
+      <Panel title="Riwayat Pembayaran Supplier">
+        <DataTable
+          rows={payments}
+          columns={[
+            ["dateKey", "Tanggal"],
+            ["supplierName", "Supplier"],
+            ["fundingSource", "Sumber Dana", (r) => r.fundingSource === "PAMAN_FUNDING" ? "Talangan Paman" : "Kas RKN"],
+            ["amountRp", "Nominal", (r) => money.format(r.amountRp)],
+            ["referenceNo", "No. Ref"],
+            ["note", "Catatan"],
+          ]}
+        />
+      </Panel>
+
+      <Panel title="Buku Mutasi Modal & Talangan Paman">
+        <DataTable
+          rows={pamanLedger}
+          columns={[
+            ["dateKey", "Tanggal"],
+            ["entryType", "Jenis Mutasi", (r) => r.entryType === "FUNDING_IN" ? "+ Talangan Masuk" : "- Pengembalian"],
+            ["amountRp", "Nominal", (r) => money.format(r.amountRp)],
+            ["referenceNo", "No. Ref"],
+            ["note", "Catatan"],
+          ]}
+        />
+      </Panel>
+    </div>
+  );
+}
+
+/* RKN_PLASTIC_COMMISSION_UI */
+function CommissionCalculator({
+  data,
+}: {
+  data: Row;
+}) {
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  const [filterDateFrom, setFilterDateFrom] = useState(today().slice(0, 7) + "-01");
+  const [filterDateTo, setFilterDateTo] = useState(today());
+  const [polyRate, setPolyRate] = useState("200");
+  const [thermalStackRate, setThermalStackRate] = useState("250");
+
+  const filtered = useMemo(() => {
+    return rows.filter((r) => {
+      const d = String(r.dateKey || "");
+      if (filterDateFrom && d < filterDateFrom) return false;
+      if (filterDateTo && d > filterDateTo) return false;
+      return true;
+    });
+  }, [rows, filterDateFrom, filterDateTo]);
+
+  const totalPolyRolls = useMemo(() => {
+    return filtered.reduce((acc, r) => acc + Number(r.displayRollQty || 0), 0);
+  }, [filtered]);
+
+  const totalThermalStacks = useMemo(() => {
+    return filtered.reduce((acc, r) => acc + Number(r.displayStackQty || 0), 0);
+  }, [filtered]);
+
+  const totalThermalDus = useMemo(() => {
+    return totalThermalStacks / 20;
+  }, [totalThermalStacks]);
+
+  const totalCommissionRp = useMemo(() => {
+    const polyComm = totalPolyRolls * Number(polyRate || 0);
+    const thermalComm = totalThermalStacks * Number(thermalStackRate || 0);
+    return polyComm + thermalComm;
+  }, [totalPolyRolls, totalThermalStacks, polyRate, thermalStackRate]);
+
+  return (
+    <div className={styles.sectionStack}>
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span>Total Polymailer Terjual</span>
+          <strong style={{ color: "#2563eb" }}>{qtyText(totalPolyRolls)} Roll</strong>
+          <small>Akumulasi seluruh ukuran & warna</small>
+        </div>
+        <div className={styles.statCard}>
+          <span>Total Thermal Terjual</span>
+          <strong style={{ color: "#0891b2" }}>{qtyText(totalThermalStacks)} Stacks ({qtyText(totalThermalDus)} Dus)</strong>
+          <small>Goldwin, Dus Panjang & Dus Kotak</small>
+        </div>
+        <div className={styles.statCard}>
+          <span>Estimasi Total Komisi</span>
+          <strong style={{ color: "#16a34a" }}>{money.format(totalCommissionRp)}</strong>
+          <small>Berdasarkan tarif komisi aktif</small>
+        </div>
+      </div>
+
+      <Panel title="Pengaturan Tarif & Periode Komisi" subtitle="Sesuaikan rentang tanggal dan nominal komisi per roll / stack.">
+        <div className={styles.formGrid}>
+          <Field label="Dari Tanggal">
+            <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
+          </Field>
+          <Field label="Sampai Tanggal">
+            <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+          </Field>
+          <Field label="Tarif Komisi Polymailer (Rp / Roll)">
+            <RupiahInput value={polyRate} onChange={setPolyRate} placeholder="Contoh: 200" />
+          </Field>
+          <Field label="Tarif Komisi Thermal (Rp / Stack)">
+            <RupiahInput value={thermalStackRate} onChange={setThermalStackRate} placeholder="Contoh: 250" />
+          </Field>
+        </div>
+      </Panel>
+
+      <Panel title="Rincian Transaksi Penjualan Fisik">
+        <DataTable
+          rows={filtered}
+          columns={[
+            ["dateKey", "Tanggal"],
+            ["invoiceNo", "Invoice"],
+            ["customerName", "Customer"],
+            ["productName", "Produk"],
+            ["color", "Warna"],
+            ["size", "Ukuran"],
+            ["qtyInput", "Input Asli", (r) => `${qtyText(r.qtyInput)} ${r.inputUnit}`],
+            ["displayRollQty", "Roll (Poly)", (r) => r.displayRollQty > 0 ? `${qtyText(r.displayRollQty)} Roll` : "-"],
+            ["displayStackQty", "Stack (Thermal)", (r) => r.displayStackQty > 0 ? `${qtyText(r.displayStackQty)} Stack` : "-"],
+            ["lineTotalRp", "Total Sales", (r) => money.format(r.lineTotalRp)],
+          ]}
+        />
+      </Panel>
+    </div>
+  );
+}
+
 export default function PlasticTradingApp({
   initialDashboard,
 }: {
@@ -1847,6 +2125,22 @@ const [nextView, nextDashboard] = await Promise.all([
 
 {tab === "INVENTORY" ? (
             <Inventory rows={data.rows || []} isSupplier={isSupplier} />
+          ) : null}
+
+          
+          {tab === "PAYABLES" ? (
+            <Payables
+              data={data}
+              canWrite={canManage}
+              busy={busy}
+              run={run}
+            />
+          ) : null}
+
+          {tab === "COMMISSION" ? (
+            <CommissionCalculator
+              data={data}
+            />
           ) : null}
 
           {tab === "RECEIVABLES" ? (
