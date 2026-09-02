@@ -1394,9 +1394,7 @@ export default function PlasticTradingApp({
 }) {
   /* RKN_PLASTIC_NAV_NO_FLICKER_V2Q82 */
   const [tab, setTab] = useState("");
-  const [period, setPeriod] = useState(
-    String(initialDashboard.periodKey || today().slice(0, 7))
-  );
+  const [period, setPeriod] = useState("ALL");
   const [data, setData] = useState<Row>(initialDashboard);
   const [dashboard, setDashboard] = useState<Row>(initialDashboard);
   const [products, setProducts] = useState<Row[]>([]);
@@ -1445,21 +1443,21 @@ export default function PlasticTradingApp({
 const loadMasters = useCallback(async () => {
     try {
       const [productData, customerData] = await Promise.all([
-        read("PRODUCTS", period),
-        read("CUSTOMERS", period),
+        read("PRODUCTS", "ALL"),
+        read("CUSTOMERS", "ALL"),
       ]);
       setProducts(productData.rows || []);
       setCustomers(customerData.rows || []);
     } catch {
       // Main screen loader will surface connection errors.
     }
-  }, [period]);
+  }, []);
 
   const load = useCallback(async () => {
     setBusy(true);
     setMessage("");
     try {
-      const next = await read(tab, period);
+      const next = await read(tab, "ALL");
       setData(next);
       if (tab === "DASHBOARD") {
         setDashboard(next);
@@ -1471,16 +1469,13 @@ const loadMasters = useCallback(async () => {
     } finally {
       setBusy(false);
     }
-  }, [tab, period]);
+  }, [tab]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const savedTab = window.localStorage.getItem(
       "rkn-plastic-active-tab"
-    );
-    const savedPeriod = window.localStorage.getItem(
-      "rkn-plastic-active-period"
     );
     const defaultInitialTab = isSupplier ? "INVENTORY" : "DASHBOARD";
     const restoredTab =
@@ -1493,14 +1488,6 @@ const loadMasters = useCallback(async () => {
         : defaultInitialTab;
 
     setTab(restoredTab);
-
-    if (
-      savedPeriod &&
-      /^\d{4}-\d{2}$/.test(savedPeriod)
-    ) {
-      setPeriod(savedPeriod);
-    }
-
     setNavigationReady(true);
   }, []);
 
@@ -1513,11 +1500,7 @@ const loadMasters = useCallback(async () => {
       "rkn-plastic-active-tab",
       tab
     );
-    window.localStorage.setItem(
-      "rkn-plastic-active-period",
-      period
-    );
-  }, [tab, period, navigationReady]);
+  }, [tab, navigationReady]);
 
   useEffect(() => {
     if (navigationReady) {
@@ -1782,28 +1765,6 @@ const [nextView, nextDashboard] = await Promise.all([
             </span>
             <h1>{currentMenu?.[1] || "Plastic Trading"}</h1>
             <p>{pageDescriptions[tab]}</p>
-          </div>
-
-          <div className={styles.topbarTools}>
-            <Field label="PERIODE">
-              <input
-                type="month"
-                value={period}
-                onChange={(event) =>
-                  setPeriod(event.target.value)
-                }
-              />
-            </Field>
-            <div
-              className={
-                dashboard.periodStatus === "CLOSED"
-                  ? styles.periodClosed
-                  : styles.periodOpen
-              }
-            >
-              <span />
-              {dashboard.periodStatus || "OPEN"}
-            </div>
           </div>
         </header>
 
@@ -7478,14 +7439,14 @@ function Reports({
 
     const subtitle =
       reportTab === "BOSS_SUMMARY"
-        ? `PERIODE ${period} - STATUS SO: ${bossSoStatus} - RKN GROUP PLASTIC TRADING`
+        ? `STATUS SO: ${bossSoStatus} - RKN GROUP PLASTIC TRADING`
       : reportTab === "RECON"
         ? auditSoPosted
           ? `${auditSoNo} - 100% POSTED & BALANCE - ${simpleRows.length} SKU BALANCE`
           : `OPENING + MASUK - KELUAR / SO FISIK`
         : reportTab === "STOCK_VALUE"
           ? `FISIK SO ${auditSoDate} - VALUASI TOTAL: ${money.format(stockSellingValueTotalRp)}`
-        : `PERIODE ${period}`;
+        : `RKN GROUP PLASTIC TRADING`;
 
     const drawHeader = (pageNo: number) => {
       doc.setFillColor(11, 19, 30);
@@ -8180,10 +8141,10 @@ function Reports({
 
     const suffix =
       reportTab === "BOSS_SUMMARY"
-        ? `EXECUTIVE-SUMMARY-${period}`
+        ? `EXECUTIVE-SUMMARY`
       : reportTab === "RECON"
         ? `REKONSILIASI-STOK-${auditOpeningDate}-${auditSoDate}`
-        : `${reportTab.replace(/_/g, "-")}-${period}`;
+        : `${reportTab.replace(/_/g, "-")}`;
 
     const filterSuffix =
       rknPlasticPdfFilterSnapshot.search.trim()
@@ -8553,11 +8514,11 @@ function Reports({
               <strong>{reportQtyString(goldwinAuditRow, goldwinAuditRow.inboundQtyBase)} masuk resmi</strong>
             </div>
             <small>
-              Tabel di bawah hanya periode {period}. Rekonsiliasi cutoff tetap membaca seluruh dokumen: Opening {reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Keluar {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} · System {reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase)}.
+              Rekonsiliasi cutoff membaca seluruh dokumen transaksi: Opening {reportQtyString(goldwinAuditRow, goldwinAuditRow.openingQtyBase)} · Keluar {reportQtyString(goldwinAuditRow, goldwinAuditRow.outboundQtyBase)} · System {reportQtyString(goldwinAuditRow, goldwinAuditRow.systemLedgerQtyBase)}.
             </small>
           </div>
         ) : null}
-        <Panel title="Barang Masuk" subtitle={`Dokumen resmi periode ${period}.`}>
+        <Panel title="Barang Masuk" subtitle="Daftar transaksi barang masuk resmi.">
           <DataTable
             rows={inbound}
             columns={[
@@ -8578,7 +8539,7 @@ function Reports({
       ) : null}
 
       {reportTab === "OUTBOUND" ? (
-        <Panel title="Barang Keluar" subtitle={`Dokumen penjualan periode ${period}.`}>
+        <Panel title="Barang Keluar" subtitle="Daftar transaksi barang keluar / penjualan.">
           <DataTable
             rows={outbound}
             columns={[
