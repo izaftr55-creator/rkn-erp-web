@@ -1225,10 +1225,11 @@ if(view==='DASHBOARD'){
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
+         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
-       ORDER BY outstandingRp DESC
-       LIMIT 8`
+       ORDER BY outstandingRp DESC`,
+      period,period,period,period
     ).toArray()
   };
 }
@@ -2065,7 +2066,9 @@ if(view==='RECEIVABLES'){
      FROM plastic_sales_invoice i
      LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
      WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-     ORDER BY i.date_key DESC,i.invoice_no DESC`
+       AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+     ORDER BY i.date_key DESC,i.invoice_no DESC`,
+    period,period,period,period
   ).toArray().map((r:any)=>{
     const p=paid(sql,String(r.invoiceId));
     return{...r,paidRp:p,outstandingRp:Math.max(0,N(r.grandTotalRp)-p)};
@@ -2110,9 +2113,11 @@ if(view==='RECEIVABLES'){
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
+         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
-       ORDER BY outstandingRp DESC,customerName`
+       ORDER BY outstandingRp DESC,customerName`,
+      period,period,period,period
     ).toArray(),
     payments:sql.exec(
       `SELECT p.payment_id paymentId,p.invoice_id invoiceId,i.invoice_no invoiceNo,p.customer_id customerId,
