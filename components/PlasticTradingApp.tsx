@@ -1664,6 +1664,24 @@ export default function PlasticTradingApp({
   const [period, setPeriod] = useState("ALL");
   const [data, setData] = useState<Row>(initialDashboard);
   const [dashboard, setDashboard] = useState<Row>(initialDashboard);
+  const [dashboardStartDate, setDashboardStartDate] = useState("");
+  const [dashboardEndDate, setDashboardEndDate] = useState("");
+  
+  const fetchDashboardRange = async (start?: string, end?: string) => {
+    try {
+      setBusy(true);
+      let rangePeriod = "ALL";
+      if (start && end) {
+         rangePeriod = \`RANGE:\${start}:\${end}\`;
+      }
+      const next = await read("DASHBOARD", rangePeriod);
+      setDashboard(next);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal memuat dashboard");
+    } finally {
+      setBusy(false);
+    }
+  };
   const [products, setProducts] = useState<Row[]>([]);
   const [customers, setCustomers] = useState<Row[]>([]);
   const [busy, setBusy] = useState(false);
@@ -2093,7 +2111,25 @@ const [nextView, nextDashboard] = await Promise.all([
 
         <div className={styles.content}>
           {tab === "DASHBOARD" ? (
-            <Dashboard data={dashboard} />
+            <>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '16px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11px', color: '#8b9bb4', fontWeight: 600 }}>Tanggal Mulai</label>
+                  <input type="date" value={dashboardStartDate} onChange={(e) => setDashboardStartDate(e.target.value)} style={{ background: '#0b131e', border: '1px solid rgba(176,141,87,0.3)', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '11px', color: '#8b9bb4', fontWeight: 600 }}>Tanggal Akhir</label>
+                  <input type="date" value={dashboardEndDate} onChange={(e) => setDashboardEndDate(e.target.value)} style={{ background: '#0b131e', border: '1px solid rgba(176,141,87,0.3)', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" onClick={() => fetchDashboardRange(dashboardStartDate, dashboardEndDate)} style={{ background: 'linear-gradient(135deg, #b08d57 0%, #d4b27d 50%, #8c6e3d 100%)', color: '#0b131e', border: 'none', padding: '7px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', height: '31px' }}>Terapkan</button>
+                  {(dashboardStartDate || dashboardEndDate) && (
+                    <button type="button" onClick={() => { setDashboardStartDate(""); setDashboardEndDate(""); fetchDashboardRange("", ""); }} style={{ background: 'transparent', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '6px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', height: '31px' }}>Reset</button>
+                  )}
+                </div>
+              </div>
+              <Dashboard data={dashboard} />
+            </>
           ) : null}
 
           {tab === "OPENING" ? (

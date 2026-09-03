@@ -1098,34 +1098,64 @@ if(view==='COMMISSION'){
 /* RKN_PLASTIC_DASHBOARD_SO_CHART_V2P */
 if(view==='DASHBOARD'){
   const stockRows=syncAuthoritativeInventory(sql);
-  const sales=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?) AND status<>'VOID'`,period,period,period,period);
+  
+  let startDate: string | undefined;
+  let endDate: string | undefined;
+  let periodKey = period;
+  
+  const isRange = period.startsWith('RANGE:');
+  if (isRange) {
+    const parts = period.split(':');
+    if(parts.length === 3) { startDate = parts[1]; endDate = parts[2]; }
+    periodKey = 'ALL';
+  } else if (period !== 'ALL') {
+    startDate = period + '-01';
+    const [y,m] = period.split('-').map(Number);
+    const endD = new Date(Date.UTC(y, m, 0));
+    endDate = \`\${endD.getUTCFullYear()}-\${String(endD.getUTCMonth()+1).padStart(2,'0')}-\${String(endD.getUTCDate()).padStart(2,'0')}\`;
+  }
+  
+  let sales = 0;
+  if (startDate && endDate) {
+    sales = scalar(sql, \`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key>=? AND date_key<=? AND status<>'VOID'\`, startDate, endDate);
+  } else {
+    sales = scalar(sql, \`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'\`);
+  }
+
   const cogs=sales;
-  const rec=scalar(sql,`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?) GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?) AND i.status<>'VOID'`,period,period,period,period,period,period,period,period);
+
+  let rec = 0;
+  if (endDate) {
+    rec = scalar(sql, \`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND date_key<=? GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key<=? AND i.status<>'VOID'\`, endDate, endDate);
+  } else {
+    rec = scalar(sql, \`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'\`);
+  }
+
   let stockValue=0;
   let stockQty=0;
   for(const row of stockRows as any[]){
     stockQty+=N(row.qtyBase);
     stockValue+=N(row.stockValueRp);
   }
-  const skuCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1`);
-  const status=period==='ALL' ? 'OPEN' : (sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,period).toArray()[0]?.status??'OPEN');
+  const skuCount=scalar(sql,\`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1\`);
+  const status=periodKey==='ALL' ? 'OPEN' : (sql.exec(\`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1\`,periodKey).toArray()[0]?.status??'OPEN');
 
   const latestSo=sql.exec(
-    `SELECT date_key dateKey
+    \`SELECT date_key dateKey
      FROM plastic_stock_opname
      WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?)
      ORDER BY date_key DESC,created_at DESC
-     LIMIT 1`,
-    period,period
+     LIMIT 1\`,
+    periodKey,periodKey
   ).toArray()[0];
 
   const latestPostedSoSession=sql.exec(
-    `SELECT so_id soId,so_no soNo,date_key dateKey,status
+    \`SELECT so_id soId,so_no soNo,date_key dateKey,status
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?) AND status='POSTED'
      ORDER BY date_key DESC,created_at DESC
-     LIMIT 1`,
-    period,period
+     LIMIT 1\`,
+    periodKey,periodKey
   ).toArray()[0];
 
   const isSoPosted=Boolean(latestPostedSoSession?.soId || latestSo?.dateKey);
