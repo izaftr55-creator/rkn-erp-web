@@ -4750,7 +4750,8 @@ function Outbound({
                   <strong>Daftar Item Barang Keluar</strong>
                   <span>{(viewInvoice.items || []).length} item</span>
                 </div>
-                <table className={styles.modalDetailTable}>
+                <div style={{ width: '100%', overflowX: 'auto', borderRadius: '12px', border: '1px solid rgba(51, 87, 120, 0.35)' }}>
+                  <table className={styles.modalDetailTable} style={{ border: 'none', borderRadius: 0, minWidth: '600px' }}>
                   <thead>
                     <tr>
                       <th style={{ width: 40 }}>No</th>
@@ -4795,6 +4796,7 @@ function Outbound({
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
 
               {/* Ringkasan Finansial & Catatan */}
