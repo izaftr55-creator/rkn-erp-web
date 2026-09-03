@@ -1672,7 +1672,7 @@ export default function PlasticTradingApp({
       setBusy(true);
       let rangePeriod = "ALL";
       if (start && end) {
-         rangePeriod = \`RANGE:\${start}:\${end}\`;
+         rangePeriod = `RANGE:${start}:${end}`;
       }
       const next = await read("DASHBOARD", rangePeriod);
       setDashboard(next);
