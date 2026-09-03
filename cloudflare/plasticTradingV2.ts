@@ -1112,23 +1112,23 @@ if(view==='DASHBOARD'){
     startDate = period + '-01';
     const [y,m] = period.split('-').map(Number);
     const endD = new Date(Date.UTC(y, m, 0));
-    endDate = \`\${endD.getUTCFullYear()}-\${String(endD.getUTCMonth()+1).padStart(2,'0')}-\${String(endD.getUTCDate()).padStart(2,'0')}\`;
+    endDate = `${endD.getUTCFullYear()}-${String(endD.getUTCMonth()+1).padStart(2,'0')}-${String(endD.getUTCDate()).padStart(2,'0')}`;
   }
   
   let sales = 0;
   if (startDate && endDate) {
-    sales = scalar(sql, \`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key>=? AND date_key<=? AND status<>'VOID'\`, startDate, endDate);
+    sales = scalar(sql, `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key>=? AND date_key<=? AND status<>'VOID'`, startDate, endDate);
   } else {
-    sales = scalar(sql, \`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'\`);
+    sales = scalar(sql, `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`);
   }
 
   const cogs=sales;
 
   let rec = 0;
   if (endDate) {
-    rec = scalar(sql, \`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND date_key<=? GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key<=? AND i.status<>'VOID'\`, endDate, endDate);
+    rec = scalar(sql, `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND date_key<=? GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key<=? AND i.status<>'VOID'`, endDate, endDate);
   } else {
-    rec = scalar(sql, \`SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'\`);
+    rec = scalar(sql, `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
   }
 
   let stockValue=0;
@@ -1137,24 +1137,24 @@ if(view==='DASHBOARD'){
     stockQty+=N(row.qtyBase);
     stockValue+=N(row.stockValueRp);
   }
-  const skuCount=scalar(sql,\`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1\`);
-  const status=periodKey==='ALL' ? 'OPEN' : (sql.exec(\`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1\`,periodKey).toArray()[0]?.status??'OPEN');
+  const skuCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND active=1`);
+  const status=periodKey==='ALL' ? 'OPEN' : (sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,periodKey).toArray()[0]?.status??'OPEN');
 
   const latestSo=sql.exec(
-    \`SELECT date_key dateKey
+    `SELECT date_key dateKey
      FROM plastic_stock_opname
      WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?)
      ORDER BY date_key DESC,created_at DESC
-     LIMIT 1\`,
+     LIMIT 1`,
     periodKey,periodKey
   ).toArray()[0];
 
   const latestPostedSoSession=sql.exec(
-    \`SELECT so_id soId,so_no soNo,date_key dateKey,status
+    `SELECT so_id soId,so_no soNo,date_key dateKey,status
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?) AND status='POSTED'
      ORDER BY date_key DESC,created_at DESC
-     LIMIT 1\`,
+     LIMIT 1`,
     periodKey,periodKey
   ).toArray()[0];
 
