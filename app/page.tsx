@@ -34,11 +34,23 @@ export default async function Page() {
     return <RknLoginScreen />;
   }
 
-  const erpContext =
-    await getErpCoreRpcStub()
-      .getErpAccessContext(
-        session.user.id
-      ) as any;
+  let erpContext;
+  try {
+    erpContext =
+      await getErpCoreRpcStub()
+        .getErpAccessContext(
+          session.user.id
+        ) as any;
+  } catch (error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#07101e', color: '#fff', fontFamily: 'sans-serif' }}>
+        <h2 style={{ color: '#ef4444', marginBottom: '8px' }}>Layanan Sedang Sibuk (Limit Tercapai)</h2>
+        <p style={{ color: '#8b9bb4', maxWidth: '400px', textAlign: 'center', lineHeight: 1.5 }}>
+          Sistem Cloudflare saat ini sedang mencapai limit harian dan menahan request. Silakan coba lagi nanti ketika limit sudah direset.
+        </p>
+      </div>
+    );
+  }
 
   const profile =
     erpContext?.profile as
