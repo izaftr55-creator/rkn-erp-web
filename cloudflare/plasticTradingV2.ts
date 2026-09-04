@@ -1132,9 +1132,19 @@ if(view==='DASHBOARD'){
   }
 
   // Calculate Hutang Aktif KMS (outstandingPayables)
-  const allOpeningPayables = scalar(sql, `SELECT COALESCE(SUM(total_amount_rp), 0) as value FROM plastic_supplier_payable WHERE business_unit_id='BU-PLASTIC'`);
-  const allSalesTotal = scalar(sql, `SELECT COALESCE(SUM(grand_total_rp), 0) as value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`);
-  const allPaidToSupplier = scalar(sql, `SELECT COALESCE(SUM(amount_rp), 0) as value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`);
+  let openingQ = `SELECT COALESCE(SUM(total_amount_rp), 0) as value FROM plastic_supplier_payable WHERE business_unit_id='BU-PLASTIC'`;
+  let salesQ = `SELECT COALESCE(SUM(grand_total_rp), 0) as value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`;
+  let paidQ = `SELECT COALESCE(SUM(amount_rp), 0) as value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`;
+  
+  if (endDate) {
+    openingQ += ` AND date_key<='${endDate}'`;
+    salesQ += ` AND date_key<='${endDate}'`;
+    paidQ += ` AND date_key<='${endDate}'`;
+  }
+  
+  const allOpeningPayables = scalar(sql, openingQ);
+  const allSalesTotal = scalar(sql, salesQ);
+  const allPaidToSupplier = scalar(sql, paidQ);
   const outstandingPayables = Math.max(0, (allOpeningPayables + allSalesTotal) - allPaidToSupplier);
 
   let stockValue=0;
@@ -3150,6 +3160,17 @@ if(view==='ACCESS'||view==='USERS'){
     users
   };
 }
+
+  if (view === 'GOLDWIN_DEBUG') {
+    const variant = sql.exec("SELECT variant_id variantId FROM plastic_product_variant WHERE product_name LIKE '%Goldwin%'").toArray()[0];
+    if (!variant) return { view, error: "No Goldwin variant found" };
+    const vid = variant.variantId;
+    const soLines = sql.exec("SELECT s.so_no, s.date_key, l.physical_qty_base FROM plastic_so_session s JOIN plastic_so_session_line l ON s.so_id = l.so_id WHERE l.variant_id = ? AND s.status = 'POSTED'", vid).toArray();
+    const inboundLines = sql.exec("SELECT i.inbound_no, i.date_key, l.qty_base FROM plastic_inbound i JOIN plastic_inbound_line l ON i.inbound_id = l.inbound_id WHERE l.variant_id = ?", vid).toArray();
+    const salesLines = sql.exec("SELECT i.invoice_no, i.date_key, l.qty_base, i.status FROM plastic_sales_invoice i JOIN plastic_sales_line l ON i.invoice_id = l.invoice_id WHERE l.variant_id = ? AND i.status <> 'VOID'", vid).toArray();
+    const movements = sql.exec("SELECT date_key, movement_type, qty_base FROM plastic_inventory_movement WHERE variant_id = ?", vid).toArray();
+    return { view, variantId: vid, soLines, inboundLines, salesLines, movements };
+  }
 
 throw Error('PLASTIC_VIEW_UNSUPPORTED')}
 
