@@ -1460,7 +1460,7 @@ function Payables({
         <MetricCard
           label="Total Tagihan Supplier"
           value={money.format(summary.totalBills ?? 0)}
-          note="Saldo Awal Rp 44,3jt + Belanja Rp 191,3jt"
+          note="Total tagihan sistem"
         />
         <MetricCard
           label="Total Pembayaran ke KMS"
@@ -9763,3 +9763,4 @@ function AccessManagement({
     </>
   );
 }
+
