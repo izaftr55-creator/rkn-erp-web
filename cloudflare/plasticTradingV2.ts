@@ -222,115 +222,6 @@ VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'S
 
 
 
-/* RKN_PLASTIC_V2L_INVOICE_TRANSACTION_RECONCILIATION */
-sql.exec(`
--- 1. Perbaiki spesifik invoice PTR-20260826-A9E605 menjadi Thermal Goldwin (+ Rp 60.000)
-UPDATE plastic_sales_line
-SET variant_id = 'PL-THERMAL-THERMAL-GOLDWIN',
-    unit_price_rp = CASE WHEN unit_price_rp > 0 THEN unit_price_rp + 30000 ELSE 370000 END,
-    line_total_rp = qty_input * (CASE WHEN unit_price_rp > 0 THEN unit_price_rp + 30000 ELSE 370000 END)
-WHERE invoice_id IN (
-  SELECT invoice_id FROM plastic_sales_invoice
-  WHERE invoice_no = 'PTR-20260826-A9E605' OR invoice_no LIKE '%A9E605%'
-) AND (variant_id LIKE '%THERMAL%' AND variant_id <> 'PL-THERMAL-THERMAL-GOLDWIN');
-
--- 2. Sinkronkan harga dan baris penjualan Putih A yang dulunya tercatat isi 50 roll per ball
-UPDATE plastic_sales_line
-SET unit_price_rp = (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 1880000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    ),
-    line_total_rp = qty_input * (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 1880000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    )
-WHERE variant_id = 'PL-POLY-PUTIH-A-17X30'
-  AND UPPER(input_unit) = 'BALL'
-  AND unit_price_rp = 1175000;
-
-UPDATE plastic_sales_line
-SET unit_price_rp = (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 2080000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    ),
-    line_total_rp = qty_input * (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 2080000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    )
-WHERE variant_id = 'PL-POLY-PUTIH-A-20X30'
-  AND UPPER(input_unit) = 'BALL'
-  AND unit_price_rp = 1300000;
-
-UPDATE plastic_sales_line
-SET unit_price_rp = (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 1950000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    ),
-    line_total_rp = qty_input * (
-      SELECT COALESCE(v.default_sell_price_pack_rp, 1950000)
-      FROM plastic_product_variant v
-      WHERE v.variant_id = plastic_sales_line.variant_id
-    )
-WHERE variant_id = 'PL-POLY-PUTIH-A-25X35'
-  AND UPPER(input_unit) = 'BALL'
-  AND (unit_price_rp = 1560000 OR unit_price_rp = 1350000);
-
--- 3. Sinkronkan harga dan baris penjualan Putih B yang dulunya tercatat isi 50 roll per ball
-UPDATE plastic_sales_line
-SET unit_price_rp = 1560000,
-    line_total_rp = qty_input * 1560000
-WHERE variant_id = 'PL-POLY-PUTIH-B-17X30'
-  AND UPPER(input_unit) = 'BALL'
-  AND unit_price_rp = 975000;
-
-UPDATE plastic_sales_line
-SET unit_price_rp = 1760000,
-    line_total_rp = qty_input * 1760000
-WHERE variant_id = 'PL-POLY-PUTIH-B-20X30'
-  AND UPPER(input_unit) = 'BALL'
-  AND unit_price_rp = 1100000;
-
--- 4. Sinkronkan harga dan baris penjualan Warna 25x35 yang dulunya tercatat isi 50 roll per ball (menjadi 40 roll)
-UPDATE plastic_sales_line
-SET unit_price_rp = 1560000,
-    line_total_rp = qty_input * 1560000
-WHERE variant_id LIKE 'PL-POLY-%-25X35'
-  AND variant_id NOT LIKE '%HITAM%'
-  AND variant_id NOT LIKE '%PUTIH%'
-  AND UPPER(input_unit) = 'BALL'
-  AND unit_price_rp = 1950000;
-
--- 5. Hitung ulang subtotal dan grand total untuk seluruh sales invoice yang tidak VOID
-UPDATE plastic_sales_invoice
-SET subtotal_rp = (
-      SELECT COALESCE(SUM(l.line_total_rp), 0)
-      FROM plastic_sales_line l
-      WHERE l.invoice_id = plastic_sales_invoice.invoice_id
-    ),
-    grand_total_rp = (
-      SELECT COALESCE(SUM(l.line_total_rp), 0)
-      FROM plastic_sales_line l
-      WHERE l.invoice_id = plastic_sales_invoice.invoice_id
-    ) - discount_rp + shipping_rp,
-    updated_at = CURRENT_TIMESTAMP
-WHERE status <> 'VOID';
-
--- 6. Sesuaikan status pelunasan (PAID / PARTIAL / OPEN) sesuai pembayaran riil yang sudah tercatat
-UPDATE plastic_sales_invoice
-SET status = CASE
-      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') >= grand_total_rp THEN 'PAID'
-      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') > 0 THEN 'PARTIAL'
-      ELSE 'OPEN'
-    END,
-    updated_at = CURRENT_TIMESTAMP
-WHERE status <> 'VOID';
-`).toArray();
-
 /* RKN_PLASTIC_V2H_MASTER_UOM_SYNC */
 sql.exec(`
 UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1700000 WHERE variant_id = 'PL-POLY-HITAM-15X25';
@@ -952,6 +843,29 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
 }
 
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
+
+  /* RKN_PLASTIC_EMERGENCY_RECOVERY_PHASE_2 */
+  try {
+    const checkRecovery = sql.exec("SELECT 1 FROM audit_log WHERE reason='ANTIGRAVITY_RECOVERY_PHASE_2'").toArray();
+    if (checkRecovery.length === 0) {
+       const logs = sql.exec("SELECT entity_id, details FROM audit_log WHERE reason='Force rollback harga ke angka awal (Audit Excel)' AND action='PLASTIC_SALE_UPDATE'").toArray();
+       for (const row of logs) {
+          const invoiceId = String(row.entity_id);
+          try {
+             const details = JSON.parse(String(row.details));
+             const oldDisc = Number(details.before.discountRp) || 0;
+             sql.exec("UPDATE plastic_sales_invoice SET discount_rp=? WHERE invoice_id=?", oldDisc, invoiceId).toArray();
+          } catch(e) {}
+       }
+       sql.exec("UPDATE plastic_sales_line SET unit_price_rp = (SELECT CASE WHEN plastic_sales_line.input_unit = UPPER(v.pack_unit) THEN v.default_sell_price_pack_rp WHEN plastic_sales_line.input_unit = UPPER(v.mid_unit) THEN v.default_sell_price_mid_rp ELSE v.default_sell_price_base_rp END FROM plastic_product_variant v WHERE v.variant_id = plastic_sales_line.variant_id)").toArray();
+       sql.exec("UPDATE plastic_sales_line SET line_total_rp = qty_input * unit_price_rp").toArray();
+       sql.exec("UPDATE plastic_sales_invoice SET subtotal_rp = (SELECT COALESCE(SUM(line_total_rp), 0) FROM plastic_sales_line WHERE invoice_id = plastic_sales_invoice.invoice_id)").toArray();
+       sql.exec("UPDATE plastic_sales_invoice SET grand_total_rp = MAX(0, subtotal_rp - discount_rp + shipping_rp)").toArray();
+       sql.exec("UPDATE plastic_sales_invoice SET status = CASE WHEN (SELECT COALESCE(SUM(amount_rp), 0) FROM plastic_payment WHERE invoice_id = plastic_sales_invoice.invoice_id AND status = 'POSTED') >= grand_total_rp THEN 'PAID' WHEN (SELECT COALESCE(SUM(amount_rp), 0) FROM plastic_payment WHERE invoice_id = plastic_sales_invoice.invoice_id AND status = 'POSTED') > 0 THEN 'PARTIAL' ELSE 'OPEN' END WHERE status != 'VOID'").toArray();
+       sql.exec("INSERT INTO audit_log(id, business_unit_id, actor_user_id, action, entity_type, entity_id, reason, details, created_at) VALUES(?, 'BU-PLASTIC', 'SYSTEM', 'RECOVERY', 'SYSTEM', 'SYSTEM', 'ANTIGRAVITY_RECOVERY_PHASE_2', '{}', ?)", crypto.randomUUID(), Date.now()).toArray();
+    }
+  } catch(e) {}
+
 
 /* RKN_PLASTIC_PRICE_HISTORY_VIEW */
 if(view==='PRICE_HISTORY'){
@@ -3170,6 +3084,16 @@ if(view==='ACCESS'||view==='USERS'){
     const salesLines = sql.exec("SELECT i.invoice_no, i.date_key, l.qty_base, i.status FROM plastic_sales_invoice i JOIN plastic_sales_line l ON i.invoice_id = l.invoice_id WHERE l.variant_id = ? AND i.status <> 'VOID'", vid).toArray();
     const movements = sql.exec("SELECT date_key, movement_type, qty_base FROM plastic_inventory_movement WHERE variant_id = ?", vid).toArray();
     return { view, variantId: vid, soLines, inboundLines, salesLines, movements };
+  }
+
+  if (view === 'FIND_715500_DEBUG') {
+    const exactPayments = sql.exec("SELECT p.payment_id, p.amount_rp, p.date_key, p.payment_method, i.invoice_no, i.grand_total_rp, c.name as customer_name FROM plastic_payment p JOIN plastic_sales_invoice i ON p.invoice_id = i.invoice_id LEFT JOIN plastic_customer c ON i.customer_id = c.customer_id WHERE p.amount_rp = 715500").toArray();
+    
+    const exactDiscounts = sql.exec("SELECT invoice_no, date_key, discount_rp, grand_total_rp, c.name FROM plastic_sales_invoice i LEFT JOIN plastic_customer c ON i.customer_id = c.customer_id WHERE discount_rp = 715500").toArray();
+
+    const exactInvoices = sql.exec("SELECT invoice_no, date_key, grand_total_rp, c.name FROM plastic_sales_invoice i LEFT JOIN plastic_customer c ON i.customer_id = c.customer_id WHERE grand_total_rp = 715500").toArray();
+
+    return { view, exactPayments, exactDiscounts, exactInvoices };
   }
 
 throw Error('PLASTIC_VIEW_UNSUPPORTED')}
