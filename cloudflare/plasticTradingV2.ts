@@ -951,7 +951,7 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
   });
 }
 
-export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : (/^\d{4}-\d{2}$/.test(String(periodV)) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
+export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
 
 /* RKN_PLASTIC_PRICE_HISTORY_VIEW */
 if(view==='PRICE_HISTORY'){
