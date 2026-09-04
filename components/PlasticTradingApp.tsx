@@ -4184,6 +4184,34 @@ function Outbound({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const repeatOrder = (row: Row) => {
+    const invoiceId = String(row.invoiceId || "");
+    const group = rows.filter(
+      (item) => String(item.invoiceId || "") === invoiceId
+    );
+    if (!group.length) return;
+
+    const head = group[0];
+    setEditInvoiceId("");
+    setEditInvoiceNo("");
+    setDateKey(today());
+    setCustomerName(String(head.customerName || ""));
+    setDiscountRp(String(head.discountRp || 0));
+    setNote(String(head.note || ""));
+    setPaymentStatus("NOT_PAID");
+    setLines(
+      group.map((item) => ({
+        variantId: String(item.variantId || ""),
+        qty: String(item.qtyInput || 1),
+        unit: String(item.inputUnit || "").toUpperCase(),
+        unitPriceRp: String(item.unitPriceRp || 0),
+      }))
+    );
+    setEditReason("");
+    setViewInvoice(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const voidSale = async (row: Row) => {
     if (!canEdit || typeof window === "undefined") return;
     const reason = window.prompt(
@@ -4923,6 +4951,16 @@ function Outbound({
             </div>
 
             <div className={styles.modalFooter}>
+              {canWrite && String(viewInvoice.historyIntegrity || "OK") === "OK" && (
+                <button
+                  type="button"
+                  className={styles.primaryButton}
+                  style={{ marginRight: 8, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white" }}
+                  onClick={() => repeatOrder(viewInvoice)}
+                >
+                  <MenuIcon name="dashboard" /> Ulangi Pesanan (Copy)
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.secondaryButton}
