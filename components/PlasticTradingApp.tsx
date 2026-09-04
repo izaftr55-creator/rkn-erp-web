@@ -2128,7 +2128,7 @@ const [nextView, nextDashboard] = await Promise.all([
                   )}
                 </div>
               </div>
-              <Dashboard data={dashboard} />
+              <Dashboard data={dashboard} onNavigate={setTab} />
             </>
           ) : null}
 
@@ -2374,7 +2374,7 @@ const [nextView, nextDashboard] = await Promise.all([
   );
 }
 
-function Dashboard({ data }: { data: Row }) {
+function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string) => void }) {
   /* RKN_PLASTIC_DASHBOARD_CHART_UI_V2P */
   const metrics = data.metrics || {};
   const so = data.soBalance || {};
@@ -2422,39 +2422,57 @@ function Dashboard({ data }: { data: Row }) {
 
   return (
     <div className={styles.dashboardShell}>
-      <section className={styles.metricGrid}>
-        <MetricCard
-          label="Nilai Stok Fisik"
-          value={money.format(Number(metrics.stockValueRp || 0))}
-          note={`${qtyFmt.format(
-            Number(metrics.skuCount || 0)
-          )} SKU aktif`}
-        />
-        <MetricCard
-          label="Total Penjualan"
-          value={money.format(Number(metrics.salesRp || 0))}
-          note="Omset periode"
-        />
-        <MetricCard
-          label="Kas Masuk (Lunas)"
-          value={money.format(
-            Number(
-              metrics.paidRp ??
-                Math.max(
-                  0,
-                  Number(metrics.salesRp || 0) -
-                    Number(metrics.receivableRp || 0)
-                )
-            )
-          )}
-          note="Pembayaran diterima"
-        />
-        <MetricCard
-          label="Sisa Piutang"
-          value={money.format(Number(metrics.receivableRp || 0))}
-          note="Tagihan belum lunas"
-        />
-      </section>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+        
+        {/* Interactive Sisa Piutang Card (Clickable) */}
+        <div 
+          onClick={() => onNavigate?.("RECEIVABLES")}
+          style={{
+            background: "#0b131e",
+            border: "1px solid rgba(176,141,87,0.3)",
+            borderRadius: "12px",
+            padding: "16px",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            position: "relative",
+            overflow: "hidden"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#f97316";
+            e.currentTarget.style.boxShadow = "0 0 20px rgba(249,115,22,0.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "rgba(176,141,87,0.3)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+        >
+          <p style={{ fontSize: "12px", fontWeight: "bold", color: "#8b9bb4", textTransform: "uppercase" }}>
+            Sisa Piutang (Klik Detail)
+          </p>
+          <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#fff" }}>
+            {money.format(Number(metrics.receivableRp || 0))}
+          </h3>
+        </div>
+
+        {/* Static Card */}
+        <div style={{
+          background: "#0b131e",
+          border: "1px solid rgba(176,141,87,0.3)",
+          borderRadius: "12px",
+          padding: "16px"
+        }}>
+          <p style={{ fontSize: "12px", fontWeight: "bold", color: "#8b9bb4", textTransform: "uppercase" }}>
+            Hutang Aktif KMS
+          </p>
+          <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#d4b27d" }}>
+            {money.format(Number(metrics.outstandingPayables || 0))}
+          </h3>
+          <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
+            Sistem Konsinyasi
+          </p>
+        </div>
+
+      </div>
 
       <section className={styles.dashboardCharts}>
         <Panel

@@ -1131,6 +1131,12 @@ if(view==='DASHBOARD'){
     rec = scalar(sql, `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
   }
 
+  // Calculate Hutang Aktif KMS (outstandingPayables)
+  const allOpeningPayables = scalar(sql, `SELECT COALESCE(SUM(total_amount_rp), 0) as value FROM plastic_supplier_payable WHERE business_unit_id='BU-PLASTIC'`);
+  const allSalesTotal = scalar(sql, `SELECT COALESCE(SUM(grand_total_rp), 0) as value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`);
+  const allPaidToSupplier = scalar(sql, `SELECT COALESCE(SUM(amount_rp), 0) as value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`);
+  const outstandingPayables = Math.max(0, (allOpeningPayables + allSalesTotal) - allPaidToSupplier);
+
   let stockValue=0;
   let stockQty=0;
   for(const row of stockRows as any[]){
@@ -1247,7 +1253,8 @@ if(view==='DASHBOARD'){
       cogsRp:cogs,
       grossProfitRp:sales-cogs,
       receivableRp:rec,
-      skuCount
+      skuCount,
+      outstandingPayables
     },
     soBalance,
     activeSo,
