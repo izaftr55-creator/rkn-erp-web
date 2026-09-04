@@ -2422,8 +2422,28 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
 
   return (
     <div className={styles.dashboardShell}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "24px" }}>
         
+        {/* Total Penjualan Card */}
+        <div style={{
+          background: "#0b131e",
+          border: "1px solid rgba(59,130,246,0.3)",
+          borderRadius: "12px",
+          padding: "16px",
+          position: "relative",
+          overflow: "hidden"
+        }}>
+          <p style={{ fontSize: "12px", fontWeight: "bold", color: "#8b9bb4", textTransform: "uppercase" }}>
+            Total Penjualan (Omset)
+          </p>
+          <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#3b82f6" }}>
+            {money.format(Number(metrics.salesRp || 0))}
+          </h3>
+          <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
+            Seluruh faktur penjualan
+          </p>
+        </div>
+
         {/* Interactive Sisa Piutang Card (Clickable) */}
         <div 
           onClick={() => onNavigate?.("RECEIVABLES")}
@@ -2452,6 +2472,9 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
           <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#fff" }}>
             {money.format(Number(metrics.receivableRp || 0))}
           </h3>
+          <p style={{ fontSize: "10px", color: "#f97316", marginTop: "8px", fontWeight: "bold" }}>
+            Lompat ke rincian ➔
+          </p>
         </div>
 
         {/* Static Card */}
