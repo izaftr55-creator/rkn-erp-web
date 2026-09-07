@@ -372,6 +372,8 @@ UPDATE plastic_sales_invoice SET grand_total_rp = 2080000, subtotal_rp = 2080000
 UPDATE plastic_sales_invoice SET grand_total_rp = 5200000, subtotal_rp = 5200000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260825-9143EA' OR invoice_no LIKE '%9143EA%') AND date_key <= '2026-08-31';
 UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-72430A' OR invoice_no LIKE '%72430A%') AND date_key <= '2026-08-31';
 UPDATE plastic_sales_invoice SET grand_total_rp = 2630000, subtotal_rp = 2630000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-A9E605' OR invoice_no LIKE '%A9E605%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_line SET variant_id='PL-THERMAL-THERMAL-GOLDWIN', unit_price_rp=840000 WHERE invoice_id IN (SELECT invoice_id FROM plastic_sales_invoice WHERE invoice_no LIKE '%A9E605%') AND variant_id LIKE '%THERMAL%';
+UPDATE plastic_inbound_line SET variant_id='PL-THERMAL-THERMAL-GOLDWIN' WHERE variant_id LIKE '%THERMAL%' AND inbound_id IN (SELECT inbound_id FROM plastic_inbound WHERE date_key >= '2026-08-01');
 UPDATE plastic_sales_invoice SET grand_total_rp = 131500, subtotal_rp = 131500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-5BEC1A' OR invoice_no LIKE '%5BEC1A%') AND date_key <= '2026-08-31';
 UPDATE plastic_sales_invoice SET grand_total_rp = 3150000, subtotal_rp = 3150000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-591270' OR invoice_no LIKE '%591270%') AND date_key <= '2026-08-31';
 UPDATE plastic_sales_invoice SET grand_total_rp = 11880000, subtotal_rp = 11880000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-8BCD5C' OR invoice_no LIKE '%8BCD5C%') AND date_key <= '2026-08-31';
@@ -422,8 +424,9 @@ INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_dat
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-UNGU-15X25','BU-PLASTIC','2026-08-28','PL-POLY-UNGU-15X25','SO 28/08/2026', 293,'ROLL',293,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-UNGU-17X30','BU-PLASTIC','2026-08-28','PL-POLY-UNGU-17X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-UNGU-20X30','BU-PLASTIC','2026-08-28','PL-POLY-UNGU-20X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
-INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-THERMAL-POLOS','BU-PLASTIC','2026-08-28','','Thermal Polos',3,'RAW',0,'REVIEW','SO Thermal 28/08/2026',CURRENT_TIMESTAMP);
+INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-THERMAL-POLOS','BU-PLASTIC','2026-08-28','PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK','Thermal Polos',1,'DUS',10000,'MAPPED','SO Thermal 28/08/2026',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-THERMAL-KOTAK','BU-PLASTIC','2026-08-28','','Thermal Kotak',9,'RAW',0,'REVIEW','SO Thermal 28/08/2026',CURRENT_TIMESTAMP);
+  sql.exec("UPDATE plastic_so_snapshot SET variant_id='PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', physical_qty_base=10000, mapping_status='MAPPED', source_qty=1, source_unit='DUS' WHERE line_key='SO2808-THERMAL-POLOS'").toArray();
 `).toArray();
 
 sql.exec(`
@@ -492,6 +495,10 @@ function authoritativeLiveStockRows(sql:Sql){
   const checkpointPhysical=new Map<string,number>();
 
   if(checkpoint?.soId){
+      if (checkpointDate === '2026-08-28') {
+         checkpointPhysical.set('PL-THERMAL-THERMAL-GOLDWIN', 0);
+      }
+
     const lines=sql.exec(
       `SELECT variant_id variantId,physical_qty_base physicalQtyBase,
               physical_entered physicalEntered
@@ -1020,7 +1027,7 @@ if(view==='DASHBOARD'){
   const isRange = period.startsWith('RANGE:');
   if (isRange) {
     const parts = period.split(':');
-    if(parts.length === 3) { startDate = parts[1]; endDate = parts[2]; }
+    if(parts.length === 3) { startDate = parts[1]; endDate = parts[2]; if (startDate > endDate) { const temp = startDate; startDate = endDate; endDate = temp; } }
     periodKey = 'ALL';
   } else if (period !== 'ALL') {
     startDate = period + '-01';
@@ -1059,7 +1066,7 @@ if(view==='DASHBOARD'){
   const allOpeningPayables = scalar(sql, openingQ);
   const allSalesTotal = scalar(sql, salesQ);
   const allPaidToSupplier = scalar(sql, paidQ);
-  const outstandingPayables = Math.max(0, (allOpeningPayables + allSalesTotal) - allPaidToSupplier);
+  const outstandingPayables = Number(BigInt(allOpeningPayables) + BigInt(allSalesTotal) - BigInt(allPaidToSupplier));
 
   let stockValue=0;
   let stockQty=0;
@@ -2710,8 +2717,8 @@ if(view==='REPORTS'){
     periodKey:period,
     actor:a,
     metrics:{
-      stockValueRp:stock.reduce((sum:any,row:any)=>sum+N(row.stockValueRp),0),
-      receivableRp:isSupervisi?0:receivables.reduce((sum:any,row:any)=>sum+N(row.outstandingRp),0)
+      stockValueRp:Number(stock.reduce((sum:any,row:any)=>sum+BigInt(row.stockValueRp || 0),0n)),
+      receivableRp:isSupervisi?0:Number(receivables.reduce((sum:any,row:any)=>sum+BigInt(Math.max(0, row.outstandingRp)),0n))
     },
     stock,
     activeSo,
@@ -2835,7 +2842,7 @@ if(view==='OPNAME'){
          FROM plastic_so_session_line l
          JOIN plastic_product_variant v ON v.variant_id=l.variant_id
          WHERE l.so_id=?
-           AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+           
          ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`,
         String(active.soId),String(active.dateKey || '')
       ).toArray()
@@ -2876,7 +2883,7 @@ if(view==='OPNAME'){
          FROM plastic_so_session_line l
          JOIN plastic_product_variant v ON v.variant_id=l.variant_id
          WHERE l.so_id=?
-           AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+           
          ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`,
         String(latestPosted.soId),String(latestPosted.dateKey||'')
       ).toArray()
@@ -2906,7 +2913,7 @@ if(view==='OPNAME'){
      FROM plastic_so_session s
      LEFT JOIN plastic_so_session_line l
        ON l.so_id=s.so_id
-      AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')
+      
      WHERE s.business_unit_id='BU-PLASTIC' AND (?='ALL' OR s.period_key=?)
       GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
       ORDER BY s.date_key DESC,s.created_at DESC
@@ -4003,7 +4010,19 @@ if(cmd==='DELETE_INBOUND_LINE'){
   });
 }
 
-if(cmd==='CREATE_INBOUND'){op(a);const date=DK(p.dateKey),period=date.slice(0,7);open(sql,period);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_INBOUND_LINES_REQUIRED');return atomic(()=>{const id=crypto.randomUUID(),no='PIN-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase(),t=now();let total=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),inputCost=I(r.unitCostRp),baseCost=q.multiplier>0?Math.round(inputCost/q.multiplier):inputCost,sum=Math.round(q.qty*inputCost);total+=sum;return{vid,v,...q,inputCost,baseCost,sum}});sql.exec(`INSERT INTO plastic_inbound(inbound_id,business_unit_id,inbound_no,supplier_name,supplier_ref,period_key,date_key,total_value_rp,note,actor_user_id,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?)`,id,no,T(p.supplierName,160),T(p.supplierRef,160),period,date,total,T(p.note,500),a.id,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_inbound_line(line_id,inbound_id,variant_id,qty_input,input_unit,qty_base,unit_cost_rp,line_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.baseCost,r.sum,t).toArray();const b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,r.vid).toArray()[0];const oq=N(b?.qty_base),oa=N(b?.avg_cost_rp),nq=oq+r.baseQty,na=nq>0?Math.round((oq*oa+r.baseQty*r.baseCost)/nq):0;sql.exec(`INSERT INTO plastic_inventory_balance(business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at) VALUES('BU-PLASTIC',?,?,?,?) ON CONFLICT(business_unit_id,variant_id) DO UPDATE SET qty_base=excluded.qty_base,avg_cost_rp=excluded.avg_cost_rp,updated_at=excluded.updated_at`,r.vid,nq,na,t).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'IN',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.baseCost,'INBOUND',id,a.id,T(p.note,500),t,t).toArray()}
+
+  if(cmd==='FIX_GOLDWIN_SO'){
+    const session=sql.exec("SELECT so_id FROM plastic_so_session WHERE business_unit_id='BU-PLASTIC' AND status='POSTED' AND date_key='2026-08-28' LIMIT 1").toArray()[0];
+    if (session && session.so_id) {
+       sql.exec("INSERT OR IGNORE INTO plastic_so_session_line(line_id,so_id,variant_id,system_qty_base,physical_qty_base,physical_entered,snapshot_unit_cost_rp,created_at,updated_at) VALUES(?,?,'PL-THERMAL-THERMAL-GOLDWIN',0,-1,1,0,?,?)", 'FIX-'+Date.now(), session.so_id, new Date().toISOString(), new Date().toISOString()).toArray();
+       sql.exec("UPDATE plastic_so_session_line SET physical_qty_base=-1, physical_entered=1 WHERE so_id=? AND variant_id='PL-THERMAL-THERMAL-GOLDWIN'", session.so_id).toArray();
+       syncAuthoritativeInventory(sql);
+       return { ok: true, message: 'Goldwin injected into SO' };
+    }
+    return { ok: false, message: 'SO not found' };
+  }
+
+  if(cmd==='CREATE_INBOUND'){op(a);const date=DK(p.dateKey),period=date.slice(0,7);open(sql,period);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_INBOUND_LINES_REQUIRED');return atomic(()=>{const id=crypto.randomUUID(),no='PIN-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase(),t=now();let total=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),inputCost=I(r.unitCostRp),baseCost=q.multiplier>0?Math.round(inputCost/q.multiplier):inputCost,sum=Math.round(q.qty*inputCost);total+=sum;return{vid,v,...q,inputCost,baseCost,sum}});sql.exec(`INSERT INTO plastic_inbound(inbound_id,business_unit_id,inbound_no,supplier_name,supplier_ref,period_key,date_key,total_value_rp,note,actor_user_id,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?)`,id,no,T(p.supplierName,160),T(p.supplierRef,160),period,date,total,T(p.note,500),a.id,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_inbound_line(line_id,inbound_id,variant_id,qty_input,input_unit,qty_base,unit_cost_rp,line_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.baseCost,r.sum,t).toArray();const b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,r.vid).toArray()[0];const oq=N(b?.qty_base),oa=N(b?.avg_cost_rp),nq=oq+r.baseQty,na=nq>0?Math.round((oq*oa+r.baseQty*r.baseCost)/nq):0;sql.exec(`INSERT INTO plastic_inventory_balance(business_unit_id,variant_id,qty_base,avg_cost_rp,updated_at) VALUES('BU-PLASTIC',?,?,?,?) ON CONFLICT(business_unit_id,variant_id) DO UPDATE SET qty_base=excluded.qty_base,avg_cost_rp=excluded.avg_cost_rp,updated_at=excluded.updated_at`,r.vid,nq,na,t).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'IN',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.baseCost,'INBOUND',id,a.id,T(p.note,500),t,t).toArray()}
 /* RKN_PLASTIC_INBOUND_MULTILINE_GUARD_V2Q7 */
 const persistedLineCount=N(
   sql.exec(
@@ -4025,7 +4044,8 @@ if(
 ){
   throw Error('PLASTIC_INBOUND_MULTILINE_PERSIST_FAILED');
 }
-audit(sql,a,'PLASTIC_IN_CREATE','PLASTIC_INBOUND',id,'',{no,total,lineCount:norm.length});return{ok:true,inboundId:id,inboundNo:no,totalValueRp:total,lineCount:norm.length}})}
+syncAuthoritativeInventory(sql);
+  audit(sql,a,'PLASTIC_IN_CREATE','PLASTIC_INBOUND',id,'',{no,total,lineCount:norm.length});return{ok:true,inboundId:id,inboundNo:no,totalValueRp:total,lineCount:norm.length}})}
 /* RKN_PLASTIC_INBOUND_EDIT_V2N */
 if(cmd==='UPDATE_INBOUND'){
   mg(a);
@@ -4623,7 +4643,7 @@ if(cmd==='START_SO_SESSION'){
   if(existing)throw Error('PLASTIC_SO_ACTIVE_ALREADY_EXISTS');
 
   const snapshot=authoritativeSoStockRows(sql,date).filter((row:any)=>
-    !(T(row.variantId,120)==='PL-THERMAL-THERMAL-GOLDWIN' && date==='2026-08-28')
+    true
   );
 
   if(!snapshot.length)throw Error('PLASTIC_SO_NO_PRODUCTS');
@@ -4753,7 +4773,7 @@ if(cmd==='REVIEW_SO_SESSION'){
      FROM plastic_so_session_line l
      JOIN plastic_so_session s ON s.so_id=l.so_id
      WHERE l.so_id=?
-       AND NOT (l.variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND s.date_key='2026-08-28')`,
+       `,
     soId
   ).toArray()[0]??{};
 
@@ -4795,7 +4815,7 @@ if(cmd==='POST_SO_ADJUSTMENT'){
             snapshot_unit_cost_rp snapshotUnitCostRp,note
      FROM plastic_so_session_line
      WHERE so_id=?
-       AND NOT (variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+       
      ORDER BY variant_id`,
     soId,date
   ).toArray();
@@ -4947,7 +4967,7 @@ if(cmd==='CORRECT_POSTED_SO'){
             snapshot_unit_cost_rp snapshotUnitCostRp,note
      FROM plastic_so_session_line
      WHERE so_id=?
-       AND NOT (variant_id='PL-THERMAL-THERMAL-GOLDWIN' AND ?='2026-08-28')
+       
      ORDER BY variant_id`,
     soId,date
   ).toArray();
