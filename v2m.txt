@@ -1,0 +1,100 @@
+/* RKN_PLASTIC_V2M_EXACT_EXCEL_AUDIT_SYNC
+   Keep this after every migration that recalculates invoice monetary totals. */
+sql.exec(`
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-DBF139' OR invoice_no LIKE '%DBF139%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 333000, subtotal_rp = 333000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-A99467' OR invoice_no LIKE '%A99467%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 26000, subtotal_rp = 26000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-01F9D6' OR invoice_no LIKE '%01F9D6%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260729-BACFC7' OR invoice_no LIKE '%BACFC7%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7920000, subtotal_rp = 7920000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260730-FE5337' OR invoice_no LIKE '%FE5337%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 47000, subtotal_rp = 47000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260730-BC549E' OR invoice_no LIKE '%BC549E%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260730-53FC9F' OR invoice_no LIKE '%53FC9F%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3960000, subtotal_rp = 3960000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260730-A4769A' OR invoice_no LIKE '%A4769A%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7920000, subtotal_rp = 7920000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260730-AC6275' OR invoice_no LIKE '%AC6275%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260731-FC8ACB' OR invoice_no LIKE '%FC8ACB%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4950000, subtotal_rp = 4950000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260731-100B28' OR invoice_no LIKE '%100B28%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260731-A66C54' OR invoice_no LIKE '%A66C54%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260801-9469AF' OR invoice_no LIKE '%9469AF%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 49500, subtotal_rp = 49500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260801-8E8237' OR invoice_no LIKE '%8E8237%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 94000, subtotal_rp = 94000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260801-5580AF' OR invoice_no LIKE '%5580AF%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260803-8D42DB' OR invoice_no LIKE '%8D42DB%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 120000, subtotal_rp = 120000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260803-A8FEB2' OR invoice_no LIKE '%A8FEB2%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2370000, subtotal_rp = 2370000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260803-3DE6F1' OR invoice_no LIKE '%3DE6F1%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 141000, subtotal_rp = 141000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260803-275E3D' OR invoice_no LIKE '%275E3D%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 6125000, subtotal_rp = 6125000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260804-A3D01B' OR invoice_no LIKE '%A3D01B%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 8800000, subtotal_rp = 8800000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260804-4FD192' OR invoice_no LIKE '%4FD192%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260804-AE47F3' OR invoice_no LIKE '%AE47F3%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 840000, subtotal_rp = 840000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260804-E9B8DF' OR invoice_no LIKE '%E9B8DF%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 800000, subtotal_rp = 800000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260805-FE7225' OR invoice_no LIKE '%FE7225%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260805-D7B973' OR invoice_no LIKE '%D7B973%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 164500, subtotal_rp = 164500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260805-3F8291' OR invoice_no LIKE '%3F8291%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 116000, subtotal_rp = 116000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260805-C65CF3' OR invoice_no LIKE '%C65CF3%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 6250000, subtotal_rp = 6250000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260805-0AB429' OR invoice_no LIKE '%0AB429%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 200000, subtotal_rp = 200000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260806-BD99DA' OR invoice_no LIKE '%BD99DA%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1012000, subtotal_rp = 1012000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260806-5C4F50' OR invoice_no LIKE '%5C4F50%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 164500, subtotal_rp = 164500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260807-E2B2D4' OR invoice_no LIKE '%E2B2D4%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 23500, subtotal_rp = 23500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260807-BAFF75' OR invoice_no LIKE '%BAFF75%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5200000, subtotal_rp = 5200000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260808-552ADD' OR invoice_no LIKE '%552ADD%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 26000, subtotal_rp = 26000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260808-EB9343' OR invoice_no LIKE '%EB9343%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 117500, subtotal_rp = 117500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260810-E0F72F' OR invoice_no LIKE '%E0F72F%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1990000, subtotal_rp = 1990000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260810-E940E5' OR invoice_no LIKE '%E940E5%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2350000, subtotal_rp = 2350000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260811-1D67CD' OR invoice_no LIKE '%1D67CD%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5840000, subtotal_rp = 5840000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260811-3F19FB' OR invoice_no LIKE '%3F19FB%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260811-CC57F8' OR invoice_no LIKE '%CC57F8%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 97500, subtotal_rp = 97500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260811-406F7F' OR invoice_no LIKE '%406F7F%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260811-183836' OR invoice_no LIKE '%183836%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4000000, subtotal_rp = 4000000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260812-48EFB3' OR invoice_no LIKE '%48EFB3%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260812-0E3F3B' OR invoice_no LIKE '%0E3F3B%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 8400000, subtotal_rp = 8400000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260812-E091E1' OR invoice_no LIKE '%E091E1%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260813-A82E84' OR invoice_no LIKE '%A82E84%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 96500, subtotal_rp = 96500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260813-7AB6F9' OR invoice_no LIKE '%7AB6F9%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 31000, subtotal_rp = 31000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260814-CAF7DA' OR invoice_no LIKE '%CAF7DA%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260815-F62C10' OR invoice_no LIKE '%F62C10%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 70500, subtotal_rp = 70500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260815-BCA6EE' OR invoice_no LIKE '%BCA6EE%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 800000, subtotal_rp = 800000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260815-AAE5D9' OR invoice_no LIKE '%AAE5D9%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 15500, subtotal_rp = 15500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260816-016B9D' OR invoice_no LIKE '%016B9D%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260817-37CCB2' OR invoice_no LIKE '%37CCB2%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 7050000, subtotal_rp = 7050000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260818-FD67AF' OR invoice_no LIKE '%FD67AF%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260818-C637B1' OR invoice_no LIKE '%C637B1%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4700000, subtotal_rp = 4700000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260818-A2B0E8' OR invoice_no LIKE '%A2B0E8%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 286000, subtotal_rp = 286000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260818-A9675D' OR invoice_no LIKE '%A9675D%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 216000, subtotal_rp = 216000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260818-ADD6F2' OR invoice_no LIKE '%ADD6F2%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260819-AE1959' OR invoice_no LIKE '%AE1959%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260819-258EBA' OR invoice_no LIKE '%258EBA%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 155000, subtotal_rp = 155000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260819-903AD3' OR invoice_no LIKE '%903AD3%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 77500, subtotal_rp = 77500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260820-BABE85' OR invoice_no LIKE '%BABE85%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4200000, subtotal_rp = 4200000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260821-CA8421' OR invoice_no LIKE '%CA8421%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 77500, subtotal_rp = 77500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260821-E7842B' OR invoice_no LIKE '%E7842B%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 135500, subtotal_rp = 135500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260821-12121F' OR invoice_no LIKE '%12121F%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3960000, subtotal_rp = 3960000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260822-3BBB13' OR invoice_no LIKE '%3BBB13%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3360000, subtotal_rp = 3360000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260822-BFF96C' OR invoice_no LIKE '%BFF96C%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260822-851967' OR invoice_no LIKE '%851967%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 47000, subtotal_rp = 47000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260823-6A119F' OR invoice_no LIKE '%6A119F%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1680000, subtotal_rp = 1680000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260824-499920' OR invoice_no LIKE '%499920%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1175000, subtotal_rp = 1175000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260824-B0D5D7' OR invoice_no LIKE '%B0D5D7%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 23500, subtotal_rp = 23500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260824-3097F4' OR invoice_no LIKE '%3097F4%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1850000, subtotal_rp = 1850000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260825-793E4D' OR invoice_no LIKE '%793E4D%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2080000, subtotal_rp = 2080000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260825-3BE337' OR invoice_no LIKE '%3BE337%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 5200000, subtotal_rp = 5200000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260825-9143EA' OR invoice_no LIKE '%9143EA%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 1300000, subtotal_rp = 1300000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-72430A' OR invoice_no LIKE '%72430A%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 2630000, subtotal_rp = 2630000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-A9E605' OR invoice_no LIKE '%A9E605%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 131500, subtotal_rp = 131500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-5BEC1A' OR invoice_no LIKE '%5BEC1A%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3150000, subtotal_rp = 3150000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-591270' OR invoice_no LIKE '%591270%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 11880000, subtotal_rp = 11880000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-8BCD5C' OR invoice_no LIKE '%8BCD5C%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 16600000, subtotal_rp = 16600000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260826-864117' OR invoice_no LIKE '%864117%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 27000, subtotal_rp = 27000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260828-72FB62' OR invoice_no LIKE '%72FB62%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 27000, subtotal_rp = 27000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260828-2F59B7' OR invoice_no LIKE '%2F59B7%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 3525000, subtotal_rp = 3525000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260830-2B29F2' OR invoice_no LIKE '%2B29F2%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 97500, subtotal_rp = 97500, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260830-CA52B2' OR invoice_no LIKE '%CA52B2%') AND date_key <= '2026-08-31';
+UPDATE plastic_sales_invoice SET grand_total_rp = 4700000, subtotal_rp = 4700000, updated_at = CURRENT_TIMESTAMP WHERE (invoice_no = 'PTR-20260831-29FF95' OR invoice_no LIKE '%29FF95%') AND date_key <= '2026-08-31';
+
+-- Hitung ulang status pelunasan
+UPDATE plastic_sales_invoice
+SET status = CASE
+      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') >= grand_total_rp THEN 'PAID'
+      WHEN (SELECT COALESCE(SUM(p.amount_rp), 0) FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id AND p.status = 'POSTED') > 0 THEN 'PARTIAL'
+      ELSE 'OPEN'
+    END,
+    updated_at = CURRENT_TIMESTAMP
+WHERE status <> 'VOID';
+`).toArray();
+
