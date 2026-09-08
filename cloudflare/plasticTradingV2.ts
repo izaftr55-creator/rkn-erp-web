@@ -441,7 +441,7 @@ INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_dat
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-UNGU-20X30','BU-PLASTIC','2026-08-28','PL-POLY-UNGU-20X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-THERMAL-POLOS','BU-PLASTIC','2026-08-28','PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK','Thermal Polos',1,'DUS',10000,'MAPPED','SO Thermal 28/08/2026',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-THERMAL-KOTAK','BU-PLASTIC','2026-08-28','','Thermal Kotak',9,'RAW',0,'REVIEW','SO Thermal 28/08/2026',CURRENT_TIMESTAMP);
-  sql.exec("UPDATE plastic_so_snapshot SET variant_id='PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', physical_qty_base=10000, mapping_status='MAPPED', source_qty=1, source_unit='DUS' WHERE line_key='SO2808-THERMAL-POLOS'").toArray();
+UPDATE plastic_so_snapshot SET variant_id='PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', physical_qty_base=10000, mapping_status='MAPPED', source_qty=1, source_unit='DUS' WHERE line_key='SO2808-THERMAL-POLOS';
 `).toArray();
 
 sql.exec(`
