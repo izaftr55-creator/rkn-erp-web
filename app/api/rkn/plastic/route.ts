@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getErpCoreRpcStub } from "@/lib/erpCoreRpc";
 import { sendAccountApprovedEmail } from "@/lib/zohoMailer";
+import { notifySaleCreated, notifyInboundReceived } from "@/lib/whatsappNotifier";
 
 export const dynamic = "force-dynamic";
 
@@ -367,6 +368,40 @@ export async function POST(request: Request) {
       cmd,
       b.payload
     );
+
+    /* ── WhatsApp Group Notifications (fire-and-forget, non-blocking) ── */
+    if (cmd === "CREATE_SALE" && res?.invoiceNo) {
+      const items: string = Array.isArray((b.payload as any)?.lines)
+        ? (b.payload as any).lines
+            .slice(0, 3)
+            .map((l: any) => `${l.variantId || "item"} x${l.qtyBase}`)
+            .join(", ")
+        : "";
+      notifySaleCreated({
+        invoiceNo: res.invoiceNo as string,
+        customerName: String((b.payload as any)?.customerName ?? (b.payload as any)?.customerId ?? "-"),
+        grandTotalRp: Number(res.grandTotalRp ?? 0),
+        status: String(res.status ?? "PAID"),
+        itemsSummary: items || undefined,
+        actorName: s.user.name || s.user.username || undefined,
+      }).catch(() => {});
+    }
+
+    if (cmd === "POST_INBOUND" && res?.inboundId) {
+      const items: string = Array.isArray((b.payload as any)?.lines)
+        ? (b.payload as any).lines
+            .slice(0, 3)
+            .map((l: any) => `${l.variantId || "item"} x${l.qtyBase}`)
+            .join(", ")
+        : "";
+      notifyInboundReceived({
+        inboundNo: String(res.inboundNo ?? res.inboundId ?? "-"),
+        supplierName: String((b.payload as any)?.supplierName ?? "-"),
+        dateKey: String((b.payload as any)?.dateKey ?? new Date().toISOString().slice(0, 10)),
+        itemsSummary: items || undefined,
+        actorName: s.user.name || s.user.username || undefined,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ ok: true, data: res });
   } catch (e) {
