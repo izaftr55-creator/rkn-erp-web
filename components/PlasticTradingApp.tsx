@@ -9351,9 +9351,8 @@ function Closing({
   const closed = current.status === "CLOSED";
 
   const periodOptions = [
-    { value: "2026-08", label: "Agustus 2026 (2026-08)" },
-    { value: "2026-09", label: "September 2026 (2026-09)" },
-    { value: "2026-07", label: "Juli 2026 (2026-07)" },
+    { value: "2026-08", label: "Agustus 2026 (Inaugural Jul–Agu 2026)" },
+    { value: "2026-09", label: "September 2026 (2026-09 - Berjalan)" },
     { value: "2026-10", label: "Oktober 2026 (2026-10)" },
     { value: "2026-11", label: "November 2026 (2026-11)" },
     { value: "2026-12", label: "Desember 2026 (2026-12)" },
@@ -9365,6 +9364,22 @@ function Closing({
         title={`Monthly Closing / ${selectedPeriod}`}
         subtitle="Closing mengunci transaksi pada periode yang dipilih agar angka penjualan, stok, dan piutang tidak berubah."
       >
+        {selectedPeriod === "2026-08" && (
+          <div
+            style={{
+              background: "rgba(59, 130, 246, 0.12)",
+              border: "1px solid rgba(59, 130, 246, 0.35)",
+              borderRadius: "8px",
+              padding: "10px 14px",
+              fontSize: "12px",
+              color: "#bfdbfe",
+              marginBottom: "16px",
+              lineHeight: 1.5,
+            }}
+          >
+            ℹ️ <strong>Periode Perdana (Inaugural Period):</strong> Tutup buku Agustus 2026 mengonsolidasikan seluruh transaksi awal operasional toko sejak buka (29 Juli s/d 31 Agustus 2026) sesuai hasil audit resmi (Total Penjualan: Rp 191.391.500 | Kas Masuk: Rp 115.166.500 | Sisa Piutang: Rp 76.225.000).
+          </div>
+        )}
         <div
           style={{
             display: "flex",
