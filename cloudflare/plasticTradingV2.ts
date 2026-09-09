@@ -310,6 +310,32 @@ WHERE entry_id='FUND-PAMAN-20260831';
     -- Ensure DO updates existing rows if they were already inserted
     UPDATE plastic_sales_invoice SET status = 'PARTIAL' WHERE invoice_id = 'INV-SYS-RECON-1';
     UPDATE plastic_payment SET amount_rp = 1668000 WHERE payment_id = 'PAY-SYS-RECON-1';
+
+    -- RKN_PLASTIC_RESTORE_VOID_AUG_2026: Restore voided July/August sales to recover balance of 76.225.000
+    UPDATE plastic_payment
+    SET status = 'POSTED'
+    WHERE status = 'REVERSED'
+      AND invoice_id IN (
+        SELECT invoice_id FROM plastic_sales_invoice
+        WHERE status = 'VOID' AND date_key <= '2026-08-31'
+      );
+
+    DELETE FROM plastic_inventory_movement
+    WHERE source_type = 'SALE_VOID'
+      AND source_key IN (
+        SELECT invoice_id FROM plastic_sales_invoice
+        WHERE status = 'VOID' AND date_key <= '2026-08-31'
+      );
+
+    UPDATE plastic_sales_invoice
+    SET status = CASE
+          WHEN (SELECT COALESCE(SUM(CASE WHEN p.status = 'POSTED' THEN p.amount_rp ELSE 0 END), 0)
+                FROM plastic_payment p WHERE p.invoice_id = plastic_sales_invoice.invoice_id) >= grand_total_rp
+          THEN 'PAID'
+          ELSE 'PARTIAL'
+        END,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE status = 'VOID' AND date_key <= '2026-08-31';
   `).toArray();
 
 /* RKN_PLASTIC_V2M_EXACT_EXCEL_AUDIT_SYNC
