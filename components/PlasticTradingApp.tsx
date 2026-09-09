@@ -4281,6 +4281,40 @@ function Outbound({
     );
     resetForm();
   };
+  const sendWhatsappReceipt = async (row: Row) => {
+    const cust = customers.find((c) => String(c.customerName || "").trim().toLowerCase() === String(row.customerName || "").trim().toLowerCase());
+    let phone = cust?.phone;
+    
+    if (!phone) {
+      phone = window.prompt(`Nomor WA untuk ${row.customerName} belum tersimpan.\nMasukkan nomor WA (awalan 62):`, "628");
+      if (!phone) return;
+    }
+
+    if (!window.confirm(`Kirim nota WhatsApp ke ${row.customerName} (${phone})?`)) return;
+
+    try {
+      const items = Array.isArray(row.items)
+        ? row.items.map((i: any) => `- ${i.qtyInput} ${i.inputUnit} ${i.variantId}`).join("\n")
+        : "";
+
+      await run(
+        "SEND_WA_RECEIPT",
+        {
+          phone: phone,
+          invoiceNo: row.invoiceNo,
+          customerName: row.customerName,
+          dateKey: row.dateKey,
+          grandTotalRp: row.grandTotalRp,
+          outstandingRp: row.outstandingRp,
+          itemsSummary: items
+        },
+        "OUTBOUND"
+      );
+      window.alert("Nota berhasil dikirim via WhatsApp!");
+    } catch (e: any) {
+      window.alert("Gagal kirim WA: " + (e.message || "Unknown error"));
+    }
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -4711,6 +4745,32 @@ function Outbound({
                   >
                     Lihat
                   </button>
+                  <button
+                    type="button"
+                    className={styles.inlineEditButton}
+                    style={{
+                      background: "rgba(37, 211, 102, 0.15)",
+                      color: "#25d366",
+                      borderColor: "rgba(37, 211, 102, 0.35)",
+                    }}
+                    onClick={() => sendWhatsappReceipt(row)}
+                  >
+                    Kirim WA
+                  </button>
+                  {Number(row.outstandingRp || 0) > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.inlineEditButton}
+                      style={{
+                        background: "rgba(46, 204, 113, 0.15)",
+                        color: "#2ecc71",
+                        borderColor: "rgba(46, 204, 113, 0.35)",
+                      }}
+                      onClick={() => setPayInvoice(row)}
+                    >
+                      Bayar
+                    </button>
+                  ) : null}
                   {canEdit &&
                   String(row.historyIntegrity || "OK") === "OK" ? (
                     <>

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { getErpCoreRpcStub } from "@/lib/erpCoreRpc";
 import { sendAccountApprovedEmail } from "@/lib/zohoMailer";
-import { notifySaleCreated, notifyInboundReceived } from "@/lib/whatsappNotifier";
+import { notifySaleCreated, notifyInboundReceived, sendWaPersonalMessage } from "@/lib/whatsappNotifier";
 
 export const dynamic = "force-dynamic";
 
@@ -357,6 +357,44 @@ export async function POST(request: Request) {
           ok: false,
           error: e instanceof Error ? e.message : "UPDATE_ROLE_FAILED",
         },
+        { status: 500 }
+      );
+    }
+  }
+
+  if (cmd === "SEND_WA_RECEIPT") {
+    try {
+      const { phone, invoiceNo, customerName, dateKey, grandTotalRp, outstandingRp, itemsSummary } = payload;
+      
+      const formattedTotal = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(grandTotalRp || 0));
+      const formattedSisa = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(outstandingRp || 0));
+      
+      const text = [
+        `Halo *${customerName}*, berikut nota belanja Anda:`,
+        ``,
+        `*RKN PLASTIC TRADING*`,
+        `Nota: ${invoiceNo}`,
+        `Tanggal: ${dateKey}`,
+        ``,
+        `*Barang:*`,
+        itemsSummary || "-",
+        ``,
+        `*Total Belanja:* ${formattedTotal}`,
+        `*Sisa Tagihan:* ${formattedSisa}`,
+        ``,
+        `Terima kasih telah berbelanja di RKN! 😊`
+      ].join("\n");
+
+      const success = await sendWaPersonalMessage(phone, text);
+      
+      if (!success) {
+        throw new Error("Gagal mengirim WA. Pastikan bot menyala dan nomor tujuan valid (harus ada kode negara, misal 628).");
+      }
+
+      return NextResponse.json({ ok: true, data: { sent: true } });
+    } catch (e) {
+      return NextResponse.json(
+        { ok: false, error: e instanceof Error ? e.message : "SEND_WA_FAILED" },
         { status: 500 }
       );
     }

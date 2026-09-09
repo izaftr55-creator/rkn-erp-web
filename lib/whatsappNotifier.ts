@@ -80,6 +80,46 @@ export async function notifySaleCreated(payload: SaleNotificationPayload) {
   return sendWaGroupMessage(text);
 }
 
+export async function sendWaPersonalMessage(phone: string, message: string): Promise<boolean> {
+  try {
+    const gatewayUrl = process.env.WA_GATEWAY_URL;
+    const apiKey = process.env.WA_GATEWAY_API_KEY || "rkn_secret_wa_token_2026";
+
+    if (!gatewayUrl || !phone) return false;
+
+    // Normalize phone number: remove non-digits, replace leading 0 with 62
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.startsWith("0")) cleanPhone = "62" + cleanPhone.substring(1);
+    
+    if (!cleanPhone.endsWith("@s.whatsapp.net")) {
+        cleanPhone = cleanPhone + "@s.whatsapp.net";
+    }
+
+    const cleanUrl = gatewayUrl.replace(/\/$/, "");
+    const res = await fetch(`${cleanUrl}/api/send-message`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        number: cleanPhone,
+        message,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn("WA_PERSONAL_FAILED:", err);
+      return false;
+    }
+
+    return true;
+  } catch (error: any) {
+    console.warn("WA_PERSONAL_ERROR:", error?.message || error);
+    return false;
+  }
+}
 export async function notifyInboundReceived(payload: InboundNotificationPayload) {
   const text = [
     `?? *[BARANG MASUK - RKN ERP]*`,
