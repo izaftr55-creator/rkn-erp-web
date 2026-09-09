@@ -7621,3 +7621,32 @@
     transform: translateY(0);
   }
 }
+
+.modalDetailHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(51, 87, 120, 0.4);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.modalDetailHeader > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalDetailHeader span {
+  color: #94a3b8;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modalDetailHeader strong {
+  font-size: 15px;
+  color: #e2e8f0;
+}
