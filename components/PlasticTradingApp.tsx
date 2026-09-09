@@ -1833,7 +1833,9 @@ const loadMasters = useCallback(async () => {
         /^\d{4}-\d{2}-\d{2}$/.test(payloadDate) &&
         (view === "INBOUND" || view === "OUTBOUND")
           ? payloadDate.slice(0, 7)
-          : period;
+          : (payload?.periodKey && /^\d{4}-\d{2}$/.test(payload.periodKey))
+            ? payload.periodKey
+            : period;
 
       if (
         transactionPeriod !== period &&
@@ -9311,26 +9313,130 @@ function Closing({
   busy: boolean;
   run: any;
 }) {
-  const current = data.current || { status: "OPEN" };
+  const initialPeriod =
+    period && period !== "ALL" && /^\d{4}-\d{2}$/.test(period)
+      ? period
+      : data.periodKey && /^\d{4}-\d{2}$/.test(data.periodKey)
+      ? data.periodKey
+      : "2026-08";
+
+  const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod);
+  const [closingData, setClosingData] = useState<Row>(data);
+  const [loadingPeriod, setLoadingPeriod] = useState(false);
   const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    if (data && data.view === "CLOSING") {
+      setClosingData(data);
+      if (data.periodKey && /^\d{4}-\d{2}$/.test(data.periodKey)) {
+        setSelectedPeriod(data.periodKey);
+      }
+    }
+  }, [data]);
+
+  const onPeriodChange = async (targetPeriod: string) => {
+    setSelectedPeriod(targetPeriod);
+    setLoadingPeriod(true);
+    try {
+      const next = await read("CLOSING", targetPeriod);
+      setClosingData(next);
+    } catch (error) {
+      console.error("Gagal memuat closing period", error);
+    } finally {
+      setLoadingPeriod(false);
+    }
+  };
+
+  const current = closingData.current || { status: "OPEN" };
   const closed = current.status === "CLOSED";
+
+  const periodOptions = [
+    { value: "2026-08", label: "Agustus 2026 (2026-08)" },
+    { value: "2026-09", label: "September 2026 (2026-09)" },
+    { value: "2026-07", label: "Juli 2026 (2026-07)" },
+    { value: "2026-10", label: "Oktober 2026 (2026-10)" },
+    { value: "2026-11", label: "November 2026 (2026-11)" },
+    { value: "2026-12", label: "Desember 2026 (2026-12)" },
+  ];
 
   return (
     <>
       <Panel
-        title={`Monthly Closing / ${period}`}
-        subtitle="Closing mengunci transaksi pada periode yang dipilih."
+        title={`Monthly Closing / ${selectedPeriod}`}
+        subtitle="Closing mengunci transaksi pada periode yang dipilih agar angka penjualan, stok, dan piutang tidak berubah."
       >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "16px",
+            padding: "10px 16px",
+            borderRadius: "8px",
+            background: "rgba(13, 27, 42, 0.7)",
+            border: "1px solid #1c324e",
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "12px",
+              fontWeight: 700,
+              color: "#8ca0b8",
+              letterSpacing: "0.05em",
+            }}
+          >
+            PILIH PERIODE TUTUP BUKU:
+          </span>
+          <select
+            value={selectedPeriod}
+            disabled={busy || loadingPeriod}
+            onChange={(event) => onPeriodChange(event.target.value)}
+            style={{
+              background: "#081421",
+              border: "1px solid #2a4365",
+              borderRadius: "6px",
+              color: "#edf4ff",
+              padding: "6px 14px",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+              outline: "none",
+            }}
+          >
+            {periodOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {loadingPeriod ? (
+            <span
+              style={{
+                fontSize: "11px",
+                color: "#b08d57",
+                fontStyle: "italic",
+              }}
+            >
+              Memuat data periode {selectedPeriod}...
+            </span>
+          ) : null}
+        </div>
+
         <div className={styles.closingCard}>
           <div>
             <span>STATUS PERIODE</span>
-            <strong>{current.status || "OPEN"}</strong>
+            <strong
+              style={{
+                color: closed ? "#f87171" : "#4ade80",
+              }}
+            >
+              {current.status || "OPEN"}
+            </strong>
           </div>
           <div>
             <span>TOTAL PENJUALAN</span>
-            <strong>
-              {money.format(Number(current.sales_rp || 0))}
-            </strong>
+            <strong>{money.format(Number(current.sales_rp || 0))}</strong>
           </div>
           <div>
             <span>KAS MASUK (LUNAS)</span>
@@ -9349,16 +9455,18 @@ function Closing({
           </div>
           <div>
             <span>SISA PIUTANG</span>
-            <strong>
-              {money.format(Number(current.receivable_rp || 0))}
-            </strong>
+            <strong>{money.format(Number(current.receivable_rp || 0))}</strong>
           </div>
         </div>
 
         {canClose ? (
           <div className={styles.closeActions}>
             <Field
-              label={closed ? "Alasan Reopen" : "Catatan Closing"}
+              label={
+                closed
+                  ? `Alasan Reopen (${selectedPeriod})`
+                  : `Catatan Closing (${selectedPeriod})`
+              }
               className={styles.closeReason}
             >
               <input
@@ -9366,11 +9474,9 @@ function Closing({
                 placeholder={
                   closed
                     ? "Wajib diisi untuk reopen"
-                    : "Opsional"
+                    : "Opsional (contoh: Closing resmi akhir bulan)"
                 }
-                onChange={(event) =>
-                  setReason(event.target.value)
-                }
+                onChange={(event) => setReason(event.target.value)}
               />
             </Field>
 
@@ -9378,31 +9484,31 @@ function Closing({
               <button
                 type="button"
                 className={styles.dangerButton}
-                disabled={busy || !reason.trim()}
+                disabled={busy || !reason.trim() || loadingPeriod}
                 onClick={() =>
                   run(
                     "REOPEN_PERIOD",
-                    { periodKey: period, reason },
+                    { periodKey: selectedPeriod, reason },
                     "CLOSING"
                   )
                 }
               >
-                Reopen Period
+                Reopen Period ({selectedPeriod})
               </button>
             ) : (
               <button
                 type="button"
                 className={styles.primaryButton}
-                disabled={busy}
+                disabled={busy || loadingPeriod}
                 onClick={() =>
                   run(
                     "CLOSE_PERIOD",
-                    { periodKey: period, reason },
+                    { periodKey: selectedPeriod, reason },
                     "CLOSING"
                   )
                 }
               >
-                Close Period
+                Close Period ({selectedPeriod})
               </button>
             )}
           </div>
@@ -9414,7 +9520,7 @@ function Closing({
         subtitle="Snapshot period yang pernah ditutup."
       >
         <DataTable
-          rows={data.history || []}
+          rows={closingData.history || []}
           columns={[
             ["period_key", "Periode"],
             ["status", "Status"],
@@ -9431,16 +9537,15 @@ function Closing({
             [
               "gross_profit_rp",
               "Gross Profit",
-              (row) =>
-                money.format(Number(row.gross_profit_rp || 0)),
+              (row) => money.format(Number(row.gross_profit_rp || 0)),
             ],
             [
               "receivable_rp",
               "Piutang",
-              (row) =>
-                money.format(Number(row.receivable_rp || 0)),
+              (row) => money.format(Number(row.receivable_rp || 0)),
             ],
             ["closed_at", "Closed At"],
+            ["reopen_reason", "Reopen Note"],
           ]}
         />
       </Panel>

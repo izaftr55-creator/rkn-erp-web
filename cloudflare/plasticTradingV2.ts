@@ -474,6 +474,64 @@ INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_dat
 UPDATE plastic_so_snapshot SET variant_id='PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', physical_qty_base=10000, mapping_status='MAPPED', source_qty=1, source_unit='DUS' WHERE line_key='SO2808-THERMAL-POLOS';
 `).toArray();
 
+/* RKN_PLASTIC_SO_CHECKPOINT_20260909 */
+sql.exec(`
+INSERT OR REPLACE INTO plastic_so_session(
+  so_id, business_unit_id, so_no, period_key, date_key, status, reason,
+  actor_user_id, legacy_opname_id, created_at, updated_at, posted_at
+) VALUES(
+  'SO-SESSION-20260909-CHECKPOINT', 'BU-PLASTIC', 'SO-20260909-FINAL', '2026-09', '2026-09-09',
+  'POSTED', 'Stock Opname Fisik Gudang 09 September 2026', 'SYSTEM', 'SO-OPNAME-20260909',
+  CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+INSERT OR REPLACE INTO plastic_so_session_line(
+  line_id, so_id, variant_id, system_qty_base, physical_qty_base,
+  physical_entered, snapshot_unit_cost_rp, note, created_at, updated_at
+) VALUES
+  ('SOL-20260909-PL-POLY-HITAM-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HITAM-15X25', 600, 600, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HITAM-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HITAM-17X30', 160, 160, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HITAM-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HITAM-20X30', 160, 160, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HITAM-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HITAM-25X35', 300, 300, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PINK-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PINK-15X25', 300, 300, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PINK-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PINK-17X30', 300, 300, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PINK-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PINK-20X30', 250, 250, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PINK-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PINK-25X35', 40, 40, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-KUNING-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-KUNING-15X25', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-KUNING-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-KUNING-17X30', 101, 101, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-KUNING-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-KUNING-20X30', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-KUNING-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-KUNING-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-ORANGE-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-ORANGE-15X25', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-ORANGE-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-ORANGE-17X30', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-ORANGE-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-ORANGE-20X30', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-ORANGE-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-ORANGE-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-BIRU-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-BIRU-15X25', 200, 200, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-BIRU-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-BIRU-17X30', 300, 300, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-BIRU-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-BIRU-20X30', 200, 200, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-BIRU-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-BIRU-25X35', 50, 50, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HIJAU-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HIJAU-15X25', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HIJAU-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HIJAU-17X30', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HIJAU-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HIJAU-20X30', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-HIJAU-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-HIJAU-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-A-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-A-15X25', 300, 300, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-A-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-A-17X30', 320, 320, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-A-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-A-20X30', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-A-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-A-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-UNGU-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-UNGU-15X25', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-UNGU-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-UNGU-17X30', 50, 50, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-UNGU-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-UNGU-20X30', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-UNGU-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-UNGU-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-TOSCA-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-TOSCA-15X25', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-TOSCA-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-TOSCA-17X30', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-TOSCA-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-TOSCA-20X30', 100, 100, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-TOSCA-25X35', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-TOSCA-25X35', 0, 0, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-B-15X25', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-B-15X25', 200, 200, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-B-17X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-B-17X30', 95, 95, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-POLY-PUTIH-B-20X30', 'SO-SESSION-20260909-CHECKPOINT', 'PL-POLY-PUTIH-B-20X30', 109, 109, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-THERMAL-THERMAL-GOLDWIN', 'SO-SESSION-20260909-CHECKPOINT', 'PL-THERMAL-THERMAL-GOLDWIN', 70000, 70000, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', 'SO-SESSION-20260909-CHECKPOINT', 'PL-THERMAL-THERMAL-DUS-PANJANG-TANPA-MERK', 10000, 10000, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('SOL-20260909-PL-THERMAL-THERMAL-DUS-KOTAK-TANPA-MERK', 'SO-SESSION-20260909-CHECKPOINT', 'PL-THERMAL-THERMAL-DUS-KOTAK-TANPA-MERK', 80000, 80000, 1, 0, 'Hasil Hitung Fisik Gudang 09/09/2026', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+`).toArray();
+
 sql.exec(`
 INSERT OR IGNORE INTO role(id,code,name,description,scope_mode,is_system,created_at,updated_at) VALUES('ROLE-SUPERVISORY-BOARD','SUPERVISORY_BOARD','Dewan Pengawas','Read-only Plastic Trading supervisor','UNIT',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO role(id,code,name,description,scope_mode,is_system,created_at,updated_at) VALUES('ROLE-PLASTIC-ADMIN','PLASTIC_ADMIN','Admin Plastic Trading','Operational administrator for Plastic Trading','UNIT',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP);
@@ -2794,21 +2852,22 @@ if(view==='REPORTS'){
 }
 
 if(view==='CLOSING'){
+  const effectivePeriod = (period && period !== 'ALL' && /^\d{4}-\d{2}$/.test(period)) ? period : '2026-08';
   const currentClose = sql.exec(
     `SELECT * FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,
-    period
+    effectivePeriod
   ).toArray()[0];
 
   const liveSales = scalar(
     sql,
     `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,
-    period
+    effectivePeriod
   );
   const liveCogs = liveSales;
-  const liveRec = scalar(
-    sql,
-    `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`
-  );
+  let liveRec = 0;
+  for(const inv of sql.exec(`SELECT invoice_id,grand_total_rp FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND period_key=? AND status<>'VOID'`,effectivePeriod).toArray()){
+    liveRec += Math.max(0, N(inv.grand_total_rp) - paid(sql, String(inv.invoice_id)));
+  }
   const livePaid = Math.max(0, liveSales - liveRec);
 
   const current = currentClose ? {
@@ -2816,7 +2875,7 @@ if(view==='CLOSING'){
     receivable_rp: currentClose.status === 'CLOSED' ? currentClose.receivable_rp : liveRec,
     paid_rp: currentClose.status === 'CLOSED' ? Math.max(0, currentClose.sales_rp - currentClose.receivable_rp) : livePaid
   } : {
-    period_key: period,
+    period_key: effectivePeriod,
     status: 'OPEN',
     sales_rp: liveSales,
     paid_rp: livePaid,
@@ -2827,7 +2886,7 @@ if(view==='CLOSING'){
 
   return {
     view,
-    periodKey: period,
+    periodKey: effectivePeriod,
     actor: a,
     current,
     history: sql.exec(
@@ -4594,7 +4653,7 @@ if(cmd==='RECORD_PAMAN_REPAYMENT'){
   return { ok: true, entryId, amountRp };
 }
 
-if(cmd==='ADD_PAYMENT'){op(a);const id=T(p.invoiceId,120),inv=sql.exec(`SELECT * FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND invoice_id=? AND status<>'VOID' LIMIT 1`,id).toArray()[0];if(!inv)throw Error('PLASTIC_INVOICE_NOT_FOUND');open(sql,String(inv.period_key));const amount=I(p.amountRp),already=paid(sql,id),remain=Math.max(0,N(inv.grand_total_rp)-already);if(amount<=0)throw Error('PLASTIC_PAYMENT_INVALID');if(amount>remain)throw Error('PLASTIC_PAYMENT_EXCEEDS_OUTSTANDING');const t=now(),date=p.dateKey?DK(p.dateKey):String(inv.date_key);sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,?,?,?)`,crypto.randomUUID(),id,String(inv.customer_id),String(inv.period_key),date,amount,T(p.paymentMethod,64),a.id,T(p.note,300),t,t).toArray();const total=already+amount,status=total>=N(inv.grand_total_rp)?'PAID':'PARTIAL';sql.exec(`UPDATE plastic_sales_invoice SET status=?,updated_at=? WHERE invoice_id=?`,status,t,id).toArray();audit(sql,a,'PLASTIC_PAYMENT_CREATE','PLASTIC_PAYMENT',id,'',{amount});return{ok:true,invoiceId:id,outstandingRp:N(inv.grand_total_rp)-total}}
+if(cmd==='ADD_PAYMENT'){op(a);const id=T(p.invoiceId,120),inv=sql.exec(`SELECT * FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND invoice_id=? AND status<>'VOID' LIMIT 1`,id).toArray()[0];if(!inv)throw Error('PLASTIC_INVOICE_NOT_FOUND');const t=now(),date=p.dateKey?DK(p.dateKey):String(inv.date_key),payPeriod=date.slice(0,7);open(sql,payPeriod);const amount=I(p.amountRp),already=paid(sql,id),remain=Math.max(0,N(inv.grand_total_rp)-already);if(amount<=0)throw Error('PLASTIC_PAYMENT_INVALID');if(amount>remain)throw Error('PLASTIC_PAYMENT_EXCEEDS_OUTSTANDING');sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,?,?,?)`,crypto.randomUUID(),id,String(inv.customer_id),payPeriod,date,amount,T(p.paymentMethod,64),a.id,T(p.note,300),t,t).toArray();const total=already+amount,status=total>=N(inv.grand_total_rp)?'PAID':'PARTIAL';sql.exec(`UPDATE plastic_sales_invoice SET status=?,updated_at=? WHERE invoice_id=?`,status,t,id).toArray();audit(sql,a,'PLASTIC_PAYMENT_CREATE','PLASTIC_PAYMENT',id,'',{amount});return{ok:true,invoiceId:id,outstandingRp:N(inv.grand_total_rp)-total}}
 /* RKN_PLASTIC_SO_SESSION_ENGINE_V2P */
 /* RKN_PLASTIC_RESET_SO_DRAFT_V2R16 */
 if(cmd==='RESET_SO_DRAFT'){
