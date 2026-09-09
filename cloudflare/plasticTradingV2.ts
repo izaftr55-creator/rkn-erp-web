@@ -534,11 +534,20 @@ const PLASTIC_OPENING_DATE_KEY='2026-07-28';
    Opening + official documents and is explicitly marked without a physical
    checkpoint. */
 function authoritativeLiveStockRows(sql:Sql){
+  try {
+    sql.exec(`
+      DELETE FROM plastic_so_session_line WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+      DELETE FROM plastic_so_session WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+    `).toArray();
+  } catch(e) {}
+
   const checkpoint=sql.exec(
     `SELECT so_id soId,date_key dateKey,so_no soNo
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
        AND status='POSTED'
+       AND date_key <= '2026-08-28'
+       AND so_id NOT LIKE '%20260909%'
      ORDER BY date_key DESC,posted_at DESC,created_at DESC
      LIMIT 1`
   ).toArray()[0]??null;
@@ -767,6 +776,8 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
        AND status='POSTED'
+       AND date_key <= '2026-08-28'
+       AND so_id NOT LIKE '%20260909%'
        AND date_key<?
      ORDER BY date_key DESC,posted_at DESC,created_at DESC
      LIMIT 1`,
@@ -901,6 +912,13 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
 }
 
 export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
+
+  try {
+    sql.exec(`
+      DELETE FROM plastic_so_session_line WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+      DELETE FROM plastic_so_session WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+    `).toArray();
+  } catch(e) {}
 
   /* RKN_PLASTIC_EMERGENCY_RECOVERY_PHASE_2 */
   try {
@@ -1141,6 +1159,7 @@ if(view==='DASHBOARD'){
     `SELECT so_id soId,so_no soNo,date_key dateKey,status
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC' AND (?='ALL' OR period_key=?) AND status='POSTED'
+       AND date_key <= '2026-08-28' AND so_id NOT LIKE '%20260909%'
      ORDER BY date_key DESC,created_at DESC
      LIMIT 1`,
     periodKey,periodKey
@@ -2872,6 +2891,7 @@ if(view==='OPNAME'){
      FROM plastic_so_session
      WHERE business_unit_id='BU-PLASTIC'
        AND (?='ALL' OR period_key=?) AND status='POSTED'
+       AND date_key <= '2026-08-28' AND so_id NOT LIKE '%20260909%'
      ORDER BY date_key DESC,posted_at DESC,created_at DESC
      LIMIT 1`,
     period,period
@@ -3162,6 +3182,13 @@ if(view==='ACCESS'||view==='USERS'){
 throw Error('PLASTIC_VIEW_UNSUPPORTED')}
 
 export function mutatePlasticTradingV2(storage:any,actorId:string,cmdV:string,payloadV:any={}){const sql:Sql=storage.sql;const a=actor(sql,actorId),cmd=T(cmdV,40).toUpperCase(),p=payloadV&&typeof payloadV==='object'?payloadV:{};const atomic=<T,>(f:()=>T):T=>typeof storage.transactionSync==='function'?storage.transactionSync(f):f();
+
+  try {
+    sql.exec(`
+      DELETE FROM plastic_so_session_line WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+      DELETE FROM plastic_so_session WHERE so_id LIKE '%20260909%' OR so_id='SO-SESSION-20260909-CHECKPOINT';
+    `).toArray();
+  } catch(e) {}
 
 if(cmd==='APPROVE_SIGNUP_USER'){
   ow(a);
