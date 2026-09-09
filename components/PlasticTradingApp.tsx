@@ -2761,6 +2761,7 @@ function Products({
               <Field label="Nama Produk">
                 <input
                   value={form.productName}
+                  placeholder="Contoh: Polymailer"
                   onChange={(event) =>
                     setForm({
                       ...form,
@@ -2772,6 +2773,7 @@ function Products({
               <Field label="Kategori">
                 <input
                   value={form.category}
+                  placeholder="Contoh: POLYMAILER"
                   onChange={(event) =>
                     setForm({
                       ...form,
@@ -2783,6 +2785,7 @@ function Products({
               <Field label="Warna">
                 <input
                   value={form.color}
+                  placeholder="Contoh: PINK"
                   onChange={(event) =>
                     setForm({ ...form, color: event.target.value })
                   }
@@ -2791,14 +2794,16 @@ function Products({
               <Field label="Ukuran">
                 <input
                   value={form.size}
+                  placeholder="Contoh: 30X40"
                   onChange={(event) =>
                     setForm({ ...form, size: event.target.value })
                   }
                 />
               </Field>
-              <Field label="Base Unit">
+              <Field label="Base Unit" hint="Satuan terkecil (cth: ROLL)">
                 <input
                   value={form.baseUnit}
+                  placeholder="ROLL"
                   onChange={(event) =>
                     setForm({
                       ...form,
@@ -2807,9 +2812,10 @@ function Products({
                   }
                 />
               </Field>
-              <Field label="Mid Unit">
+              <Field label="Mid Unit" hint="Satuan antara (opsional, cth: IKAT)">
                 <input
                   value={form.midUnit}
+                  placeholder="Kosongkan jika tidak ada"
                   onChange={(event) =>
                     setForm({
                       ...form,
@@ -2818,9 +2824,10 @@ function Products({
                   }
                 />
               </Field>
-              <Field label="Pack Unit">
+              <Field label="Pack Unit" hint="Satuan kemasan besar (cth: BALL)">
                 <input
                   value={form.packUnit}
+                  placeholder="BALL"
                   onChange={(event) =>
                     setForm({
                       ...form,
@@ -2829,15 +2836,58 @@ function Products({
                   }
                 />
               </Field>
-              <Field label="Isi / Pack">
+              <Field label="Isi / Pack" hint="Jumlah Roll dalam 1 Ball">
                 <input
                   type="number"
                   min="1"
                   value={form.unitsPerPack}
+                  placeholder="30"
                   onChange={(event) =>
                     setForm({
                       ...form,
                       unitsPerPack: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Harga Jual / Ball" hint="Harga jual per pack/ball (Rp)">
+                <input
+                  type="number"
+                  min="0"
+                  value={form.defaultSellPricePackRp}
+                  placeholder="Rp (opsional)"
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      defaultSellPricePackRp: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Harga Jual / Roll" hint="Harga jual per roll/eceran (Rp)">
+                <input
+                  type="number"
+                  min="0"
+                  value={form.defaultSellPriceBaseRp}
+                  placeholder="Rp (opsional)"
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      defaultSellPriceBaseRp: event.target.value,
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Harga Beli (HPP)" hint="Harga beli default per ball/kemasan">
+                <input
+                  type="number"
+                  min="0"
+                  value={form.defaultBuyPriceRp}
+                  placeholder="Rp (opsional)"
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      defaultBuyPriceRp: event.target.value,
                     })
                   }
                 />
