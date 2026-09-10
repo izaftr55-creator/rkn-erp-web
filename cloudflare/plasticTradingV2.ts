@@ -293,23 +293,17 @@ SET reference_no='SETORAN-KMS',
 WHERE entry_id='FUND-PAMAN-20260831';
 `).toArray();
 
-  /* RKN_PLASTIC_MATH_RECONCILIATION_AUG_2026 */
+  /* RKN_PLASTIC_REMOVE_UNVERIFIED_RECON_AUG_2026
+     Owner-confirmed closing uses only the opening KMS balance, actual sales,
+     and the documented Rp159.500.000 Paman payment. */
   sql.exec(`
-    INSERT OR IGNORE INTO plastic_customer(customer_id, business_unit_id, customer_name, created_at, updated_at)
-    VALUES ('CUST-SYS-RECON', 'BU-PLASTIC', 'System Reconciliation', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-
-    INSERT OR IGNORE INTO plastic_sales_invoice(invoice_id, business_unit_id, invoice_no, customer_id, period_key, date_key, status, subtotal_rp, discount_rp, shipping_rp, grand_total_rp, due_date_key, note, occurred_at, created_at, updated_at, actor_user_id)
-    VALUES ('INV-SYS-RECON-1', 'BU-PLASTIC', 'PTR-SYS-RECON-OMSET', 'CUST-SYS-RECON', '2026-08', '2026-08-31', 'PARTIAL', 1965000, 0, 0, 1965000, '2026-08-31', 'Penyesuaian Omset Agustus (Missing 1.965.000)', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'SYSTEM');
-
-    INSERT OR IGNORE INTO plastic_payment(payment_id, business_unit_id, invoice_id, customer_id, period_key, date_key, amount_rp, payment_method, status, actor_user_id, note, occurred_at, created_at)
-    VALUES ('PAY-SYS-RECON-1', 'BU-PLASTIC', 'INV-SYS-RECON-1', 'CUST-SYS-RECON', '2026-08', '2026-08-31', 1668000, 'TRANSFER', 'POSTED', 'SYSTEM', 'Penyesuaian Omset Agustus (Missing 1.965.000)', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-
-    INSERT OR IGNORE INTO plastic_supplier_payment(payment_id, business_unit_id, supplier_name, date_key, amount_rp, funding_source, reference_no, note, actor_user_id, created_at)
-    VALUES ('SPAY-SYS-RECON-1', 'BU-PLASTIC', 'KMS', '2026-08-31', 2383500, 'OTHER', 'RECON-1', 'Penyesuaian Hutang KMS Agustus (Missing 2.383.500)', 'SYSTEM', CURRENT_TIMESTAMP);
-
-    -- Ensure DO updates existing rows if they were already inserted
-    UPDATE plastic_sales_invoice SET status = 'PARTIAL' WHERE invoice_id = 'INV-SYS-RECON-1';
-    UPDATE plastic_payment SET amount_rp = 1668000 WHERE payment_id = 'PAY-SYS-RECON-1';
+    DELETE FROM plastic_supplier_payment WHERE payment_id='SPAY-SYS-RECON-1';
+    DELETE FROM plastic_payment WHERE payment_id='PAY-SYS-RECON-1';
+    DELETE FROM plastic_sales_line WHERE invoice_id='INV-SYS-RECON-1';
+    DELETE FROM plastic_sales_invoice WHERE invoice_id='INV-SYS-RECON-1';
+    DELETE FROM plastic_customer
+    WHERE customer_id='CUST-SYS-RECON'
+      AND NOT EXISTS (SELECT 1 FROM plastic_sales_invoice WHERE customer_id='CUST-SYS-RECON');
 
     -- RKN_PLASTIC_RESTORE_VOID_AUG_2026: Restore voided July/August sales to recover balance of 76.225.000
     UPDATE plastic_payment
