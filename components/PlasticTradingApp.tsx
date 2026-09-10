@@ -9427,7 +9427,7 @@ function Closing({
               lineHeight: 1.5,
             }}
           >
-            ℹ️ <strong>Periode Perdana (Inaugural Period):</strong> Tutup buku Agustus 2026 mengonsolidasikan seluruh transaksi awal operasional toko sejak buka (29 Juli s/d 31 Agustus 2026) sesuai hasil audit resmi (Total Penjualan: Rp 191.391.500 | Kas Masuk: Rp 115.166.500 | Hutang Supplier KMS: Rp 76.225.000). Piutang customer ditampilkan dan dihitung terpisah dari daftar invoice yang belum lunas.
+            ℹ️ <strong>Periode Perdana (Inaugural Period):</strong> Tutup buku Agustus 2026 mengonsolidasikan seluruh transaksi awal operasional toko sejak buka (29 Juli s/d 31 Agustus 2026) sesuai hasil audit resmi (Total Penjualan: Rp 191.391.500 | Hutang Supplier KMS: Rp 76.225.000). Pembayaran dan piutang customer ditampilkan terpisah, berdasarkan invoice serta bukti pembayaran yang tercatat.
           </div>
         )}
         <div
