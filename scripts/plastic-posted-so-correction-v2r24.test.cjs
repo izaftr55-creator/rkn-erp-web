@@ -320,14 +320,15 @@ function run() {
     (row) => row.variantId === goldwinVariantId
   );
   assert.ok(goldwinReconRow, "Goldwin must remain visible in reconciliation");
-  assert.equal(goldwinReconRow.soScope, 0);
-  assert.equal(goldwinReconRow.physicalEntered, 0);
+  assert.equal(goldwinReconRow.soScope, 1);
+  assert.equal(goldwinReconRow.physicalEntered, 1);
   assert.equal(goldwinReconRow.inboundQtyBase, 150000);
   assert.equal(goldwinReconRow.outboundQtyBase, 20000);
   assert.equal(goldwinReconRow.systemQtyBase, 130000);
-  assert.equal(goldwinReconRow.status, "DI LUAR SO");
-  assert.equal(goldwinReconciliation.summary.totalVariants, 41);
-  assert.equal(goldwinReconciliation.summary.outsideSoVariants, 1);
+  assert.equal(goldwinReconRow.physicalQtyBase, 0);
+  assert.equal(goldwinReconRow.status, "SELISIH");
+  assert.equal(goldwinReconciliation.summary.totalVariants, 42);
+  assert.equal(goldwinReconciliation.summary.outsideSoVariants, 0);
 
   const goldwinInboundReport = postedReport.inbound.find(
     (row) => row.productName === "Thermal Goldwin"
@@ -338,7 +339,8 @@ function run() {
   assert.ok(goldwinInboundReport, "Official Goldwin inbound must be reported");
   assert.equal(goldwinInboundReport.qty, 15);
   assert.equal(goldwinInboundReport.unit, "DUS");
-  assert.equal(goldwinAuditLine.soScope, 0);
+  assert.equal(goldwinAuditLine.soScope, 1);
+  assert.equal(goldwinAuditLine.physicalQtyBase, 0);
   assert.equal(goldwinAuditLine.systemLedgerQtyBase, 130000);
 
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
@@ -592,17 +594,46 @@ function run() {
     .get(nextSo.soId, variantId);
   assert.equal(nextSystem.systemQtyBase, 100);
 
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
+    dateKey: "2026-09-01",
+    supplierName: "Supplier September",
+    lines: [{ variantId, qty: 2, unit: "BALL", unitCostRp: 1 }],
+  });
+  const septemberInbound = db
+    .prepare(
+      "SELECT unit_cost_rp unitCostRp,line_total_rp lineTotalRp FROM plastic_inbound_line WHERE variant_id=? ORDER BY created_at DESC LIMIT 1"
+    )
+    .get(variantId);
+  assert.equal(septemberInbound.unitCostRp, 23500);
+  assert.equal(septemberInbound.lineTotalRp, 2350000);
+
+  engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_SALE", {
+    dateKey: "2026-09-02",
+    customerName: "Customer September",
+    paymentStatus: "NOT_PAID",
+    lines: [{ variantId, qty: 1, unit: "BALL", unitPriceRp: 0 }],
+  });
+  const septemberSale = db
+    .prepare(
+      "SELECT unit_price_rp unitPriceRp,unit_cogs_rp unitCogsRp,line_total_rp lineTotalRp,cogs_total_rp cogsTotalRp FROM plastic_sales_line WHERE variant_id=? ORDER BY created_at DESC LIMIT 1"
+    )
+    .get(variantId);
+  assert.equal(septemberSale.unitCogsRp, 23500);
+  assert.equal(septemberSale.cogsTotalRp, septemberSale.lineTotalRp);
+
   console.log("PASS authoritative SO snapshot uses official documents");
   console.log("PASS existing REVIEW session overlays stale stored snapshot");
   console.log("PASS negative history is visible and posts to zero without false stock");
   console.log("PASS posted report retains pre-adjustment variance and official settlement");
-  console.log("PASS Goldwin official IN/OUT stays visible outside immutable SO scope");
+  console.log("PASS Goldwin physical-zero checkpoint remains visible for reconciliation");
   console.log("PASS posted physical SO anchors live stock against pre-cutoff document edits");
   console.log("PASS future sale guard checks posted SO stock and aggregates duplicate SKU lines");
   console.log("PASS supplier stock report cuts off physical quantity and supplier at 28/08");
   console.log("PASS selling price derives automatically across LEMBAR / STACK / DUS");
   console.log("PASS next SO starts from latest posted physical checkpoint");
   console.log("PASS posted SO factual correction is audited, atomic, and idempotent");
+  console.log("PASS September inbound automatically follows the selling price");
+  console.log("PASS September sales record HPP equal to the selling price");
 }
 
 run();
