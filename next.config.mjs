@@ -1,6 +1,12 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-initOpenNextCloudflareForDev();
+// The Cloudflare development bridge starts Miniflare and reads wrangler.jsonc.
+// It must not run during `next build`: production uses the generated OpenNext
+// worker instead, and starting the local bridge there can leave Workers Builds
+// waiting until its timeout.
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev();
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
