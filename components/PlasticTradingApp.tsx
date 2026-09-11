@@ -9399,6 +9399,8 @@ function Closing({
 
   const current = closingData.current || { status: "OPEN" };
   const closed = current.status === "CLOSED";
+  const auditedKmsPayableRp =
+    selectedPeriod === "2026-08" ? 76225000 : null;
 
   const periodOptions = [
     { value: "2026-08", label: "Agustus 2026 (Inaugural Jul–Agu 2026)" },
@@ -9504,7 +9506,7 @@ function Closing({
             <strong>{money.format(Number(current.sales_rp || 0))}</strong>
           </div>
           <div>
-            <span>KAS MASUK (LUNAS)</span>
+            <span>PEMBAYARAN CUSTOMER TERCATAT</span>
             <strong>
               {money.format(
                 Number(
@@ -9519,9 +9521,15 @@ function Closing({
             </strong>
           </div>
           <div>
-            <span>SISA PIUTANG</span>
+            <span>PIUTANG CUSTOMER</span>
             <strong>{money.format(Number(current.receivable_rp || 0))}</strong>
           </div>
+          {auditedKmsPayableRp !== null ? (
+            <div>
+              <span>HUTANG KMS PER 31/08</span>
+              <strong>{money.format(auditedKmsPayableRp)}</strong>
+            </div>
+          ) : null}
         </div>
 
         {canClose ? (
