@@ -170,6 +170,20 @@ function run() {
   ).run("test-owner", "BU-PLASTIC", "OWNER");
   engine.initPlasticTradingV2(storage);
 
+  // Opening the app again must never silently overwrite a master value that an
+  // authorised user has changed.
+  db.prepare(
+    "UPDATE plastic_product_variant SET units_per_pack=?,default_sell_price_pack_rp=? WHERE variant_id=?"
+  ).run(77, 987654, "PL-POLY-HITAM-15X25");
+  engine.initPlasticTradingV2(storage);
+  assert.deepEqual(
+    db.prepare(
+      "SELECT units_per_pack unitsPerPack,default_sell_price_pack_rp packPriceRp FROM plastic_product_variant WHERE variant_id=?"
+    ).get("PL-POLY-HITAM-15X25"),
+    { unitsPerPack: 77, packPriceRp: 987654 },
+    "reopening the app must not overwrite master UOM or price"
+  );
+
   const variantId = "PL-POLY-KUNING-17X30";
   const valuationVariantId = "PL-POLY-KUNING-15X25";
   const goldwinVariantId = "PL-THERMAL-THERMAL-GOLDWIN";
@@ -621,6 +635,57 @@ function run() {
   assert.equal(septemberSale.unitCogsRp, 23500);
   assert.equal(septemberSale.cogsTotalRp, septemberSale.lineTotalRp);
 
+  // Edit must preserve one invoice, and a void must remain void after a fresh
+  // app initialization. This prevents duplicate invoices and revived voids.
+  const stockBeforeLifecycle = db.prepare(
+    "SELECT qty_base qtyBase FROM plastic_inventory_balance WHERE variant_id=?"
+  ).get(variantId).qtyBase;
+  const draftSale = engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_SALE", {
+    dateKey: "2026-09-03",
+    customerName: "Lifecycle Customer",
+    paymentStatus: "NOT_PAID",
+    lines: [{ variantId, qty: 1, unit: "ROLL", unitPriceRp: 0 }],
+  });
+  const beforeEditCount = db.prepare(
+    "SELECT COUNT(*) count FROM plastic_sales_invoice WHERE invoice_id=?"
+  ).get(draftSale.invoiceId).count;
+  const editedSale = engine.mutatePlasticTradingV2(storage, "test-owner", "UPDATE_SALE", {
+    invoiceId: draftSale.invoiceId,
+    dateKey: "2026-09-03",
+    customerName: "Lifecycle Customer",
+    discountRp: 0,
+    note: "Corrected quantity",
+    reason: "Correct item quantity",
+    lines: [{ variantId, qty: 2, unit: "ROLL", unitPriceRp: 0 }],
+  });
+  assert.equal(editedSale.invoiceId, draftSale.invoiceId);
+  assert.equal(editedSale.invoiceNo, draftSale.invoiceNo);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) count FROM plastic_sales_invoice WHERE invoice_id=?").get(draftSale.invoiceId).count,
+    beforeEditCount,
+    "edit must update the original invoice rather than create a new invoice"
+  );
+  engine.mutatePlasticTradingV2(storage, "test-owner", "VOID_SALE", {
+    invoiceId: draftSale.invoiceId,
+    reason: "Test void persistence",
+  });
+  assert.equal(
+    db.prepare("SELECT qty_base qtyBase FROM plastic_inventory_balance WHERE variant_id=?").get(variantId).qtyBase,
+    stockBeforeLifecycle,
+    "void must restore the exact stock consumed by the original invoice"
+  );
+  engine.initPlasticTradingV2(storage);
+  assert.equal(
+    db.prepare("SELECT status FROM plastic_sales_invoice WHERE invoice_id=?").get(draftSale.invoiceId).status,
+    "VOID",
+    "a void must never be revived by reopening the app"
+  );
+  const outboundAfterVoid = engine.getPlasticTradingViewV2(storage, "test-owner", "OUTBOUND", "2026-09");
+  assert.ok(
+    !outboundAfterVoid.rows.some((row) => row.invoiceId === draftSale.invoiceId),
+    "a voided invoice must be excluded from active sales history"
+  );
+
   console.log("PASS authoritative SO snapshot uses official documents");
   console.log("PASS existing REVIEW session overlays stale stored snapshot");
   console.log("PASS negative history is visible and posts to zero without false stock");
@@ -634,6 +699,8 @@ function run() {
   console.log("PASS posted SO factual correction is audited, atomic, and idempotent");
   console.log("PASS September inbound automatically follows the selling price");
   console.log("PASS September sales record HPP equal to the selling price");
+  console.log("PASS reopening the app does not overwrite master data");
+  console.log("PASS sale edit preserves invoice identity and void stays void");
 }
 
 run();

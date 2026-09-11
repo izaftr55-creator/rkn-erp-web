@@ -100,7 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_pl_so_snapshot_date
 ON plastic_so_snapshot(business_unit_id,snapshot_date_key,mapping_status);
 `;
 
-export function initPlasticTradingV2(storage:any){const sql:Sql=storage.sql;sql.exec(PLASTIC_SCHEMA_V2).toArray(); sql.exec(`UPDATE plastic_product_variant SET units_per_pack=80 WHERE category='POLYMAILER' AND size IN ('17x30','20x30') AND units_per_pack=50`).toArray(); /* RKN_PLASTIC_SO_SESSION_SCHEMA_V2P */
+export function initPlasticTradingV2(storage:any){const sql:Sql=storage.sql;sql.exec(PLASTIC_SCHEMA_V2).toArray(); /* RKN_PLASTIC_SO_SESSION_SCHEMA_V2P */
 sql.exec(`
 CREATE TABLE IF NOT EXISTS plastic_so_session(
   so_id TEXT PRIMARY KEY,
@@ -222,6 +222,13 @@ VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'S
 
 
 
+/*
+  Retired recovery/backfill scripts. They previously ran on every request,
+  silently rewriting product UOM/prices and historical transactions. Data must
+  now change only through an explicit, audited command.
+*/
+const runRetiredRecoveryBackfills=false;
+if(runRetiredRecoveryBackfills){
 /* RKN_PLASTIC_V2H_MASTER_UOM_SYNC */
 sql.exec(`
 UPDATE plastic_product_variant SET units_per_pack = 100, default_sell_price_pack_rp = 1700000 WHERE variant_id = 'PL-POLY-HITAM-15X25';
@@ -408,6 +415,7 @@ SET status = CASE
     updated_at = CURRENT_TIMESTAMP
 WHERE status <> 'VOID';
 `).toArray();
+}
 
 /* RKN_PLASTIC_SO_2808_REFERENCE_SNAPSHOT */
 sql.exec(`

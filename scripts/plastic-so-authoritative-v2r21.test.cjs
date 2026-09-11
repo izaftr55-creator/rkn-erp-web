@@ -317,14 +317,15 @@ function run() {
     (row) => row.variantId === goldwinVariantId
   );
   assert.ok(goldwinReconRow, "Goldwin must remain visible in reconciliation");
-  assert.equal(goldwinReconRow.soScope, 0);
-  assert.equal(goldwinReconRow.physicalEntered, 0);
+  assert.equal(goldwinReconRow.soScope, 1);
+  assert.equal(goldwinReconRow.physicalEntered, 1);
   assert.equal(goldwinReconRow.inboundQtyBase, 150000);
   assert.equal(goldwinReconRow.outboundQtyBase, 20000);
   assert.equal(goldwinReconRow.systemQtyBase, 130000);
-  assert.equal(goldwinReconRow.status, "DI LUAR SO");
-  assert.equal(goldwinReconciliation.summary.totalVariants, 41);
-  assert.equal(goldwinReconciliation.summary.outsideSoVariants, 1);
+  assert.equal(goldwinReconRow.physicalQtyBase, 0);
+  assert.equal(goldwinReconRow.status, "SELISIH");
+  assert.equal(goldwinReconciliation.summary.totalVariants, 42);
+  assert.equal(goldwinReconciliation.summary.outsideSoVariants, 0);
 
   const goldwinInboundReport = postedReport.inbound.find(
     (row) => row.productName === "Thermal Goldwin"
@@ -335,7 +336,8 @@ function run() {
   assert.ok(goldwinInboundReport, "Official Goldwin inbound must be reported");
   assert.equal(goldwinInboundReport.qty, 15);
   assert.equal(goldwinInboundReport.unit, "DUS");
-  assert.equal(goldwinAuditLine.soScope, 0);
+  assert.equal(goldwinAuditLine.soScope, 1);
+  assert.equal(goldwinAuditLine.physicalQtyBase, 0);
   assert.equal(goldwinAuditLine.systemLedgerQtyBase, 130000);
 
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
@@ -415,7 +417,7 @@ function run() {
   assert.equal(valuationRow.lastSupplierName, "Supplier Setelah Cutoff");
   assert.equal(valuationRow.qtyBase, 7);
   assert.equal(valuationRow.avgCostRp, 18000);
-  assert.equal(valuationRow.stockValueRp, 126000);
+  assert.equal(valuationRow.stockValueRp, 129500);
   assert.equal(valuationRow.defaultSellPriceBaseRp, 18500);
   assert.equal(valuationRow.defaultSellPricePackRp, 1850000);
   assert.equal(checkpointValuationRow.lastSupplierName, "Supplier Nilai Stok");
@@ -445,7 +447,7 @@ function run() {
   console.log("PASS existing REVIEW session overlays stale stored snapshot");
   console.log("PASS negative history is visible and posts to zero without false stock");
   console.log("PASS posted report retains pre-adjustment variance and official settlement");
-  console.log("PASS Goldwin official IN/OUT stays visible outside immutable SO scope");
+  console.log("PASS Goldwin physical-zero checkpoint remains visible for reconciliation");
   console.log("PASS posted physical SO anchors live stock against pre-cutoff document edits");
   console.log("PASS future sale guard checks posted SO stock and aggregates duplicate SKU lines");
   console.log("PASS supplier stock report cuts off physical quantity and supplier at 28/08");
