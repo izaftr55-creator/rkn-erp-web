@@ -5220,7 +5220,7 @@ function Outbound({
                   style={{ marginRight: 8, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "white" }}
                   onClick={() => repeatOrder(viewInvoice)}
                 >
-                  <MenuIcon name="dashboard" /> Ulangi Pesanan (Copy)
+                  <MenuIcon name="dashboard" /> Buat Invoice Baru dari Data Ini
                 </button>
               )}
               <button
