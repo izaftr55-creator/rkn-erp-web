@@ -625,7 +625,9 @@ function run() {
     dateKey: "2026-09-02",
     customerName: "Customer September",
     paymentStatus: "NOT_PAID",
-    lines: [{ variantId, qty: 1, unit: "BALL", unitPriceRp: 0 }],
+    // A forged browser price must be ignored in September; the server owns
+    // the supplier = selling price rule.
+    lines: [{ variantId, qty: 1, unit: "BALL", unitPriceRp: 1 }],
   });
   const septemberSale = db
     .prepare(
@@ -633,6 +635,7 @@ function run() {
     )
     .get(variantId);
   assert.equal(septemberSale.unitCogsRp, 23500);
+  assert.equal(septemberSale.unitPriceRp, 1175000);
   assert.equal(septemberSale.cogsTotalRp, septemberSale.lineTotalRp);
 
   // Edit must preserve one invoice, and a void must remain void after a fresh
