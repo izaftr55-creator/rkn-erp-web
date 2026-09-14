@@ -553,12 +553,17 @@ function VariantPicker({
   const productKeyOf = (product: Row) => {
     const category = categoryOf(product);
     const productName = String(product.productName || "").trim();
+    const normalizedProductName = productName.toUpperCase();
 
     if (category === "THERMAL") {
       return productName;
     }
 
-    if (category === "POLYMAILER") return "POLYMAILER";
+    // Master lama menyimpan nama dengan kapitalisasi berbeda (POLYMAILER / Polymailer).
+    // Keduanya harus menjadi satu kelompok pilihan produk.
+    if (category === "POLYMAILER" || normalizedProductName === "POLYMAILER") {
+      return "POLYMAILER";
+    }
 
     return productName || category;
   };
