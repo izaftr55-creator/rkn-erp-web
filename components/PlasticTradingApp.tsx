@@ -558,19 +558,13 @@ function VariantPicker({
       return productName;
     }
 
-    if (category === "POLYMAILER") {
-      if (String(product.size || "").trim().toUpperCase() === "30X40") {
-        return "POLYMAILER_30X40";
-      }
-      return "POLYMAILER";
-    }
+    if (category === "POLYMAILER") return "POLYMAILER";
 
     return productName || category;
   };
 
   const productLabelOf = (key: string) => {
     if (key === "POLYMAILER") return "Polymailer";
-    if (key === "POLYMAILER_30X40") return "Polymailer 30×40";
     return humanizeDisplay(key);
   };
 
@@ -1471,7 +1465,7 @@ function Payables({
         <MetricCard
           label="Total Tagihan Supplier"
           value={money.format(summary.totalBills ?? 0)}
-          note="Total tagihan sistem"
+          note={`Termasuk saldo awal ${money.format(Number(summary.historicalPayableRp || 0))}`}
         />
         <MetricCard
           label="Total Pembayaran ke KMS"
@@ -1481,7 +1475,7 @@ function Payables({
         <MetricCard
           label="Sisa Hutang ke Supplier"
           value={money.format(summary.outstandingPayables ?? 0)}
-          note="Kewajiban aktif ke supplier"
+          note="Saldo awal per 28/08 + mutasi mulai September"
         />
         <MetricCard
           label="Setoran ke KMS via Rekening Paman"

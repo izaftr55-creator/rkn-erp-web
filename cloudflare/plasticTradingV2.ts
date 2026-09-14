@@ -905,26 +905,26 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
     `SELECT payable_id payableId, supplier_name supplierName, date_key dateKey, reference_no referenceNo,
             payable_type payableType, total_amount_rp totalAmountRp, note, created_at createdAt
      FROM plastic_supplier_payable
-     WHERE business_unit_id='BU-PLASTIC'
+     WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
      ORDER BY date_key, created_at`
-  ).toArray();
+  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
 
   const salesInvoices = sql.exec(
     `SELECT invoice_id inboundId, invoice_no inboundNo, customer_id supplierName,
             date_key dateKey, grand_total_rp totalAmountRp, note, created_at createdAt
      FROM plastic_sales_invoice
-     WHERE business_unit_id='BU-PLASTIC' AND status <> 'VOID'
+     WHERE business_unit_id='BU-PLASTIC' AND status <> 'VOID' AND date_key>=?
      ORDER BY date_key, created_at`
-  ).toArray();
+  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
 
   const payments = sql.exec(
     `SELECT payment_id paymentId, supplier_name supplierName, date_key dateKey,
             amount_rp amountRp, funding_source fundingSource, reference_no referenceNo,
             note, created_at createdAt
      FROM plastic_supplier_payment
-     WHERE business_unit_id='BU-PLASTIC'
+     WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
      ORDER BY date_key DESC, created_at DESC`
-  ).toArray();
+  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
 
   const pamanLedger = sql.exec(
     `SELECT entry_id entryId, date_key dateKey, entry_type entryType,
@@ -936,7 +936,9 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
 
   const openingAmount = openingPayables.reduce((acc:number, r:any)=> acc + N(r.totalAmountRp), 0);
   const inboundAmount = salesInvoices.reduce((acc:number, r:any)=> acc + N(r.totalAmountRp), 0);
-  const totalBills = openingAmount + inboundAmount; 
+  // Saldo hutang sebelum reset disimpan sebagai saldo awal, bukan transaksi lama.
+  const historicalPayableRp = PLASTIC_MIGRATION_OPENING_PAYABLE_RP;
+  const totalBills = historicalPayableRp + openingAmount + inboundAmount;
   const totalPaid = payments.reduce((acc:number, r:any)=> acc + N(r.amountRp), 0); 
   const outstandingPayables = Math.max(0, totalBills - totalPaid); 
 
@@ -951,6 +953,7 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
     summary: {
       openingAmount,
       inboundAmount,
+      historicalPayableRp,
       totalBills,
       totalPaid,
       outstandingPayables,
@@ -1190,6 +1193,15 @@ if(view==='DASHBOARD'){
      LIMIT 1`
   ).toArray()[0]??null;
 
+  // Grafik dan tabel dashboard wajib membaca rentang tanggal yang sama dengan kartu metrik.
+  // `period` telah divalidasi menjadi YYYY-MM atau RANGE:YYYY-MM-DD:YYYY-MM-DD di atas.
+  const invoiceDateFilter = startDate && endDate
+    ? ` AND date_key>='${startDate}' AND date_key<='${endDate}'`
+    : '';
+  const paymentDateFilter = startDate && endDate
+    ? ` AND date_key>='${startDate}' AND date_key<='${endDate}'`
+    : '';
+
   return{
     view,
     periodKey:period,
@@ -1216,12 +1228,11 @@ if(view==='DASHBOARD'){
       `SELECT date_key dateKey,SUM(grand_total_rp) salesRp
        FROM plastic_sales_invoice
        WHERE business_unit_id='BU-PLASTIC'
-         AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
+         ${invoiceDateFilter}
          AND status<>'VOID'
        GROUP BY date_key
        ORDER BY date_key DESC
-       LIMIT 30`,
-      period,period,period,period
+       LIMIT 30`
     ).toArray(),
     topReceivables:sql.exec(
       `SELECT i.customer_id customerId,COALESCE(c.customer_name,'') customerName,
@@ -1234,15 +1245,14 @@ if(view==='DASHBOARD'){
          SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid
          FROM plastic_payment
          WHERE business_unit_id='BU-PLASTIC'
-           AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
+           ${paymentDateFilter}
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+         ${invoiceDateFilter.replaceAll('date_key', 'i.date_key')}
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
-       ORDER BY outstandingRp DESC`,
-      period,period,period,period,period,period,period,period
+       ORDER BY outstandingRp DESC`
     ).toArray()
   };
 }
