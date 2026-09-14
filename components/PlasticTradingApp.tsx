@@ -1466,7 +1466,7 @@ function Payables({
   const pamanLedger = Array.isArray(data.pamanLedger) ? data.pamanLedger : [];
 
   return (
-    <div className={styles.sectionStack}>
+    <div className={styles.sectionStack} style={{ gap: "20px" }}>
       <section className={styles.metricGrid}>
         <MetricCard
           label="Total Tagihan Supplier"
@@ -1489,14 +1489,6 @@ function Payables({
           note="Rekening Paman hanya sebagai perantara setoran"
         />
       </section>
-
-      {canWrite ? (
-        <Panel title="Reset Pembayaran Supplier" subtitle="Hapus seluruh pembayaran supplier dan mutasi rekening Paman untuk diinput ulang. Tagihan, stok, SO, dan transaksi penjualan tidak diubah.">
-          <button type="button" className={styles.dangerButton} disabled={busy} onClick={resetAllSupplierPayments}>
-            Hapus Seluruh Pembayaran Supplier
-          </button>
-        </Panel>
-      ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1rem" }}>
         {canWrite ? (
