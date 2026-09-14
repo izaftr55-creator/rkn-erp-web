@@ -2442,7 +2442,7 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
             {money.format(Number(metrics.cumulativeSalesRp ?? metrics.salesRp ?? 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Historis s.d. 31/08: {money.format(Number(metrics.historicalSalesRp || 0))} · Periode dipilih: {money.format(Number(metrics.salesRp || 0))}
+            Historis s.d. 28/08: {money.format(Number(metrics.historicalSalesRp || 0))} · Periode dipilih: {money.format(Number(metrics.salesRp || 0))}
           </p>
         </div>
 
@@ -2493,7 +2493,7 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
             {money.format(Number(metrics.outstandingPayables || 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Saldo awal: {money.format(Number(metrics.historicalPayableRp || 0))} · Mutasi setelah 31/08
+            Saldo awal: {money.format(Number(metrics.historicalPayableRp || 0))} · Mutasi setelah 28/08
           </p>
         </div>
 
