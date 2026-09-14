@@ -8873,10 +8873,9 @@ function Reports({
   };
 
   const tabs: [ReportTab, string][] = [
-    ["RECON", "Persiapan SO 28/08"],
     ["STOCK", "Stok Fisik"],
     ["INBOUND", "Barang Masuk"],
-    ["OUTBOUND", "Penjualan"],
+    ["OUTBOUND", "Barang Keluar"],
     ["RECEIVABLES", "Buku Piutang"],
   ];
 
