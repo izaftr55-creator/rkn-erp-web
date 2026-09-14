@@ -96,7 +96,6 @@ const today = () => {
 
 const menus = [
   ["DASHBOARD", "Dashboard", "dashboard"],
-  ["OPENING", "Opening", "opening"],
   ["INBOUND", "Masuk", "inbound"],
   ["OUTBOUND", "Keluar", "outbound"],
   ["INVENTORY", "Stok", "inventory"],
@@ -104,7 +103,6 @@ const menus = [
   ["CUSTOMERS", "Customer", "customers"],
   ["RECEIVABLES", "Piutang", "receivables"],
   ["OPNAME", "Opname", "opname"],
-  ["RECONCILIATION", "Rekonsiliasi", "reconciliation"],
   ["REPORTS", "Laporan", "reports"],
   ["CLOSING", "Closing", "closing"],
   ["AUDIT", "Audit", "audit"],
@@ -1949,7 +1947,6 @@ const [nextView, nextDashboard] = await Promise.all([
               <div className={styles.navGroupLabel}>OPERASI</div>
               {[
                 ["DASHBOARD", "Dashboard", "dashboard"],
-                ["OPENING", "Opening", "opening"],
                 ["INBOUND", "Barang Masuk", "inbound"],
                 ["OUTBOUND", "Barang Keluar", "outbound"],
                 ["INVENTORY", "Stok Gudang", "inventory"],
@@ -1997,7 +1994,6 @@ const [nextView, nextDashboard] = await Promise.all([
               <div className={styles.navGroupLabel}>KONTROL & LAPORAN</div>
               {[
                 ["OPNAME", "Stock Opname", "opname"],
-                ["RECONCILIATION", "Rekonsiliasi", "reconciliation"],
                 ["REPORTS", "Laporan & Laba", "reports"],
                 ["CLOSING", "Tutup Buku", "closing"],
                 ["AUDIT", "Audit Log", "audit"],
@@ -4350,6 +4346,15 @@ function Outbound({
     );
     resetForm();
   };
+  const purgePreSoOperations = async () => {
+    if (!canEdit || typeof window === "undefined") return;
+    const reason = window.prompt("Alasan reset massal data sebelum SO 28/08/2026:", "Reset historis sebelum Stock Opname 28/08/2026")?.trim();
+    if (!reason) return;
+    const confirmToken = window.prompt("Ketik PURGE BEFORE SO 28 AUGUST 2026 untuk menghapus Barang Keluar dan Barang Masuk sebelum 28/08/2026:")?.trim();
+    if (confirmToken !== "PURGE BEFORE SO 28 AUGUST 2026") return;
+    await run("PURGE_PRE_SO_OPERATIONS", { reason, confirmToken }, "OUTBOUND");
+    resetForm();
+  };
   const sendWhatsappReceipt = async (row: Row) => {
     const cust = customers.find((c) => String(c.customerName || "").trim().toLowerCase() === String(row.customerName || "").trim().toLowerCase());
     let phone = cust?.phone;
@@ -4434,6 +4439,13 @@ function Outbound({
 
   return (
     <>
+      {canEdit ? (
+        <Panel title="Reset Massal Sebelum SO 28/08" subtitle="Menghapus Barang Keluar, Barang Masuk, dan pembayaran customer sebelum 28/08/2026. SO serta transaksi 28/08 dan sesudahnya tetap dipertahankan.">
+          <button type="button" className={styles.dangerButton} disabled={busy} onClick={purgePreSoOperations}>
+            Hapus Data Sebelum SO 28/08
+          </button>
+        </Panel>
+      ) : null}
       {canWrite ? (
         <Panel
           title={editInvoiceId ? `Edit ${editInvoiceNo}` : "Barang Keluar"}

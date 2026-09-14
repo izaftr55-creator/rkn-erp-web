@@ -879,7 +879,7 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
   });
 }
 
-export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
+export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();if(['OPENING','RECONCILIATION'].includes(view))throw Error('PLASTIC_FEATURE_CLOSED');
 /* RKN_PLASTIC_PRICE_HISTORY_VIEW */
 if(view==='PRICE_HISTORY'){
   return {
@@ -4459,6 +4459,39 @@ if(cmd==='UPDATE_SALE'){
     });
 
     return{ok:true,invoiceId,invoiceNo:T(inv.invoice_no,160),grandTotalRp:grand,outstandingRp:grand-alreadyPaid};
+  });
+}
+
+/* RKN_PLASTIC_PRE_SO_BULK_CLEANUP_V1
+   Removes only transactions strictly before the posted 28/08/2026 SO.
+   The SO itself and every transaction dated 28/08/2026 onward are retained. */
+if(cmd==='PURGE_PRE_SO_OPERATIONS'){
+  mg(a);
+  const reason=T(p.reason,500);
+  const confirmToken=T(p.confirmToken,100).trim().toUpperCase();
+  if(!reason)throw Error('PLASTIC_REASON_REQUIRED');
+  if(confirmToken!=='PURGE BEFORE SO 28 AUGUST 2026')throw Error('PLASTIC_PRE_SO_PURGE_CONFIRMATION_REQUIRED');
+
+  return atomic(()=>{
+    const cutoff=PLASTIC_MIGRATION_CUTOVER_DATE;
+    const saleCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,cutoff);
+    const saleTotal=scalar(sql,`SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,cutoff);
+    const inboundCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_inbound WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,cutoff);
+    const inboundLineCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_inbound_line l JOIN plastic_inbound i ON i.inbound_id=l.inbound_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key<?`,cutoff);
+    const customerPaymentCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND invoice_id IN(SELECT invoice_id FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?)`,cutoff);
+
+    sql.exec(`DELETE FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND invoice_id IN(SELECT invoice_id FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?)`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_sales_line WHERE invoice_id IN(SELECT invoice_id FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?)`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND date_key<? AND source_type LIKE 'SALE%'`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_inventory_movement WHERE business_unit_id='BU-PLASTIC' AND date_key<? AND source_type LIKE 'INBOUND%'`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_inbound_line WHERE inbound_id IN(SELECT inbound_id FROM plastic_inbound WHERE business_unit_id='BU-PLASTIC' AND date_key<?)`,cutoff).toArray();
+    sql.exec(`DELETE FROM plastic_inbound WHERE business_unit_id='BU-PLASTIC' AND date_key<?`,cutoff).toArray();
+    syncAuthoritativeInventory(sql);
+
+    const purgeId=crypto.randomUUID();
+    audit(sql,a,'PLASTIC_PRE_SO_OPERATIONS_PURGE','PLASTIC_MIGRATION',purgeId,reason,{cutoff,saleCount,saleTotal,inboundCount,inboundLineCount,customerPaymentCount,retainedFrom:cutoff,stockCheckpoint:'SO 28/08/2026'});
+    return{ok:true,cutoff,saleCount,saleTotal,inboundCount,inboundLineCount,customerPaymentCount};
   });
 }
 
