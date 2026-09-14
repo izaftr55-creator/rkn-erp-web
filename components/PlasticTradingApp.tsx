@@ -1465,7 +1465,7 @@ function Payables({
   const pamanLedger = Array.isArray(data.pamanLedger) ? data.pamanLedger : [];
 
   return (
-    <div className={styles.sectionStack} style={{ gap: "20px" }}>
+    <div className={styles.sectionStack} style={{ display: "grid", gap: "28px" }}>
       <section className={styles.metricGrid}>
         <MetricCard
           label="Total Tagihan Supplier"
