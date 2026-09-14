@@ -483,6 +483,13 @@ const op=(a:Actor)=>{if(!a.admin&&!['OPERATE','MANAGE','OWNER'].includes(a.level
 const mg=(a:Actor)=>{if(!a.admin&&!['MANAGE','OWNER'].includes(a.level))throw Error('PLASTIC_MANAGE_DENIED')};
 const ow=(a:Actor)=>{if(!a.admin&&a.level!=='OWNER')throw Error('PLASTIC_OWNER_DENIED')};
 const open=(sql:Sql,p:string)=>{const r=sql.exec(`SELECT status FROM plastic_month_close WHERE business_unit_id='BU-PLASTIC' AND period_key=? LIMIT 1`,p).toArray()[0];if(String(r?.status??'OPEN')==='CLOSED')throw Error('PLASTIC_PERIOD_CLOSED')};
+/* RKN_PLASTIC_SEPTEMBER_2026_MIGRATION_BASELINE
+   The audited pre-September operating period is retained as an immutable
+   reporting baseline after its source transactions are cleared. */
+const PLASTIC_MIGRATION_CUTOVER_DATE='2026-08-28';
+const PLASTIC_MIGRATION_POST_CUTOVER_DATE='2026-09-01';
+const PLASTIC_MIGRATION_HISTORICAL_SALES_RP=191391500;
+const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=76225000;
 const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',details:any={})=>sql.exec(`INSERT INTO audit_log(id,actor_user_id,business_unit_id,action,entity_type,entity_id,reason,details_json,created_at) VALUES(?,?,'BU-PLASTIC',?,?,?,?,?,?)`,crypto.randomUUID(),a.id,action,etype,eid,reason,JSON.stringify(details),now()).toArray();
 const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND active=1 LIMIT 1`,id).toArray()[0];if(!r)throw Error('PLASTIC_VARIANT_NOT_FOUND');return r};
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
@@ -1044,6 +1051,23 @@ if(view==='DASHBOARD'){
 
   const cogs=sales;
 
+  const postCutoverSalesRp = scalar(
+    sql,
+    `SELECT COALESCE(SUM(grand_total_rp),0) value
+     FROM plastic_sales_invoice
+     WHERE business_unit_id='BU-PLASTIC'
+       AND date_key>=?
+       AND status<>'VOID'`,
+    PLASTIC_MIGRATION_POST_CUTOVER_DATE
+  );
+  const includesMigrationBaseline = !endDate || endDate >= PLASTIC_MIGRATION_POST_CUTOVER_DATE;
+  const historicalSalesRp = includesMigrationBaseline
+    ? PLASTIC_MIGRATION_HISTORICAL_SALES_RP
+    : 0;
+  const cumulativeSalesRp = Number(
+    BigInt(PLASTIC_MIGRATION_HISTORICAL_SALES_RP) + BigInt(postCutoverSalesRp)
+  );
+
   let rec = 0;
   if (endDate) {
     rec = scalar(sql, `SELECT COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) value FROM plastic_sales_invoice i LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND date_key<=? GROUP BY invoice_id)p ON p.invoice_id=i.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key<=? AND i.status<>'VOID'`, endDate, endDate);
@@ -1052,9 +1076,9 @@ if(view==='DASHBOARD'){
   }
 
   // Calculate Hutang Aktif KMS (outstandingPayables)
-  let openingQ = `SELECT COALESCE(SUM(total_amount_rp), 0) as value FROM plastic_supplier_payable WHERE business_unit_id='BU-PLASTIC'`;
-  let salesQ = `SELECT COALESCE(SUM(grand_total_rp), 0) as value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`;
-  let paidQ = `SELECT COALESCE(SUM(amount_rp), 0) as value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`;
+  let openingQ = `SELECT COALESCE(SUM(total_amount_rp), 0) as value FROM plastic_supplier_payable WHERE business_unit_id='BU-PLASTIC' AND date_key>='${PLASTIC_MIGRATION_POST_CUTOVER_DATE}'`;
+  let salesQ = `SELECT COALESCE(SUM(grand_total_rp), 0) as value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID' AND date_key>='${PLASTIC_MIGRATION_POST_CUTOVER_DATE}'`;
+  let paidQ = `SELECT COALESCE(SUM(amount_rp), 0) as value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC' AND date_key>='${PLASTIC_MIGRATION_POST_CUTOVER_DATE}'`;
   
   if (endDate) {
     openingQ += ` AND date_key<='${endDate}'`;
@@ -1065,7 +1089,12 @@ if(view==='DASHBOARD'){
   const allOpeningPayables = scalar(sql, openingQ);
   const allSalesTotal = scalar(sql, salesQ);
   const allPaidToSupplier = scalar(sql, paidQ);
-  const outstandingPayables = Number(BigInt(allOpeningPayables) + BigInt(allSalesTotal) - BigInt(allPaidToSupplier));
+  const historicalPayableRp = includesMigrationBaseline
+    ? PLASTIC_MIGRATION_OPENING_PAYABLE_RP
+    : 0;
+  const outstandingPayables = Number(
+    BigInt(historicalPayableRp) + BigInt(allOpeningPayables) + BigInt(allSalesTotal) - BigInt(allPaidToSupplier)
+  );
 
   let stockValue=0;
   let stockQty=0;
@@ -1179,12 +1208,15 @@ if(view==='DASHBOARD'){
       stockQty,
       stockValueRp:stockValue,
       salesRp:sales,
+      historicalSalesRp,
+      cumulativeSalesRp,
       paidRp:Math.max(0, sales-rec),
       cashInflowRp:Math.max(0, sales-rec),
       cogsRp:cogs,
       grossProfitRp:sales-cogs,
       receivableRp:rec,
       skuCount,
+      historicalPayableRp,
       outstandingPayables
     },
     soBalance,

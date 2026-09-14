@@ -2436,13 +2436,13 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
           overflow: "hidden"
         }}>
           <p style={{ fontSize: "12px", fontWeight: "bold", color: "#8b9bb4", textTransform: "uppercase" }}>
-            Total Penjualan (Omset)
+            Omset Kumulatif
           </p>
           <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#3b82f6" }}>
-            {money.format(Number(metrics.salesRp || 0))}
+            {money.format(Number(metrics.cumulativeSalesRp ?? metrics.salesRp ?? 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Seluruh faktur penjualan
+            Historis s.d. 31/08: {money.format(Number(metrics.historicalSalesRp || 0))} · Periode dipilih: {money.format(Number(metrics.salesRp || 0))}
           </p>
         </div>
 
@@ -2493,7 +2493,7 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
             {money.format(Number(metrics.outstandingPayables || 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Sistem Konsinyasi
+            Saldo awal: {money.format(Number(metrics.historicalPayableRp || 0))} · Mutasi setelah 31/08
           </p>
         </div>
 
