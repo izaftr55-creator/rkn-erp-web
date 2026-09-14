@@ -1051,21 +1051,12 @@ if(view==='DASHBOARD'){
 
   const cogs=sales;
 
-  const postCutoverSalesRp = scalar(
-    sql,
-    `SELECT COALESCE(SUM(grand_total_rp),0) value
-     FROM plastic_sales_invoice
-     WHERE business_unit_id='BU-PLASTIC'
-       AND date_key>=?
-       AND status<>'VOID'`,
-    PLASTIC_MIGRATION_POST_CUTOVER_DATE
-  );
   const includesMigrationBaseline = !endDate || endDate >= PLASTIC_MIGRATION_CUTOVER_DATE;
   const historicalSalesRp = includesMigrationBaseline
     ? PLASTIC_MIGRATION_HISTORICAL_SALES_RP
     : 0;
   const cumulativeSalesRp = Number(
-    BigInt(PLASTIC_MIGRATION_HISTORICAL_SALES_RP) + BigInt(postCutoverSalesRp)
+    BigInt(historicalSalesRp) + BigInt(sales)
   );
 
   let rec = 0;
@@ -3285,7 +3276,40 @@ const sz = T(p.size||'',80).toLowerCase();
 if (cat === 'POLYMAILER' && (sz === '17x30' || sz === '20x30') && upp === 50) {
   throw Error('VALIDATION_ERROR: Polymailer 17x30 dan 20x30 HARUS isi 80 roll per ball! Dilarang keras input 50 roll.');
 }
+const duplicateVariant=sql.exec(
+  `SELECT variant_id variantId FROM plastic_product_variant
+   WHERE business_unit_id='BU-PLASTIC' AND active=1 AND variant_id<>?
+     AND UPPER(TRIM(product_name))=UPPER(TRIM(?))
+     AND UPPER(TRIM(category))=UPPER(TRIM(?))
+     AND UPPER(TRIM(color))=UPPER(TRIM(?))
+     AND UPPER(TRIM(size))=UPPER(TRIM(?))
+     AND UPPER(TRIM(grade))=UPPER(TRIM(?))
+   LIMIT 1`,
+  id,name,cat,T(p.color,80),T(p.size,80),T(p.grade,80)
+).toArray()[0];
+if(duplicateVariant)throw Error('PLASTIC_VARIANT_DUPLICATE');
 sql.exec(`INSERT INTO plastic_product_variant(variant_id,business_unit_id,product_name,category,color,size,grade,base_unit,mid_unit,pack_unit,units_per_mid,units_per_pack,default_buy_price_rp,default_sell_price_base_rp,default_sell_price_mid_rp,default_sell_price_pack_rp,low_stock_base_qty,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(variant_id) DO UPDATE SET product_name=excluded.product_name,category=excluded.category,color=excluded.color,size=excluded.size,grade=excluded.grade,base_unit=excluded.base_unit,mid_unit=excluded.mid_unit,pack_unit=excluded.pack_unit,units_per_mid=excluded.units_per_mid,units_per_pack=excluded.units_per_pack,default_buy_price_rp=excluded.default_buy_price_rp,default_sell_price_base_rp=excluded.default_sell_price_base_rp,default_sell_price_mid_rp=excluded.default_sell_price_mid_rp,default_sell_price_pack_rp=excluded.default_sell_price_pack_rp,low_stock_base_qty=excluded.low_stock_base_qty,updated_at=excluded.updated_at`,id,name,T(p.category||'POLYMAILER',64),T(p.color,80),T(p.size,80),T(p.grade,80),base,mid,pack,upm,upp,I(p.defaultBuyPriceRp),I(p.defaultSellPriceBaseRp),I(p.defaultSellPriceMidRp),I(p.defaultSellPricePackRp),Math.max(0,N(p.lowStockBaseQty)),t,t).toArray();audit(sql,a,'PLASTIC_PRODUCT_UPDATE','PLASTIC_PRODUCT_VARIANT',id,'',{name,base,mid,pack,upm,upp});const effDate=T(p.effectiveDateKey,10)||DK(t);sql.exec(`INSERT INTO plastic_product_price_history(history_id,business_unit_id,variant_id,effective_date_key,sell_price_base_rp,sell_price_mid_rp,sell_price_pack_rp,buy_price_rp,note,actor_user_id,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?)`,'HIST-'+crypto.randomUUID().slice(0,8).toUpperCase(),id,effDate,I(p.defaultSellPriceBaseRp),I(p.defaultSellPriceMidRp),I(p.defaultSellPricePackRp),I(p.defaultBuyPriceRp),'Auto-history from Master Data',a.id,t).toArray();return{ok:true,variantId:id}}
+if(cmd==='RESOLVE_30X40_BLUE_DUPLICATE'){
+  mg(a);
+  const confirmToken=T(p.confirmToken,80).trim().toUpperCase();
+  if(confirmToken!=='RESOLVE BIRU 30X40 DUPLICATE')throw Error('PLASTIC_DUPLICATE_RESOLUTION_CONFIRMATION_REQUIRED');
+  return atomic(()=>{
+    const rows=sql.exec(
+      `SELECT variant_id variantId,created_at createdAt FROM plastic_product_variant
+       WHERE business_unit_id='BU-PLASTIC' AND active=1
+         AND UPPER(TRIM(product_name))='POLYMAILER'
+         AND UPPER(TRIM(category))='POLYMAILER'
+         AND UPPER(TRIM(color))='BIRU'
+         AND UPPER(TRIM(size))='30X40'
+       ORDER BY created_at ASC,variant_id ASC`
+    ).toArray();
+    if(rows.length!==2)throw Error('PLASTIC_EXPECTED_EXACTLY_TWO_BIRU_30X40_VARIANTS');
+    const retainedId=T(rows[0]?.variantId,120),deactivatedId=T(rows[1]?.variantId,120);
+    sql.exec(`UPDATE plastic_product_variant SET active=0,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,now(),deactivatedId).toArray();
+    audit(sql,a,'PLASTIC_PRODUCT_DUPLICATE_DEACTIVATE','PLASTIC_PRODUCT_VARIANT',deactivatedId,'Duplicate BIRU 30X40 resolved',{retainedId,deactivatedId});
+    return{ok:true,retainedId,deactivatedId};
+  });
+}
 if(cmd==='UPSERT_CUSTOMER'){op(a);const id=T(p.customerId,120)||crypto.randomUUID(),name=T(p.customerName,160);if(!name)throw Error('PLASTIC_CUSTOMER_REQUIRED');const t=now();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,1,?,?) ON CONFLICT(customer_id) DO UPDATE SET customer_name=excluded.customer_name,phone=excluded.phone,address=excluded.address,notes=excluded.notes,updated_at=excluded.updated_at`,id,name,T(p.phone,80),T(p.address,500),T(p.notes,500),t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_UPDATE','PLASTIC_CUSTOMER',id,'',{name});return{ok:true,customerId:id}}
 /* RKN_PLASTIC_OPENING_LEDGER_V2M */
 if(cmd==='POST_OPENING_BALANCE'){

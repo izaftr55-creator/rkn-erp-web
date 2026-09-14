@@ -559,6 +559,9 @@ function VariantPicker({
     }
 
     if (category === "POLYMAILER") {
+      if (String(product.size || "").trim().toUpperCase() === "30X40") {
+        return "POLYMAILER_30X40";
+      }
       return "POLYMAILER";
     }
 
@@ -567,6 +570,7 @@ function VariantPicker({
 
   const productLabelOf = (key: string) => {
     if (key === "POLYMAILER") return "Polymailer";
+    if (key === "POLYMAILER_30X40") return "Polymailer 30×40";
     return humanizeDisplay(key);
   };
 
@@ -1530,27 +1534,6 @@ function Payables({
           </Panel>
         ) : null}
 
-        {canWrite ? (
-          <Panel title="Koreksi Setoran via Rekening Paman" subtitle="Catat koreksi atau pengembalian atas setoran ke KMS.">
-            <form onSubmit={submitRepayment} className={styles.formGrid}>
-              <Field label="Tanggal Koreksi">
-                <input type="date" required value={repayDateKey} onChange={(e) => setRepayDateKey(e.target.value)} />
-              </Field>
-              <Field label="Jumlah Koreksi">
-                <RupiahInput required value={repayAmountRp} onChange={setRepayAmountRp} placeholder="Rp. 0" />
-              </Field>
-              <Field label="No. Referensi / Bukti">
-                <input placeholder="Contoh: TRF-BALIK-001" value={repayRefNo} onChange={(e) => setRepayRefNo(e.target.value)} />
-              </Field>
-              <Field label="Catatan">
-                <input placeholder="Keterangan koreksi setoran" value={repayNote} onChange={(e) => setRepayNote(e.target.value)} />
-              </Field>
-              <div className={styles.actions} style={{ gridColumn: "1 / -1" }}>
-                <button className={styles.primaryButton} disabled={busy}>Catat Koreksi Setoran</button>
-              </div>
-            </form>
-          </Panel>
-        ) : null}
       </div>
 
       <Panel title="Riwayat Pembayaran Supplier">
@@ -2762,8 +2745,37 @@ function Products({
     );
   };
 
+  const blue30x40DuplicateCount = rows.filter(
+    (row) =>
+      String(row.productName || "").trim().toUpperCase() === "POLYMAILER" &&
+      String(row.category || "").trim().toUpperCase() === "POLYMAILER" &&
+      String(row.color || "").trim().toUpperCase() === "BIRU" &&
+      String(row.size || "").trim().toUpperCase() === "30X40" &&
+      Number(row.active || 0) === 1
+  ).length;
+
+  const resolveBlue30x40Duplicate = async () => {
+    if (typeof window === "undefined") return;
+    const confirmToken = window.prompt(
+      "Ketik RESOLVE BIRU 30X40 DUPLICATE untuk menonaktifkan satu varian Biru 30×40 yang duplikat:"
+    )?.trim();
+    if (confirmToken !== "RESOLVE BIRU 30X40 DUPLICATE") return;
+    await run(
+      "RESOLVE_30X40_BLUE_DUPLICATE",
+      { confirmToken },
+      "PRODUCTS"
+    );
+  };
+
   return (
     <>
+      {canManage && blue30x40DuplicateCount > 1 ? (
+        <Panel title="Duplikat Varian 30×40" subtitle="Terdapat dua varian aktif Biru 30×40. Nonaktifkan satu duplikat agar Barang Masuk memilih varian yang tepat.">
+          <button type="button" className={styles.dangerButton} disabled={busy} onClick={resolveBlue30x40Duplicate}>
+            Nonaktifkan Duplikat Biru 30×40
+          </button>
+        </Panel>
+      ) : null}
       {canManage ? (
         <Panel
           title="Tambah Variant"
@@ -4439,13 +4451,6 @@ function Outbound({
 
   return (
     <>
-      {canEdit ? (
-        <Panel title="Reset Massal Sebelum SO 28/08" subtitle="Menghapus Barang Keluar, Barang Masuk, dan pembayaran customer sebelum 28/08/2026. SO serta transaksi 28/08 dan sesudahnya tetap dipertahankan.">
-          <button type="button" className={styles.dangerButton} disabled={busy} onClick={purgePreSoOperations}>
-            Hapus Data Sebelum SO 28/08
-          </button>
-        </Panel>
-      ) : null}
       {canWrite ? (
         <Panel
           title={editInvoiceId ? `Edit ${editInvoiceNo}` : "Barang Keluar"}
@@ -5601,7 +5606,7 @@ function Receivables({
         />
       </Panel>
 
-      {canWrite && rows.length ? (
+      {false ? (
         <Panel
           title="Pembayaran"
           subtitle="Cari invoice, cek barang pada invoice, lalu catat pembayaran."
