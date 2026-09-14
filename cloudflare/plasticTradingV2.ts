@@ -487,7 +487,7 @@ const open=(sql:Sql,p:string)=>{const r=sql.exec(`SELECT status FROM plastic_mon
    The audited pre-September operating period is retained as an immutable
    reporting baseline after its source transactions are cleared. */
 const PLASTIC_MIGRATION_CUTOVER_DATE='2026-08-28';
-const PLASTIC_MIGRATION_POST_CUTOVER_DATE='2026-08-29';
+const PLASTIC_MIGRATION_POST_CUTOVER_DATE='2026-09-01';
 const PLASTIC_MIGRATION_HISTORICAL_SALES_RP=191391500;
 const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=76225000;
 const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',details:any={})=>sql.exec(`INSERT INTO audit_log(id,actor_user_id,business_unit_id,action,entity_type,entity_id,reason,details_json,created_at) VALUES(?,?,'BU-PLASTIC',?,?,?,?,?,?)`,crypto.randomUUID(),a.id,action,etype,eid,reason,JSON.stringify(details),now()).toArray();

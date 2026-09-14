@@ -2493,7 +2493,7 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
             {money.format(Number(metrics.outstandingPayables || 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Saldo awal: {money.format(Number(metrics.historicalPayableRp || 0))} · Mutasi setelah 28/08
+            Saldo awal per 28/08: {money.format(Number(metrics.historicalPayableRp || 0))} · Mutasi mulai September
           </p>
         </div>
 
