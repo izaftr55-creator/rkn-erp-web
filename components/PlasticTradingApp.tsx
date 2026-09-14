@@ -7673,7 +7673,7 @@ function Reports({
     | "RECEIVABLES"
     | "AUDIT";
 
-  const [reportTab, setReportTab] = useState<ReportTab>("BOSS_SUMMARY");
+  const [reportTab, setReportTab] = useState<ReportTab>("STOCK");
 
   const stock = Array.isArray(data.stock) ? data.stock : [];
   const inbound = Array.isArray(data.inbound) ? data.inbound : [];
@@ -8868,14 +8868,11 @@ function Reports({
   };
 
   const tabs: [ReportTab, string][] = [
-    ["BOSS_SUMMARY", "Executive Summary"],
-    ["RECON", "Rekonsiliasi 28/08"],
+    ["RECON", "Persiapan SO 28/08"],
     ["STOCK", "Stok Fisik 28/08"],
-    ["STOCK_VALUE", "Valuasi Stok & Supplier"],
     ["INBOUND", "Barang Masuk"],
-    ["OUTBOUND", "Barang Keluar"],
+    ["OUTBOUND", "Penjualan"],
     ["RECEIVABLES", "Buku Piutang"],
-    ["AUDIT", "Audit Detail"],
   ];
 
   return (
