@@ -4548,6 +4548,25 @@ if(cmd==='ADD_PRICE_HISTORY'){
 }
 
 /* RKN_PLASTIC_SUPPLIER_PAYMENT_COMMANDS */
+if(cmd==='RESET_SUPPLIER_PAYMENTS'){
+  mg(a);
+  const reason=T(p.reason,500);
+  const confirmToken=T(p.confirmToken,80).trim().toUpperCase();
+  if(!reason)throw Error('PLASTIC_REASON_REQUIRED');
+  if(confirmToken!=='RESET SUPPLIER PAYMENTS')throw Error('PLASTIC_SUPPLIER_PAYMENT_RESET_CONFIRMATION_REQUIRED');
+
+  return atomic(()=>{
+    const paymentCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`);
+    const paymentTotal=scalar(sql,`SELECT COALESCE(SUM(amount_rp),0) value FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`);
+    const pamanLedgerCount=scalar(sql,`SELECT COUNT(*) value FROM plastic_paman_funding_ledger WHERE business_unit_id='BU-PLASTIC'`);
+    sql.exec(`DELETE FROM plastic_paman_funding_ledger WHERE business_unit_id='BU-PLASTIC'`).toArray();
+    sql.exec(`DELETE FROM plastic_supplier_payment WHERE business_unit_id='BU-PLASTIC'`).toArray();
+    const resetId=crypto.randomUUID();
+    audit(sql,a,'PLASTIC_SUPPLIER_PAYMENT_RESET_ALL','PLASTIC_SUPPLIER_PAYMENT',resetId,reason,{paymentCount,paymentTotal,pamanLedgerCount});
+    return{ok:true,paymentCount,paymentTotal,pamanLedgerCount};
+  });
+}
+
 if(cmd==='ADD_SUPPLIER_PAYMENT'){
   mg(a);
   const supplierName=T(p.supplierName,160) || 'KMS PACKAGING';
