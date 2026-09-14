@@ -8874,7 +8874,7 @@ function Reports({
 
   const tabs: [ReportTab, string][] = [
     ["RECON", "Persiapan SO 28/08"],
-    ["STOCK", "Stok Fisik 28/08"],
+    ["STOCK", "Stok Fisik"],
     ["INBOUND", "Barang Masuk"],
     ["OUTBOUND", "Penjualan"],
     ["RECEIVABLES", "Buku Piutang"],
@@ -9134,8 +9134,8 @@ function Reports({
 
       {reportTab === "STOCK" ? (
         <Panel
-          title="Stok Fisik 28/08/2026"
-          subtitle="Hasil SO fisik yang sudah POSTED. Bukan saldo live setelah 28/08."
+          title="Stok Fisik"
+          subtitle="Laporan stok fisik resmi. Unduh PDF untuk dicetak dan digunakan saat pengecekan barang."
         >
           <DataTable
             rows={stockSellingRows}
