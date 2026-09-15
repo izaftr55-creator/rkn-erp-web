@@ -550,6 +550,14 @@ function VariantPicker({
       .trim()
       .toUpperCase();
 
+  // Master lama memakai kombinasi kapitalisasi/spasi berbeda, mis. Biru/BIRU
+  // dan 30x40/30X40. Pemilih varian harus memperlakukan semuanya sama.
+  const variantValueKey = (value: unknown) =>
+    String(value || "")
+      .trim()
+      .toLocaleUpperCase("id-ID")
+      .replace(/\s+/g, "");
+
   const productKeyOf = (product: Row) => {
     const category = categoryOf(product);
     const productName = String(product.productName || "").trim();
@@ -582,10 +590,10 @@ function VariantPicker({
     selected ? productKeyOf(selected) : ""
   );
   const [color, setColor] = useState(
-    String(selected?.color || "").trim()
+    variantValueKey(selected?.color)
   );
   const [size, setSize] = useState(
-    String(selected?.size || "").trim()
+    variantValueKey(selected?.size)
   );
 
   useEffect(() => {
@@ -596,8 +604,8 @@ function VariantPicker({
 
     if (current) {
       setProductKey(productKeyOf(current));
-      setColor(String(current.color || "").trim());
-      setSize(String(current.size || "").trim());
+      setColor(variantValueKey(current.color));
+      setSize(variantValueKey(current.size));
       return;
     }
 
@@ -668,9 +676,7 @@ function VariantPicker({
       Array.from(
         new Set(
           scoped
-            .map((product) =>
-              String(product.color || "").trim()
-            )
+            .map((product) => variantValueKey(product.color))
             .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "id")),
@@ -682,9 +688,7 @@ function VariantPicker({
       Array.from(
         new Set(
           scoped
-            .map((product) =>
-              String(product.size || "").trim()
-            )
+            .map((product) => variantValueKey(product.size))
             .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "id")),
@@ -704,8 +708,8 @@ function VariantPicker({
         return false;
       }
 
-      const productColor = String(product.color || "").trim();
-      const productSize = String(product.size || "").trim();
+      const productColor = variantValueKey(product.color);
+      const productSize = variantValueKey(product.size);
 
       if (productColor !== nextColor) return false;
       if (productSize !== nextSize) return false;
@@ -713,8 +717,13 @@ function VariantPicker({
       return true;
     });
 
-    const match =
-      candidates.length === 1 ? candidates[0] : undefined;
+    // Variasi duplikat lama tidak boleh membuat input transaksi terkunci.
+    // Gunakan varian kanonis (yang paling awal dibuat), sama seperti proses
+    // pembersihan duplikat Biru 30×40 di Master Produk.
+    const match = [...candidates].sort((a, b) =>
+      String(a.createdAt || "").localeCompare(String(b.createdAt || "")) ||
+      String(a.variantId || "").localeCompare(String(b.variantId || ""))
+    )[0];
 
     onChange(
       match ? String(match.variantId || "") : "",
@@ -729,9 +738,7 @@ function VariantPicker({
 
     const colors = Array.from(
       new Set(
-        group.map((product) =>
-          String(product.color || "").trim()
-        )
+        group.map((product) => variantValueKey(product.color))
       )
     );
 
@@ -739,7 +746,7 @@ function VariantPicker({
       new Set(
         group
           .map((product) =>
-            String(product.size || "").trim()
+          variantValueKey(product.size)
           )
           .filter(Boolean)
       )
