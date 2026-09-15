@@ -1391,6 +1391,10 @@ function friendlyPlasticError(value: unknown) {
     return "Stok tidak cukup untuk Barang Keluar. Pastikan Opening dan Barang Masuk sebelum tanggal transaksi sudah diinput.";
   }
 
+  if (code.includes("PLASTIC_SUPPLIER_PRICE_NOT_CONFIGURED")) {
+    return "Isi HPP / UOM pada barang masuk dengan harga beli dari supplier.";
+  }
+
   return code
     .replace(/^PLASTIC[_ ]?/i, "")
     .replace(/_+/g, " ")
@@ -3959,10 +3963,12 @@ function Inbound({
                       className={styles.moneyField}
                     >
                       <input
+                        required
                         type="text"
                         inputMode="numeric"
                         min="0"
                         disabled={!product}
+                        placeholder="Wajib diisi"
                         value={formatRupiahInput(line.unitCostRp)}
                         onChange={(event) => {
                           const next = [...lines];
