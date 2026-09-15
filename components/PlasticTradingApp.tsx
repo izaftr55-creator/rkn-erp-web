@@ -1708,7 +1708,13 @@ const loadMasters = useCallback(async () => {
         read("PRODUCTS", "ALL"),
         read("CUSTOMERS", "ALL"),
       ]);
-      setProducts(productData.rows || []);
+      // Master Produk tetap boleh menampilkan varian nonaktif untuk audit,
+      // tetapi form Barang Masuk/Keluar hanya boleh menerima varian aktif.
+      setProducts(
+        (productData.rows || []).filter(
+          (product: Row) => Number(product.active ?? 1) === 1
+        )
+      );
       setCustomers(customerData.rows || []);
     } catch {
       // Main screen loader will surface connection errors.
