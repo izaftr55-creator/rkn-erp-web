@@ -493,8 +493,8 @@ const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=76225000;
 // Rekonsiliasi final Juli–Agustus: sebagian transfer Paman dibayarkan pada
 // September, tetapi tetap menutup tagihan periode lama. Nilai ini disimpan
 // terpisah agar pembayaran September tidak otomatis menombok antar-periode.
-const PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP=58481500;
-const PLASTIC_MIGRATION_HISTORICAL_REMAINING_PAYABLE_RP=17743500;
+const PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP=57680000;
+const PLASTIC_MIGRATION_HISTORICAL_REMAINING_PAYABLE_RP=18545000;
 const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',details:any={})=>sql.exec(`INSERT INTO audit_log(id,actor_user_id,business_unit_id,action,entity_type,entity_id,reason,details_json,created_at) VALUES(?,?,'BU-PLASTIC',?,?,?,?,?,?)`,crypto.randomUUID(),a.id,action,etype,eid,reason,JSON.stringify(details),now()).toArray();
 const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND active=1 LIMIT 1`,id).toArray()[0];if(!r)throw Error('PLASTIC_VARIANT_NOT_FOUND');return r};
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
