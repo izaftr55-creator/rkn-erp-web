@@ -490,11 +490,9 @@ const PLASTIC_MIGRATION_CUTOVER_DATE='2026-08-28';
 const PLASTIC_MIGRATION_POST_CUTOVER_DATE='2026-09-01';
 const PLASTIC_MIGRATION_HISTORICAL_SALES_RP=191391500;
 const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=76225000;
-// Rekonsiliasi final Juli–Agustus: sebagian transfer Paman dibayarkan pada
-// September, tetapi tetap menutup tagihan periode lama. Nilai ini disimpan
-// terpisah agar pembayaran September tidak otomatis menombok antar-periode.
-const PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP=57680000;
-const PLASTIC_MIGRATION_HISTORICAL_REMAINING_PAYABLE_RP=18545000;
+// Hanya untuk rekap audit historis. Nilai ini sudah membentuk saldo hutang
+// per 31/08 dan tidak boleh mengurangi hutang aktif untuk kedua kalinya.
+const PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP=159500000;
 const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',details:any={})=>sql.exec(`INSERT INTO audit_log(id,actor_user_id,business_unit_id,action,entity_type,entity_id,reason,details_json,created_at) VALUES(?,?,'BU-PLASTIC',?,?,?,?,?,?)`,crypto.randomUUID(),a.id,action,etype,eid,reason,JSON.stringify(details),now()).toArray();
 const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND active=1 LIMIT 1`,id).toArray()[0];if(!r)throw Error('PLASTIC_VARIANT_NOT_FOUND');return r};
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
@@ -944,14 +942,8 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
   const totalPaid = payments.reduce((acc:number, r:any)=> acc + N(r.amountRp), 0);
   // Saldo hutang sebelum reset disimpan sebagai saldo awal, bukan transaksi lama.
   const historicalPayableRp = PLASTIC_MIGRATION_OPENING_PAYABLE_RP;
-  const historicalPaymentAppliedRp = Math.min(totalPaid, PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP);
-  const historicalRemainingPayableRp = totalPaid >= PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP
-    ? PLASTIC_MIGRATION_HISTORICAL_REMAINING_PAYABLE_RP
-    : Math.max(0, historicalPayableRp - historicalPaymentAppliedRp);
-  const septemberPaymentAppliedRp = Math.max(0, totalPaid - historicalPaymentAppliedRp);
-  const septemberOutstandingPayableRp = Math.max(0, openingAmount + inboundAmount - septemberPaymentAppliedRp);
   const totalBills = historicalPayableRp + openingAmount + inboundAmount;
-  const outstandingPayables = historicalRemainingPayableRp + septemberOutstandingPayableRp;
+  const outstandingPayables = Math.max(0, totalBills - totalPaid);
 
   const pamanIn = pamanLedger.filter((r:any)=> r.entryType === 'FUNDING_IN').reduce((acc:number, r:any)=> acc + N(r.amountRp), 0);
   const pamanOut = pamanLedger.filter((r:any)=> r.entryType === 'REPAYMENT_OUT').reduce((acc:number, r:any)=> acc + N(r.amountRp), 0);
@@ -965,10 +957,8 @@ if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
       openingAmount,
       inboundAmount,
       historicalPayableRp,
-      historicalPaymentAppliedRp,
-      historicalRemainingPayableRp,
-      septemberPaymentAppliedRp,
-      septemberOutstandingPayableRp,
+      historicalPaymentToKmsRp: PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP,
+      cumulativePaymentsToKmsRp: PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP + totalPaid,
       totalBills,
       totalPaid,
       outstandingPayables,
@@ -1101,15 +1091,7 @@ if(view==='DASHBOARD'){
   const historicalPayableRp = includesMigrationBaseline
     ? PLASTIC_MIGRATION_OPENING_PAYABLE_RP
     : 0;
-  const historicalPaymentAppliedRp = includesMigrationBaseline
-    ? Math.min(allPaidToSupplier, PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP)
-    : 0;
-  const historicalRemainingPayableRp = includesMigrationBaseline && allPaidToSupplier >= PLASTIC_MIGRATION_HISTORICAL_PAYMENT_APPLIED_RP
-    ? PLASTIC_MIGRATION_HISTORICAL_REMAINING_PAYABLE_RP
-    : Math.max(0, historicalPayableRp - historicalPaymentAppliedRp);
-  const septemberPaymentAppliedRp = Math.max(0, allPaidToSupplier - historicalPaymentAppliedRp);
-  const septemberOutstandingPayableRp = Math.max(0, allOpeningPayables + allSalesTotal - septemberPaymentAppliedRp);
-  const outstandingPayables = historicalRemainingPayableRp + septemberOutstandingPayableRp;
+  const outstandingPayables = Math.max(0, historicalPayableRp + allOpeningPayables + allSalesTotal - allPaidToSupplier);
 
   let stockValue=0;
   let stockQty=0;
@@ -1241,10 +1223,8 @@ if(view==='DASHBOARD'){
       receivableRp:rec,
       skuCount,
       historicalPayableRp,
-      historicalPaymentAppliedRp,
-      historicalRemainingPayableRp,
-      septemberPaymentAppliedRp,
-      septemberOutstandingPayableRp,
+      historicalPaymentToKmsRp:includesMigrationBaseline ? PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP : 0,
+      cumulativePaymentsToKmsRp:includesMigrationBaseline ? PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP + allPaidToSupplier : allPaidToSupplier,
       outstandingPayables
     },
     soBalance,

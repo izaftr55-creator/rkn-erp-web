@@ -1448,10 +1448,8 @@ function Payables({
   const payments = Array.isArray(data.payments) ? data.payments : [];
   const postSeptemberBills =
     Number(summary.openingAmount || 0) + Number(summary.inboundAmount || 0);
-  const historicalRemainingPayable = Number(summary.historicalRemainingPayableRp || 0);
-  const historicalPaymentApplied = Number(summary.historicalPaymentAppliedRp || 0);
-  const septemberPaymentApplied = Number(summary.septemberPaymentAppliedRp || 0);
-  const septemberOutstandingPayable = Number(summary.septemberOutstandingPayableRp || 0);
+  const historicalPaymentToKms = Number(summary.historicalPaymentToKmsRp || 0);
+  const cumulativePaymentsToKms = Number(summary.cumulativePaymentsToKmsRp || 0);
 
   return (
     <div className={styles.sectionStack} style={{ display: "grid", gap: "28px" }}>
@@ -1459,27 +1457,26 @@ function Payables({
         <MetricCard
           label="Total Kewajiban ke KMS"
           value={money.format(summary.totalBills ?? 0)}
-          note="Saldo awal 28/08 + tagihan baru sejak September"
+          note="Saldo hutang per 31/08 + tagihan September"
         />
         <MetricCard
-          label="Total Pembayaran ke KMS"
+          label="Pembayaran KMS September"
           value={money.format(summary.totalPaid ?? 0)}
-          note="Termasuk pelunasan tagihan Juli–Agustus"
+          note="Pembayaran tercatat sejak 01/09"
         />
         <MetricCard
           label="Sisa Hutang ke KMS"
           value={money.format(summary.outstandingPayables ?? 0)}
-          note="Sisa lama + sisa tagihan September; tidak saling menombok"
+          note="Saldo per 31/08 + tagihan September − pembayaran September"
         />
       </section>
 
-      <Panel title="Rincian Hutang KMS per Periode" subtitle="Pembayaran September yang melunasi tagihan lama dipisahkan, sehingga tidak mengurangi tagihan September dua kali.">
+      <Panel title="Rekap Hutang dan Pembayaran KMS" subtitle="Rekap historis ditampilkan untuk audit dan tidak mengubah perhitungan hutang aktif.">
         <div className={styles.metricGrid}>
-          <MetricCard label="Sisa Hutang s.d. 27/08" value={money.format(historicalRemainingPayable)} note={`Saldo awal Rp76.225.000 − pembayaran lama ${money.format(historicalPaymentApplied)}`} />
+          <MetricCard label="Saldo Hutang per 31/08/2026" value={money.format(summary.historicalPayableRp ?? 0)} note="Saldo awal sebelum mutasi September" />
           <MetricCard label="Tagihan September" value={money.format(postSeptemberBills)} note="Seluruh transaksi sejak 01/09" />
-          <MetricCard label="Pembayaran untuk September" value={money.format(septemberPaymentApplied)} note="Tidak termasuk pembayaran yang dialokasikan ke tagihan lama" />
-          <MetricCard label="Sisa Hutang September" value={money.format(septemberOutstandingPayable)} note="Tagihan September − pembayaran September" />
-          <MetricCard label="Total Hutang Aktif KMS" value={money.format(summary.outstandingPayables ?? 0)} note="Sisa Juli–Agustus + sisa September" />
+          <MetricCard label="Pembayaran KMS s.d. 31/08/2026" value={money.format(historicalPaymentToKms)} note="Rekap historis, sudah membentuk saldo per 31/08" />
+          <MetricCard label="Akumulasi Pembayaran KMS" value={money.format(cumulativePaymentsToKms)} note="Rp159.500.000 historis + pembayaran September" />
         </div>
       </Panel>
 
@@ -2488,7 +2485,7 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
             {money.format(Number(metrics.outstandingPayables || 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Sisa s.d. 27/08: {money.format(Number(metrics.historicalRemainingPayableRp || 0))} · Sisa September: {money.format(Number(metrics.septemberOutstandingPayableRp || 0))}
+            Saldo per 31/08 + tagihan September − pembayaran September
           </p>
         </div>
 
