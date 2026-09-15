@@ -1908,7 +1908,7 @@ if(view==='RECONCILIATION'){
 }
 if(view==='PRODUCTS'){
   syncAuthoritativeInventory(sql);
-  return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' ORDER BY v.active DESC,v.category,v.product_name,v.color,v.size`).toArray()};
+  return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT v.variant_id variantId,v.product_name productName,v.category,v.color,v.size,v.grade,v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,v.default_buy_price_rp defaultBuyPriceRp,v.default_sell_price_base_rp defaultSellPriceBaseRp,v.default_sell_price_mid_rp defaultSellPriceMidRp,v.default_sell_price_pack_rp defaultSellPricePackRp,v.low_stock_base_qty lowStockBaseQty,v.active,COALESCE(b.qty_base,0) qtyBase,COALESCE(b.avg_cost_rp,0) avgCostRp FROM plastic_product_variant v LEFT JOIN plastic_inventory_balance b ON b.business_unit_id=v.business_unit_id AND b.variant_id=v.variant_id WHERE v.business_unit_id='BU-PLASTIC' AND v.active=1 ORDER BY v.category,v.product_name,v.color,v.size`).toArray()};
 }
 if(view==='CUSTOMERS')return{view,periodKey:period,actor:a,rows:sql.exec(`SELECT c.customer_id customerId,c.customer_name customerName,c.phone,c.address,c.notes,c.active,COUNT(DISTINCT i.invoice_id) invoiceCount,COALESCE(SUM(i.grand_total_rp),0) totalSalesRp,COALESCE(SUM(COALESCE(p.paid,0)),0) paidRp,COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0) outstandingRp,MAX(i.date_key) lastPurchaseDate FROM plastic_customer c LEFT JOIN plastic_sales_invoice i ON i.customer_id=c.customer_id AND i.status<>'VOID' LEFT JOIN(SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' GROUP BY invoice_id) p ON p.invoice_id=i.invoice_id WHERE c.business_unit_id='BU-PLASTIC' GROUP BY c.customer_id ORDER BY outstandingRp DESC,c.customer_name`).toArray()};
 /* RKN_PLASTIC_INBOUND_VIEW_V2N */
@@ -3310,13 +3310,17 @@ if(cmd==='RESOLVE_30X40_BLUE_DUPLICATE'){
   if(confirmToken!=='RESOLVE BIRU 30X40 DUPLICATE')throw Error('PLASTIC_DUPLICATE_RESOLUTION_CONFIRMATION_REQUIRED');
   return atomic(()=>{
     const rows=sql.exec(
-      `SELECT variant_id variantId,created_at createdAt FROM plastic_product_variant
+      `SELECT variant_id variantId,created_at createdAt,
+              (SELECT COUNT(*) FROM plastic_inbound_line WHERE variant_id=v.variant_id) +
+              (SELECT COUNT(*) FROM plastic_sales_line WHERE variant_id=v.variant_id) +
+              (SELECT COUNT(*) FROM plastic_inventory_movement WHERE variant_id=v.variant_id) usageCount
+       FROM plastic_product_variant v
        WHERE business_unit_id='BU-PLASTIC' AND active=1
          AND UPPER(TRIM(product_name))='POLYMAILER'
          AND UPPER(TRIM(category))='POLYMAILER'
          AND UPPER(TRIM(color))='BIRU'
          AND UPPER(TRIM(size))='30X40'
-       ORDER BY created_at ASC,variant_id ASC`
+       ORDER BY usageCount DESC,created_at ASC,variant_id ASC`
     ).toArray();
     if(rows.length!==2)throw Error('PLASTIC_EXPECTED_EXACTLY_TWO_BIRU_30X40_VARIANTS');
     const retainedId=T(rows[0]?.variantId,120),deactivatedId=T(rows[1]?.variantId,120);

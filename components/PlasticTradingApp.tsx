@@ -2746,8 +2746,7 @@ function Products({
       String(row.productName || "").trim().toUpperCase() === "POLYMAILER" &&
       String(row.category || "").trim().toUpperCase() === "POLYMAILER" &&
       String(row.color || "").trim().toUpperCase() === "BIRU" &&
-      String(row.size || "").trim().toUpperCase() === "30X40" &&
-      Number(row.active || 0) === 1
+      String(row.size || "").trim().toUpperCase() === "30X40"
   ).length;
 
   const resolveBlue30x40Duplicate = async () => {
