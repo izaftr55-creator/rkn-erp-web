@@ -1395,6 +1395,10 @@ function friendlyPlasticError(value: unknown) {
     return "Isi HPP / UOM pada barang masuk dengan harga beli dari supplier.";
   }
 
+  if (code.includes("PLASTIC_SALE_PRICE_REQUIRED")) {
+    return "Harga Barang Keluar wajib diisi dan harus lebih dari Rp0.";
+  }
+
   return code
     .replace(/^PLASTIC[_ ]?/i, "")
     .replace(/_+/g, " ")
@@ -4260,7 +4264,7 @@ function Outbound({
         Boolean(line.variantId) &&
         Number(line.qty || 0) > 0 &&
         Boolean(line.unit) &&
-        Number(line.unitPriceRp || 0) >= 0
+        Number(line.unitPriceRp || 0) > 0
     );
 
   const resetForm = () => {
