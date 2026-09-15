@@ -983,7 +983,7 @@ if(view==='COMMISSION'){
             l.unit_price_rp unitPriceRp, l.line_total_rp lineTotalRp
      FROM plastic_sales_invoice i
      JOIN plastic_sales_line l ON l.invoice_id=i.invoice_id
-     JOIN plastic_product_variant v ON v.variant_id=l.variant_id
+     LEFT JOIN plastic_product_variant v ON v.variant_id=l.variant_id
      LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
      WHERE i.business_unit_id='BU-PLASTIC'
        AND i.status<>'VOID'

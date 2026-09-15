@@ -1566,6 +1566,8 @@ function CommissionCalculator({
   const rows = Array.isArray(data.rows) ? data.rows : [];
   const [filterDateFrom, setFilterDateFrom] = useState(today().slice(0, 7) + "-01");
   const [filterDateTo, setFilterDateTo] = useState(today());
+  const [polyRate, setPolyRate] = useState("200");
+  const [thermalStackRate, setThermalStackRate] = useState("250");
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -1587,6 +1589,13 @@ function CommissionCalculator({
   const totalThermalDus = useMemo(() => {
     return totalThermalStacks / 20;
   }, [totalThermalStacks]);
+
+  const totalCommissionRp = useMemo(
+    () =>
+      totalPolyRolls * Number(polyRate || 0) +
+      totalThermalStacks * Number(thermalStackRate || 0),
+    [totalPolyRolls, totalThermalStacks, polyRate, thermalStackRate]
+  );
 
   const totalInvoices = useMemo(() => {
     return new Set(filtered.map((r) => r.invoiceId)).size;
@@ -1610,15 +1619,26 @@ function CommissionCalculator({
           value={`${qtyText(totalInvoices)} Faktur`}
           note="Transaksi barang keluar periode ini"
         />
+        <MetricCard
+          label="Estimasi Komisi Sales"
+          value={money.format(totalCommissionRp)}
+          note="Sesuai tarif komisi yang diatur di bawah"
+        />
       </section>
 
-      <Panel title="Filter Periode Penjualan Fisik" subtitle="Pilih rentang tanggal untuk merekap volume fisik Roll & Stacks yang keluar.">
+      <Panel title="Pengaturan Tarif & Periode Komisi" subtitle="Atur rentang tanggal dan tarif komisi per Roll / Stack.">
         <div className={styles.formGrid}>
           <Field label="Dari Tanggal">
             <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} />
           </Field>
           <Field label="Sampai Tanggal">
             <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} />
+          </Field>
+          <Field label="Komisi Polymailer (Rp / Roll)">
+            <RupiahInput value={polyRate} onChange={setPolyRate} placeholder="Contoh: 200" />
+          </Field>
+          <Field label="Komisi Thermal (Rp / Stack)">
+            <RupiahInput value={thermalStackRate} onChange={setThermalStackRate} placeholder="Contoh: 250" />
           </Field>
         </div>
       </Panel>
