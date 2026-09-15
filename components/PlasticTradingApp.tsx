@@ -1411,11 +1411,6 @@ function Payables({
   const [refNo, setRefNo] = useState("");
   const [note, setNote] = useState("");
 
-  const [repayDateKey, setRepayDateKey] = useState(today());
-  const [repayAmountRp, setRepayAmountRp] = useState("");
-  const [repayRefNo, setRepayRefNo] = useState("");
-  const [repayNote, setRepayNote] = useState("");
-
   const submitPayment = async (e: FormEvent) => {
     e.preventDefault();
     if (!amountRp || Number(amountRp) <= 0) {
@@ -1435,64 +1430,42 @@ function Payables({
     setNote("");
   };
 
-  const submitRepayment = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!repayAmountRp || Number(repayAmountRp) <= 0) {
-      alert("Jumlah pengembalian harus lebih dari 0.");
-      return;
-    }
-    await run("RECORD_PAMAN_REPAYMENT", {
-      dateKey: repayDateKey,
-      amountRp: Number(repayAmountRp),
-      referenceNo: repayRefNo,
-      note: repayNote || "Koreksi setoran ke KMS via rekening Paman",
-    }, "PAYABLES");
-    setRepayAmountRp("");
-    setRepayRefNo("");
-    setRepayNote("");
-  };
-
-  const resetAllSupplierPayments = async () => {
-    if (typeof window === "undefined") return;
-    const reason = window.prompt("Alasan penghapusan seluruh pembayaran supplier:", "Reset pembayaran supplier untuk input ulang")?.trim();
-    if (!reason) return;
-    const confirmToken = window.prompt("Ketik RESET SUPPLIER PAYMENTS untuk menghapus seluruh pembayaran supplier dan mutasi rekening Paman:")?.trim();
-    if (confirmToken !== "RESET SUPPLIER PAYMENTS") return;
-    await run("RESET_SUPPLIER_PAYMENTS", { reason, confirmToken }, "PAYABLES");
-  };
-
   const payments = Array.isArray(data.payments) ? data.payments : [];
-  const pamanLedger = Array.isArray(data.pamanLedger) ? data.pamanLedger : [];
+  const postSeptemberBills =
+    Number(summary.openingAmount || 0) + Number(summary.inboundAmount || 0);
 
   return (
     <div className={styles.sectionStack} style={{ display: "grid", gap: "28px" }}>
       <section className={styles.metricGrid}>
         <MetricCard
-          label="Total Tagihan Supplier"
+          label="Total Kewajiban ke KMS"
           value={money.format(summary.totalBills ?? 0)}
-          note={`Termasuk saldo awal ${money.format(Number(summary.historicalPayableRp || 0))}`}
+          note="Saldo awal 28/08 + tagihan baru sejak September"
         />
         <MetricCard
-          label="Total Pembayaran ke KMS"
+          label="Sudah Dibayarkan ke KMS"
           value={money.format(summary.totalPaid ?? 0)}
-          note="Setoran hasil penjualan customer ke KMS"
+          note="Pembayaran supplier yang sudah dicatat"
         />
         <MetricCard
-          label="Sisa Hutang ke Supplier"
+          label="Sisa Hutang ke KMS"
           value={money.format(summary.outstandingPayables ?? 0)}
           note="Saldo awal per 28/08 + mutasi mulai September"
         />
-        <MetricCard
-          label="Setoran ke KMS via Rekening Paman"
-          value={money.format(summary.kmsDepositedViaPaman ?? summary.pamanTotalFunded ?? 0)}
-          note="Rekening Paman hanya sebagai perantara setoran"
-        />
       </section>
+
+      <Panel title="Rincian Perhitungan Hutang KMS" subtitle="Rekening Paman hanya metode transfer; nilainya tidak dihitung sebagai tagihan tambahan.">
+        <div className={styles.metricGrid}>
+          <MetricCard label="Saldo Awal per 28/08" value={money.format(Number(summary.historicalPayableRp || 0))} note="Nilai pembuka yang disepakati" />
+          <MetricCard label="Tagihan Baru sejak September" value={money.format(postSeptemberBills)} note="Nilai transaksi setelah periode reset" />
+          <MetricCard label="Rumus Sisa Hutang" value={money.format(summary.outstandingPayables ?? 0)} note="Saldo awal + tagihan baru − pembayaran KMS" />
+        </div>
+      </Panel>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "1rem" }}>
         {canWrite ? (
           <Panel title="Catat Pembayaran ke Supplier" subtitle="Transfer pembayaran faktur/tagihan supplier.">
-            <form onSubmit={submitPayment} className={styles.formGrid}>
+            <form onSubmit={submitPayment} className={`${styles.formGrid} ${styles.payablesForm}`}>
               <Field label="Tanggal Pembayaran">
                 <input type="date" required value={payDateKey} onChange={(e) => setPayDateKey(e.target.value)} />
               </Field>
@@ -1508,7 +1481,7 @@ function Payables({
               </Field>
               <Field label="Sumber Dana">
                 <select value={fundingSource} onChange={(e) => setFundingSource(e.target.value)}>
-                  <option value="PAMAN_FUNDING">Transfer via Rekening Paman</option>
+                  <option value="PAMAN_FUNDING">Rekening Paman (metode transfer)</option>
                   <option value="RKN_INTERNAL_CASH">Kas Operasional RKN (Hasil Penjualan)</option>
                 </select>
               </Field>
@@ -1541,18 +1514,6 @@ function Payables({
         />
       </Panel>
 
-      <Panel title="Buku Mutasi Setoran ke KMS (via Rekening Paman)">
-        <DataTable
-          rows={pamanLedger}
-          columns={[
-            ["dateKey", "Tanggal"],
-            ["entryType", "Jenis Mutasi", (r) => r.entryType === "FUNDING_IN" ? "+ Setoran ke KMS" : "- Koreksi Setoran"],
-            ["amountRp", "Nominal", (r) => money.format(r.amountRp)],
-            ["referenceNo", "No. Ref"],
-            ["note", "Catatan"],
-          ]}
-        />
-      </Panel>
     </div>
   );
 }

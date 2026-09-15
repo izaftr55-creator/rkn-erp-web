@@ -5528,6 +5528,15 @@
   letter-spacing: .05em !important;
 }
 
+/* Supplier payment labels sit closer to their own control without changing form row spacing. */
+.payablesForm .field {
+  gap: 2px !important;
+}
+
+.payablesForm .fieldLabel {
+  margin-bottom: 0 !important;
+}
+
 .shell input,
 .shell select,
 .shell textarea {
