@@ -7666,6 +7666,7 @@ function Reports({
   /* RKN_PLASTIC_RECON_READABILITY_V2R7 */
   /* RKN_PLASTIC_SO_LIVE_RECON_PDF_V2R9 */
   type ReportTab =
+    | "WEEKLY"
     | "BOSS_SUMMARY"
     | "RECON"
     | "STOCK"
@@ -7675,7 +7676,7 @@ function Reports({
     | "RECEIVABLES"
     | "AUDIT";
 
-  const [reportTab, setReportTab] = useState<ReportTab>("STOCK");
+  const [reportTab, setReportTab] = useState<ReportTab>("WEEKLY");
 
   const stock = Array.isArray(data.stock) ? data.stock : [];
   const inbound = Array.isArray(data.inbound) ? data.inbound : [];
@@ -7683,6 +7684,132 @@ function Reports({
   const receivables = Array.isArray(data.receivables)
     ? data.receivables
     : [];
+
+  /* RKN_PLASTIC_WEEKLY_CUSTOMER_REPORT_STATE */
+  const outboundDates = outbound
+    .map((r: Row) => String(r.dateKey || ""))
+    .filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .sort();
+  const latestOutboundDate =
+    outboundDates.length > 0 ? outboundDates[outboundDates.length - 1] : today();
+
+  const [weeklyEndDate, setWeeklyEndDate] = useState<string>(() => latestOutboundDate);
+  const [weeklyStartDate, setWeeklyStartDate] = useState<string>(() => {
+    try {
+      const d = new Date(latestOutboundDate);
+      d.setDate(d.getDate() - 6);
+      return d.toISOString().slice(0, 10);
+    } catch {
+      return latestOutboundDate;
+    }
+  });
+  const [weeklyCustomerSearch, setWeeklyCustomerSearch] = useState<string>("");
+
+  const setWeeklyPreset = (type: "LAST_7" | "THIS_WEEK" | "LAST_WEEK" | "ALL") => {
+    if (type === "ALL") {
+      setWeeklyStartDate("");
+      setWeeklyEndDate("");
+      return;
+    }
+    const refDateStr = latestOutboundDate || today();
+    const refDate = new Date(refDateStr);
+
+    if (type === "LAST_7") {
+      const start = new Date(refDate);
+      start.setDate(start.getDate() - 6);
+      setWeeklyStartDate(start.toISOString().slice(0, 10));
+      setWeeklyEndDate(refDate.toISOString().slice(0, 10));
+    } else if (type === "THIS_WEEK") {
+      const day = refDate.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(refDate);
+      mon.setDate(mon.getDate() + diffToMon);
+      const sun = new Date(mon);
+      sun.setDate(sun.getDate() + 6);
+      setWeeklyStartDate(mon.toISOString().slice(0, 10));
+      setWeeklyEndDate(sun.toISOString().slice(0, 10));
+    } else if (type === "LAST_WEEK") {
+      const day = refDate.getDay();
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(refDate);
+      mon.setDate(mon.getDate() + diffToMon - 7);
+      const sun = new Date(mon);
+      sun.setDate(sun.getDate() + 6);
+      setWeeklyStartDate(mon.toISOString().slice(0, 10));
+      setWeeklyEndDate(sun.toISOString().slice(0, 10));
+    }
+  };
+
+  const weeklyCustomerGroups = useMemo(() => {
+    const filtered = outbound.filter((row: Row) => {
+      const d = String(row.dateKey || "");
+      if (weeklyStartDate && d < weeklyStartDate) return false;
+      if (weeklyEndDate && d > weeklyEndDate) return false;
+      if (weeklyCustomerSearch.trim()) {
+        const q = weeklyCustomerSearch.trim().toLowerCase();
+        const c = String(row.customerName || "").toLowerCase();
+        if (!c.includes(q)) return false;
+      }
+      return true;
+    });
+
+    const map = new Map<
+      string,
+      {
+        customerName: string;
+        rows: Row[];
+        totalRp: number;
+        invoiceNos: Set<string>;
+        totalPacks: number;
+        totalBases: number;
+      }
+    >();
+
+    for (const row of filtered) {
+      const custName =
+        String(row.customerName || "TANPA NAMA").trim() || "TANPA NAMA";
+      let group = map.get(custName);
+      if (!group) {
+        group = {
+          customerName: custName,
+          rows: [],
+          totalRp: 0,
+          invoiceNos: new Set<string>(),
+          totalPacks: 0,
+          totalBases: 0,
+        };
+        map.set(custName, group);
+      }
+      group.rows.push(row);
+      group.totalRp += Number(row.totalRp || 0);
+      if (row.referenceNo) {
+        group.invoiceNos.add(String(row.referenceNo));
+      }
+      const sq = splitQtyPdf(row, row.qtyBase || row.qty);
+      const packNum = parseFloat(String(sq.pack).replace(/[^0-9.-]/g, "")) || 0;
+      const baseNum = parseFloat(String(sq.base).replace(/[^0-9.-]/g, "")) || 0;
+      group.totalPacks += packNum;
+      group.totalBases += baseNum;
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.totalRp - a.totalRp);
+  }, [outbound, weeklyStartDate, weeklyEndDate, weeklyCustomerSearch]);
+
+  const weeklyGrandTotalRp = weeklyCustomerGroups.reduce(
+    (acc, g) => acc + g.totalRp,
+    0
+  );
+  const weeklyTotalInvoices = new Set(
+    weeklyCustomerGroups.flatMap((g) => Array.from(g.invoiceNos))
+  ).size;
+  const weeklyTotalPacks = weeklyCustomerGroups.reduce(
+    (acc, g) => acc + g.totalPacks,
+    0
+  );
+  const weeklyTotalBases = weeklyCustomerGroups.reduce(
+    (acc, g) => acc + g.totalBases,
+    0
+  );
   const auditLedger = Array.isArray(data.auditLedger)
     ? data.auditLedger
     : [];
@@ -8128,7 +8255,9 @@ function Reports({
     }
 
     const title =
-      reportTab === "BOSS_SUMMARY"
+      reportTab === "WEEKLY"
+        ? "LAPORAN PENJUALAN MINGGUAN (PER CUSTOMER)"
+        : reportTab === "BOSS_SUMMARY"
         ? "EXECUTIVE SUMMARY & BUSINESS PERFORMANCE"
       : reportTab === "RECON"
         ? `LAPORAN REKONSILIASI STOK FISIK 28/08/2026`
@@ -8145,7 +8274,9 @@ function Reports({
                 : "AUDIT TRAIL & MUTASI LEDGER";
 
     const subtitle =
-      reportTab === "BOSS_SUMMARY"
+      reportTab === "WEEKLY"
+        ? `PERIODE: ${weeklyStartDate || "SEMUA"} s/d ${weeklyEndDate || "SEMUA"} - RKN GROUP PLASTIC TRADING`
+        : reportTab === "BOSS_SUMMARY"
         ? `STATUS SO: ${bossSoStatus} - RKN GROUP PLASTIC TRADING`
       : reportTab === "RECON"
         ? auditSoPosted
@@ -8840,6 +8971,185 @@ function Reports({
       );
     }
 
+    if (reportTab === "WEEKLY") {
+      drawHeader(1);
+
+      // Page 1 Header / Overview
+      doc.setTextColor(22, 35, 52);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text("REKAPITULASI PENJUALAN MINGGUAN (RINGKASAN SEMUA CUSTOMER)", 4, 30);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(
+        `Rentang Tanggal: ${weeklyStartDate || "Semua"} s/d ${weeklyEndDate || "Semua"}   |   Total Customer Aktif: ${weeklyCustomerGroups.length} Pelanggan   |   Total Penjualan: ${money.format(weeklyGrandTotalRp)}`,
+        4,
+        34.5
+      );
+
+      table(
+        [
+          { content: "NO", styles: { halign: "center", fontStyle: "bold" } },
+          { content: "NAMA CUSTOMER", styles: { halign: "left", fontStyle: "bold" } },
+          { content: "JML INVOICE", styles: { halign: "center", fontStyle: "bold" } },
+          { content: "JML BARIS", styles: { halign: "center", fontStyle: "bold" } },
+          { content: "ESTIMASI BALL / DUS", styles: { halign: "center", fontStyle: "bold" } },
+          { content: "ESTIMASI ROLL / PCS", styles: { halign: "center", fontStyle: "bold" } },
+          { content: "TOTAL TRANSAKSI (RP)", styles: { halign: "right", fontStyle: "bold" } },
+        ],
+        [
+          ...weeklyCustomerGroups.map((g, idx) => [
+            String(idx + 1),
+            g.customerName,
+            `${g.invoiceNos.size} Invoice`,
+            `${g.rows.length} Item`,
+            qtyFmt.format(g.totalPacks),
+            qtyFmt.format(g.totalBases),
+            money.format(g.totalRp),
+          ]),
+          [
+            {
+              content: "TOTAL KESELURUHAN MINGGU INI",
+              colSpan: 6,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
+              },
+            },
+            {
+              content: money.format(weeklyGrandTotalRp),
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
+              },
+            },
+          ],
+        ],
+        37,
+        {
+          0: { cellWidth: 12, halign: "center" },
+          1: { halign: "left" },
+          2: { cellWidth: 28, halign: "center" },
+          3: { cellWidth: 26, halign: "center" },
+          4: { cellWidth: 38, halign: "center" },
+          5: { cellWidth: 38, halign: "center" },
+          6: { cellWidth: 45, halign: "right" },
+        }
+      );
+
+      // DEDICATED PAGE FOR EACH CUSTOMER
+      for (const group of weeklyCustomerGroups) {
+        doc.addPage();
+        const currentCustPage = doc.getNumberOfPages();
+        drawHeader(currentCustPage);
+
+        doc.setFillColor(243, 237, 224);
+        doc.roundedRect(4, 26, pageWidth - 8, 10, 1.2, 1.2, "F");
+        doc.setDrawColor(176, 141, 87);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(4, 26, pageWidth - 8, 10, 1.2, 1.2, "D");
+
+        doc.setTextColor(11, 19, 30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.text(`PELANGGAN: ${group.customerName.toUpperCase()}`, 7, 31.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(120, 85, 40);
+        doc.text(
+          `Periode: ${weeklyStartDate || "Awal"} s/d ${weeklyEndDate || "Akhir"}   |   ${group.invoiceNos.size} Invoice   |   ${group.rows.length} Transaksi Barang`,
+          7,
+          35
+        );
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(11, 19, 30);
+        doc.text(`TOTAL: ${money.format(group.totalRp)}`, pageWidth - 7, 32.5, { align: "right" });
+
+        const custHead = [
+          [
+            { content: "TANGGAL", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+            { content: "NO. INVOICE", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+            { content: "NAMA PRODUK / RINCIAN BARANG", rowSpan: 2, styles: { valign: "middle", halign: "left" } },
+            { content: "WARNA", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+            { content: "UKURAN", rowSpan: 2, styles: { valign: "middle", halign: "center" } },
+            { content: "KUANTITAS FISIK", colSpan: 2, styles: { halign: "center", fontStyle: "bold" } },
+            { content: "HARGA SATUAN", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+            { content: "TOTAL PENJUALAN", rowSpan: 2, styles: { valign: "middle", halign: "right" } },
+          ],
+          [
+            { content: "BALL / DUS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+            { content: "ROLL / PCS", styles: { halign: "center", fontStyle: "bold", fillColor: [28, 45, 66], textColor: [212, 178, 125] } },
+          ],
+        ];
+
+        const custBody = [
+          ...group.rows.map((row: Row) => {
+            const sq = splitQtyPdf(row, row.qtyBase || row.qty);
+            const unitPrice =
+              Number(row.unitPriceRp || 0) > 0
+                ? Number(row.unitPriceRp)
+                : Number(row.qtyInput || 0) > 0
+                  ? Math.round(Number(row.totalRp || 0) / Number(row.qtyInput))
+                  : 0;
+
+            return [
+              row.dateKey || "-",
+              row.referenceNo || "-",
+              row.productName || "-",
+              row.color || "-",
+              row.size || "-",
+              sq.pack,
+              sq.base,
+              unitPrice > 0 ? money.format(unitPrice) : "-",
+              money.format(Number(row.totalRp || 0)),
+            ];
+          }),
+          [
+            {
+              content: `SUBTOTAL PENJUALAN — ${group.customerName.toUpperCase()}`,
+              colSpan: 7,
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
+              },
+            },
+            {
+              content: money.format(group.totalRp),
+              styles: {
+                halign: "right",
+                fontStyle: "bold",
+                fillColor: [243, 237, 224],
+                textColor: [140, 110, 61],
+              },
+            },
+          ],
+        ];
+
+        table(custHead, custBody, 38, {
+          0: { cellWidth: 22, halign: "center" },
+          1: { cellWidth: 32, halign: "center" },
+          2: { halign: "left" },
+          3: { cellWidth: 22, halign: "center" },
+          4: { cellWidth: 22, halign: "center" },
+          5: { cellWidth: 24, halign: "center" },
+          6: { cellWidth: 24, halign: "center" },
+          7: { cellWidth: 28, halign: "right" },
+          8: { cellWidth: 34, halign: "right" },
+        });
+      }
+    }
+
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
@@ -8847,7 +9157,9 @@ function Reports({
     }
 
     const suffix =
-      reportTab === "BOSS_SUMMARY"
+      reportTab === "WEEKLY"
+        ? `WEEKLY-${weeklyStartDate || "SEMUA"}-SD-${weeklyEndDate || "SEMUA"}`
+        : reportTab === "BOSS_SUMMARY"
         ? `EXECUTIVE-SUMMARY`
       : reportTab === "RECON"
         ? `REKONSILIASI-STOK-${auditOpeningDate}-${auditSoDate}`
@@ -8869,7 +9181,294 @@ function Reports({
     );
   };
 
+  const downloadSingleCustomerPdf = async (
+    group: (typeof weeklyCustomerGroups)[0]
+  ) => {
+    const [{ jsPDF }, tableModule] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+
+    const autoTable: any = (tableModule as any).default || tableModule;
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const tableWidth = pageWidth - 8;
+    const generatedAt = new Date().toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    let logoData = "";
+    try {
+      logoData = await loadLogoData();
+    } catch {
+      logoData = "";
+    }
+
+    const title = `LAPORAN PENJUALAN MINGGUAN — ${group.customerName.toUpperCase()}`;
+    const subtitle = `PERIODE: ${weeklyStartDate || "SEMUA"} s/d ${weeklyEndDate || "SEMUA"} - RKN GROUP PLASTIC TRADING`;
+
+    const drawHeader = (pageNo: number) => {
+      doc.setFillColor(11, 19, 30);
+      doc.rect(0, 0, pageWidth, 24, "F");
+
+      doc.setFillColor(176, 141, 87);
+      doc.rect(0, 24, pageWidth, 1.2, "F");
+
+      if (logoData) {
+        doc.addImage(logoData, "PNG", 5, 2.5, 19, 19, "RKN_LOGO", "FAST");
+      }
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("RKN ERP", 28, 8.5);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.2);
+      doc.setTextColor(212, 178, 125);
+      doc.text("PLASTIC TRADING DIVISION - RKN GROUP", 28, 14.5);
+      doc.text(`CUSTOMER: ${group.customerName.toUpperCase()}`, 28, 20);
+
+      doc.setTextColor(252, 237, 197);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(title, pageWidth - 5, 8.5, { align: "right" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.2);
+      doc.setTextColor(197, 162, 106);
+      doc.text(subtitle, pageWidth - 5, 14.5, { align: "right" });
+
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`${generatedAt} WIB`, pageWidth - 5, 20, { align: "right" });
+    };
+
+    const drawFooter = (pageNo: number, totalPages: number) => {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setDrawColor(176, 141, 87);
+      doc.setLineWidth(0.2);
+      doc.line(4, pageHeight - 7, pageWidth - 4, pageHeight - 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `RKN ERP - Rekap Transaksi Pelanggan (${group.customerName})`,
+        4,
+        pageHeight - 3.5
+      );
+      doc.text(
+        `Halaman ${pageNo} dari ${totalPages}`,
+        pageWidth - 4,
+        pageHeight - 3.5,
+        { align: "right" }
+      );
+    };
+
+    drawHeader(1);
+
+    // Customer Info Card
+    doc.setFillColor(243, 237, 224);
+    doc.roundedRect(4, 26, pageWidth - 8, 10, 1.2, 1.2, "F");
+    doc.setDrawColor(176, 141, 87);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(4, 26, pageWidth - 8, 10, 1.2, 1.2, "D");
+
+    doc.setTextColor(11, 19, 30);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.text(`PELANGGAN: ${group.customerName.toUpperCase()}`, 7, 31.5);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(120, 85, 40);
+    doc.text(
+      `Periode: ${weeklyStartDate || "Awal"} s/d ${weeklyEndDate || "Akhir"}   |   ${group.invoiceNos.size} Invoice   |   ${group.rows.length} Transaksi Barang`,
+      7,
+      35
+    );
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(11, 19, 30);
+    doc.text(`TOTAL: ${money.format(group.totalRp)}`, pageWidth - 7, 32.5, {
+      align: "right",
+    });
+
+    autoTable(doc, {
+      theme: "grid",
+      tableWidth,
+      startY: 38,
+      margin: { left: 4, right: 4, top: 37, bottom: 10 },
+      head: [
+        [
+          {
+            content: "TANGGAL",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "center" },
+          },
+          {
+            content: "NO. INVOICE",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "center" },
+          },
+          {
+            content: "NAMA PRODUK / RINCIAN BARANG",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "left" },
+          },
+          {
+            content: "WARNA",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "center" },
+          },
+          {
+            content: "UKURAN",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "center" },
+          },
+          {
+            content: "KUANTITAS FISIK",
+            colSpan: 2,
+            styles: { halign: "center", fontStyle: "bold" },
+          },
+          {
+            content: "HARGA SATUAN",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "right" },
+          },
+          {
+            content: "TOTAL PENJUALAN",
+            rowSpan: 2,
+            styles: { valign: "middle", halign: "right" },
+          },
+        ],
+        [
+          {
+            content: "BALL / DUS",
+            styles: {
+              halign: "center",
+              fontStyle: "bold",
+              fillColor: [28, 45, 66],
+              textColor: [212, 178, 125],
+            },
+          },
+          {
+            content: "ROLL / PCS",
+            styles: {
+              halign: "center",
+              fontStyle: "bold",
+              fillColor: [28, 45, 66],
+              textColor: [212, 178, 125],
+            },
+          },
+        ],
+      ],
+      body: [
+        ...group.rows.map((row: Row) => {
+          const sq = splitQtyPdf(row, row.qtyBase || row.qty);
+          const unitPrice =
+            Number(row.unitPriceRp || 0) > 0
+              ? Number(row.unitPriceRp)
+              : Number(row.qtyInput || 0) > 0
+                ? Math.round(Number(row.totalRp || 0) / Number(row.qtyInput))
+                : 0;
+
+          return [
+            row.dateKey || "-",
+            row.referenceNo || "-",
+            row.productName || "-",
+            row.color || "-",
+            row.size || "-",
+            sq.pack,
+            sq.base,
+            unitPrice > 0 ? money.format(unitPrice) : "-",
+            money.format(Number(row.totalRp || 0)),
+          ];
+        }),
+        [
+          {
+            content: `SUBTOTAL PENJUALAN — ${group.customerName.toUpperCase()}`,
+            colSpan: 7,
+            styles: {
+              halign: "right",
+              fontStyle: "bold",
+              fillColor: [243, 237, 224],
+              textColor: [140, 110, 61],
+            },
+          },
+          {
+            content: money.format(group.totalRp),
+            styles: {
+              halign: "right",
+              fontStyle: "bold",
+              fillColor: [243, 237, 224],
+              textColor: [140, 110, 61],
+            },
+          },
+        ],
+      ],
+      styles: {
+        font: "helvetica",
+        fontSize: 6.8,
+        textColor: [30, 41, 59],
+        cellPadding: 1.4,
+        lineColor: [212, 178, 125],
+        lineWidth: 0.12,
+        valign: "middle",
+        halign: "center",
+      },
+      headStyles: {
+        fillColor: [22, 35, 52],
+        textColor: [252, 237, 197],
+        fontStyle: "bold",
+        lineColor: [176, 141, 87],
+        lineWidth: 0.15,
+        halign: "center",
+      },
+      alternateRowStyles: {
+        fillColor: [250, 248, 244],
+      },
+      didDrawPage: () => {
+        drawHeader(doc.getNumberOfPages());
+      },
+      columnStyles: {
+        0: { cellWidth: 22, halign: "center" },
+        1: { cellWidth: 32, halign: "center" },
+        2: { halign: "left" },
+        3: { cellWidth: 22, halign: "center" },
+        4: { cellWidth: 22, halign: "center" },
+        5: { cellWidth: 24, halign: "center" },
+        6: { cellWidth: 24, halign: "center" },
+        7: { cellWidth: 28, halign: "right" },
+        8: { cellWidth: 34, halign: "right" },
+      },
+    });
+
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      drawFooter(i, totalPages);
+    }
+
+    const cleanCust = group.customerName
+      .replace(/[^0-9A-Za-z_-]/g, "_")
+      .toUpperCase();
+    doc.save(
+      `RKN-WEEKLY-${cleanCust}-${weeklyStartDate || "SEMUA"}-SD-${weeklyEndDate || "SEMUA"}.pdf`
+    );
+  };
+
   const tabs: [ReportTab, string][] = [
+    ["WEEKLY", "Laporan Mingguan (Per Customer)"],
     ["STOCK", "Stok Fisik"],
     ["INBOUND", "Barang Masuk"],
     ["OUTBOUND", "Barang Keluar"],
@@ -8889,7 +9488,9 @@ function Reports({
           className={styles.primaryButton}
           onClick={downloadPdf}
         >
-          Unduh PDF Resmi
+          {reportTab === "WEEKLY"
+            ? "Unduh Laporan Mingguan (1 PDF)"
+            : "Unduh PDF Resmi"}
         </button>
       </div>
 
@@ -8909,6 +9510,215 @@ function Reports({
           </button>
         ))}
       </div>
+
+      {reportTab === "WEEKLY" ? (
+        <>
+          <section className={styles.bossReportHero} style={{ marginBottom: 14 }}>
+            <div>
+              <span>Laporan Penjualan Mingguan (Per Customer)</span>
+              <strong>{money.format(weeklyGrandTotalRp)}</strong>
+              <small>
+                Periode: {weeklyStartDate || "Awal"} s/d {weeklyEndDate || "Akhir"} · {weeklyCustomerGroups.length} Customer Aktif · {weeklyTotalInvoices} Invoice
+              </small>
+            </div>
+            <div className={styles.bossReportHeroValue}>
+              <span>Total Volume Barang Terjual</span>
+              <strong style={{ fontSize: 18 }}>
+                {qtyFmt.format(weeklyTotalPacks)} Ball/Dus
+              </strong>
+              <small>{qtyFmt.format(weeklyTotalBases)} Roll/Pcs</small>
+            </div>
+          </section>
+
+          <Panel
+            title="Filter Rentang Periode Mingguan"
+            subtitle="Pilih rentang tanggal transaksi untuk memfilter data rincian barang per customer."
+          >
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>Dari Tanggal</label>
+                <input
+                  type="date"
+                  value={weeklyStartDate}
+                  onChange={(e) => setWeeklyStartDate(e.target.value)}
+                  style={{
+                    background: "#0e1e2e",
+                    border: "1px solid #234766",
+                    color: "#f8fafc",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>Sampai Tanggal</label>
+                <input
+                  type="date"
+                  value={weeklyEndDate}
+                  onChange={(e) => setWeeklyEndDate(e.target.value)}
+                  style={{
+                    background: "#0e1e2e",
+                    border: "1px solid #234766",
+                    color: "#f8fafc",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setWeeklyPreset("LAST_7")}
+                  style={{ fontSize: 11, padding: "6px 10px" }}
+                >
+                  7 Hari Terakhir
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setWeeklyPreset("THIS_WEEK")}
+                  style={{ fontSize: 11, padding: "6px 10px" }}
+                >
+                  Minggu Ini
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setWeeklyPreset("LAST_WEEK")}
+                  style={{ fontSize: 11, padding: "6px 10px" }}
+                >
+                  Minggu Lalu
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setWeeklyPreset("ALL")}
+                  style={{ fontSize: 11, padding: "6px 10px" }}
+                >
+                  Semua
+                </button>
+              </div>
+
+              <div style={{ flex: "1 1 200px", minWidth: 180, display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>Cari Customer</label>
+                <input
+                  type="text"
+                  placeholder="Ketik nama pelanggan..."
+                  value={weeklyCustomerSearch}
+                  onChange={(e) => setWeeklyCustomerSearch(e.target.value)}
+                  style={{
+                    background: "#0e1e2e",
+                    border: "1px solid #234766",
+                    color: "#f8fafc",
+                    padding: "7px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                />
+              </div>
+            </div>
+          </Panel>
+
+          {weeklyCustomerGroups.length === 0 ? (
+            <Panel title="Data Tidak Ditemukan" subtitle="Tidak ada transaksi pada periode yang dipilih.">
+              <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+                Tidak ada data penjualan barang keluar pada rentang tanggal <strong>{weeklyStartDate || "Awal"}</strong> s/d <strong>{weeklyEndDate || "Akhir"}</strong>.
+                <br />
+                Silakan ubah tanggal atau klik tombol <strong>"Semua"</strong> untuk melihat riwayat transaksi lainnya.
+              </div>
+            </Panel>
+          ) : (
+            weeklyCustomerGroups.map((group) => {
+              const custColumns: Column[] = [
+                ["dateKey", "Tanggal"],
+                ["referenceNo", "No. Invoice"],
+                ["productName", "Nama Barang / Produk"],
+                ["color", "Warna", (r) => r.color || "-"],
+                ["size", "Ukuran", (r) => r.size || "-"],
+                [
+                  "qtyInput",
+                  "Qty Input",
+                  (r) =>
+                    Number(r.qtyInput || 0) > 0
+                      ? `${qtyFmt.format(Number(r.qtyInput))} ${r.inputUnit || ""}`
+                      : "-",
+                ],
+                [
+                  "qtyBase",
+                  "Konversi Satuan",
+                  (r) => {
+                    const sq = splitQtyPdf(r, r.qtyBase || r.qty);
+                    return `${sq.pack !== "0" ? sq.pack : ""} ${sq.base !== "0" ? sq.base : ""}`.trim() || "-";
+                  },
+                ],
+                [
+                  "unitPriceRp",
+                  "Harga Satuan",
+                  (r) => {
+                    const up =
+                      Number(r.unitPriceRp || 0) > 0
+                        ? Number(r.unitPriceRp)
+                        : Number(r.qtyInput || 0) > 0
+                          ? Math.round(Number(r.totalRp || 0) / Number(r.qtyInput))
+                          : 0;
+                    return up > 0 ? money.format(up) : "-";
+                  },
+                ],
+                [
+                  "totalRp",
+                  "Total Penjualan",
+                  (r) => money.format(Number(r.totalRp || 0)),
+                ],
+              ];
+
+              return (
+                <Panel
+                  key={group.customerName}
+                  title={`Pelanggan: ${group.customerName}`}
+                  subtitle={`Total Belanja: ${money.format(group.totalRp)} · ${group.invoiceNos.size} Invoice · ${group.rows.length} Transaksi Barang`}
+                >
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => downloadSingleCustomerPdf(group)}
+                      style={{ fontSize: 11, padding: "5px 12px" }}
+                    >
+                      Unduh PDF ({group.customerName})
+                    </button>
+                  </div>
+
+                  <DataTable rows={group.rows} columns={custColumns} />
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                      padding: "10px 14px",
+                      background: "rgba(176, 141, 87, 0.12)",
+                      border: "1px solid rgba(176, 141, 87, 0.3)",
+                      borderRadius: 8,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontWeight: 700,
+                      color: "#fcecd9",
+                      fontSize: 13,
+                    }}
+                  >
+                    <span>Subtotal Penjualan: {group.customerName}</span>
+                    <span style={{ color: "#67e0ad", fontSize: 15 }}>{money.format(group.totalRp)}</span>
+                  </div>
+                </Panel>
+              );
+            })
+          )}
+        </>
+      ) : null}
 
       {reportTab === "BOSS_SUMMARY" ? (
         <>

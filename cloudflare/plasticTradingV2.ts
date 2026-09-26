@@ -2310,6 +2310,8 @@ if(view==='REPORTS'){
        COALESCE(v.units_per_pack,1) unitsPerPack,
        COALESCE(v.pack_unit,'') packUnit,
        COALESCE(v.base_unit,'') baseUnit,
+       l.qty_input qtyInput,l.input_unit inputUnit,
+       l.unit_price_rp unitPriceRp,
        l.qty_base qtyBase,l.line_total_rp totalRp,l.cogs_total_rp cogsRp,
        (l.line_total_rp-l.cogs_total_rp) grossProfitRp
      FROM plastic_sales_invoice i
