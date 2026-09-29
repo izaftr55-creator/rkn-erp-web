@@ -611,7 +611,7 @@ function run() {
   engine.mutatePlasticTradingV2(storage, "test-owner", "CREATE_INBOUND", {
     dateKey: "2026-09-01",
     supplierName: "Supplier September",
-    lines: [{ variantId, qty: 2, unit: "BALL", unitCostRp: 1 }],
+    lines: [{ variantId, qty: 2, unit: "BALL", unitCostRp: 0 }],
   });
   const septemberInbound = db
     .prepare(
@@ -627,7 +627,7 @@ function run() {
     paymentStatus: "NOT_PAID",
     // A forged browser price must be ignored in September; the server owns
     // the supplier = selling price rule.
-    lines: [{ variantId, qty: 1, unit: "BALL", unitPriceRp: 1 }],
+    lines: [{ variantId, qty: 1, unit: "BALL", unitPriceRp: 0 }],
   });
   const septemberSale = db
     .prepare(

@@ -9116,7 +9116,7 @@ function Reports({
           [
             {
               content: `SUBTOTAL PENJUALAN — ${group.customerName.toUpperCase()}`,
-              colSpan: 7,
+              colSpan: 8,
               styles: {
                 halign: "right",
                 fontStyle: "bold",
@@ -9397,7 +9397,7 @@ function Reports({
         [
           {
             content: `SUBTOTAL PENJUALAN — ${group.customerName.toUpperCase()}`,
-            colSpan: 7,
+            colSpan: 8,
             styles: {
               halign: "right",
               fontStyle: "bold",

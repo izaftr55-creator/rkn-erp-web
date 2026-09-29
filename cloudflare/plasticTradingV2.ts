@@ -217,6 +217,12 @@ VALUES('SPAY-PAMAN-20260831','BU-PLASTIC','KMS PACKAGING','2026-08-31',159500000
 -- Seed buku mutasi setoran ke KMS via rekening Paman
 INSERT OR IGNORE INTO plastic_paman_funding_ledger(entry_id,business_unit_id,date_key,entry_type,amount_rp,reference_no,note,actor_user_id,created_at)
 VALUES('FUND-PAMAN-20260831','BU-PLASTIC','2026-08-31','FUNDING_IN',159500000,'SETORAN-KMS','Setoran hasil penjualan customer ke KMS periode Juli - 31 Agustus 2026','SYSTEM','2026-08-31T00:00:00.000Z');
+
+-- RKN_PLASTIC_BIRU_AND_PINK_25X35_CORRECTION (1 BALL = 40 ROLL)
+UPDATE plastic_so_snapshot SET source_qty = 1, source_unit = 'BALL', physical_qty_base = 40 WHERE variant_id = 'PL-POLY-BIRU-25X35' AND snapshot_date_key = '2026-08-28' AND physical_qty_base = 50;
+UPDATE plastic_so_session_line SET physical_qty_base = 40 WHERE variant_id = 'PL-POLY-BIRU-25X35' AND physical_qty_base = 50 AND so_id IN (SELECT so_id FROM plastic_so_session WHERE date_key = '2026-08-28');
+UPDATE plastic_so_snapshot SET source_qty = 1, source_unit = 'BALL', physical_qty_base = 40 WHERE variant_id = 'PL-POLY-PINK-25X35' AND snapshot_date_key = '2026-08-28' AND physical_qty_base = 50;
+UPDATE plastic_so_session_line SET physical_qty_base = 40 WHERE variant_id = 'PL-POLY-PINK-25X35' AND physical_qty_base = 50 AND so_id IN (SELECT so_id FROM plastic_so_session WHERE date_key = '2026-08-28');
 `).toArray();
 
 
@@ -422,7 +428,7 @@ sql.exec(`
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-15X25','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-15X25','SO 28/08/2026', 400,'ROLL',400,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-17X30','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-17X30','SO 28/08/2026', 300,'ROLL',300,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-20X30','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-20X30','SO 28/08/2026', 300,'ROLL',300,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
-INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-25X35','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-25X35','SO 28/08/2026', 50,'ROLL',50,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
+INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-BIRU-25X35','BU-PLASTIC','2026-08-28','PL-POLY-BIRU-25X35','SO 28/08/2026', 1,'BALL',40,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-HIJAU-15X25','BU-PLASTIC','2026-08-28','PL-POLY-HIJAU-15X25','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-HIJAU-17X30','BU-PLASTIC','2026-08-28','PL-POLY-HIJAU-17X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-HIJAU-20X30','BU-PLASTIC','2026-08-28','PL-POLY-HIJAU-20X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
@@ -437,7 +443,7 @@ INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_dat
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PINK-15X25','BU-PLASTIC','2026-08-28','PL-POLY-PINK-15X25','SO 28/08/2026', 400,'ROLL',400,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PINK-17X30','BU-PLASTIC','2026-08-28','PL-POLY-PINK-17X30','SO 28/08/2026', 350,'ROLL',350,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PINK-20X30','BU-PLASTIC','2026-08-28','PL-POLY-PINK-20X30','SO 28/08/2026', 302,'ROLL',302,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
-INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PINK-25X35','BU-PLASTIC','2026-08-28','PL-POLY-PINK-25X35','SO 28/08/2026', 50,'ROLL',50,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
+INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PINK-25X35','BU-PLASTIC','2026-08-28','PL-POLY-PINK-25X35','SO 28/08/2026', 1,'BALL',40,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PUTIH-A-15X25','BU-PLASTIC','2026-08-28','PL-POLY-PUTIH-A-15X25','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PUTIH-B-15X25','BU-PLASTIC','2026-08-28','PL-POLY-PUTIH-B-15X25','SO 28/08/2026', 105,'ROLL',105,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
 INSERT OR IGNORE INTO plastic_so_snapshot(line_key,business_unit_id,snapshot_date_key,variant_id,source_label,source_qty,source_unit,physical_qty_base,mapping_status,source_ref,created_at) VALUES('SO2808-PL-POLY-PUTIH-B-17X30','BU-PLASTIC','2026-08-28','PL-POLY-PUTIH-B-17X30','SO 28/08/2026', 100,'ROLL',100,'MAPPED','Rekap SO Polymailer',CURRENT_TIMESTAMP);
@@ -497,14 +503,18 @@ const audit=(sql:Sql,a:Actor,action:string,etype:string,eid:string,reason='',det
 const variant=(sql:Sql,id:string)=>{const r=sql.exec(`SELECT * FROM plastic_product_variant WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND active=1 LIMIT 1`,id).toArray()[0];if(!r)throw Error('PLASTIC_VARIANT_NOT_FOUND');return r};
 const baseQty=(v:any,q:any,u:any)=>{const qty=N(q);if(!(qty>0))throw Error('PLASTIC_QTY_INVALID');const unit=T(u||v.base_unit,32).toUpperCase(),base=String(v.base_unit).toUpperCase(),mid=String(v.mid_unit||'').toUpperCase(),pack=String(v.pack_unit).toUpperCase();if(unit!==base&&unit!==pack&&(!mid||unit!==mid))throw Error('PLASTIC_UNIT_INVALID');const multiplier=unit===pack?Math.max(1,N(v.units_per_pack,1)):mid&&unit===mid?Math.max(1,N(v.units_per_mid,1)):1;return{qty,unit,multiplier,baseQty:qty*multiplier}}
 const paid=(sql:Sql,invoiceId:string)=>scalar(sql,`SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value FROM plastic_payment WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?`,invoiceId);
-const paidForView=(sql:Sql,invoiceId:string,period:string)=>scalar(
-  sql,
-  `SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value
-   FROM plastic_payment
-   WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?
-     AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)`,
-  invoiceId,period,period,period,period
-);
+const paidForView=(sql:Sql,invoiceId:string,period:string)=>{
+  if(!period || period==='ALL') return paid(sql,invoiceId);
+  const endD = period.startsWith('RANGE:') ? period.split(':')[2] : `${period}-31`;
+  return scalar(
+    sql,
+    `SELECT COALESCE(SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END),0) value
+     FROM plastic_payment
+     WHERE business_unit_id='BU-PLASTIC' AND invoice_id=?
+       AND date_key<=?`,
+    invoiceId,endD
+  );
+};
 
 const PLASTIC_OPENING_DATE_KEY='2026-07-28';
 
@@ -882,7 +892,7 @@ function authoritativeSoStockRows(sql:Sql,targetDateV:any){
   });
 }
 
-export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();if(['OPENING','RECONCILIATION'].includes(view))throw Error('PLASTIC_FEATURE_CLOSED');
+export function getPlasticTradingViewV2(storage:any,actorId:string,viewV='DASHBOARD',periodV?:string){const sql:Sql=storage.sql;const a=actor(sql,actorId);const period=(!periodV || periodV==='ALL' || periodV==='*') ? 'ALL' : ((/^\d{4}-\d{2}$/.test(String(periodV)) || /^RANGE:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(String(periodV))) ? String(periodV) : 'ALL');const view=T(viewV,32).toUpperCase();
 /* RKN_PLASTIC_PRICE_HISTORY_VIEW */
 if(view==='PRICE_HISTORY'){
   return {
@@ -904,38 +914,91 @@ if(view==='PRICE_HISTORY'){
 
 /* RKN_PLASTIC_SUPPLIER_PAYABLES_VIEW */
 if(view==='SUPPLIER_PAYABLES' || view==='PAYABLES'){
-  const openingPayables = sql.exec(
-    `SELECT payable_id payableId, supplier_name supplierName, date_key dateKey, reference_no referenceNo,
-            payable_type payableType, total_amount_rp totalAmountRp, note, created_at createdAt
-     FROM plastic_supplier_payable
-     WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
-     ORDER BY date_key, created_at`
-  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
+  let endDate: string | undefined;
+  const isRange = period.startsWith('RANGE:');
+  if (isRange) {
+    const parts = period.split(':');
+    if(parts.length === 3) {
+      endDate = parts[2] >= parts[1] ? parts[2] : parts[1];
+    }
+  } else if (period !== 'ALL') {
+    const [y,m] = period.split('-').map(Number);
+    const endD = new Date(Date.UTC(y, m, 0));
+    endDate = `${endD.getUTCFullYear()}-${String(endD.getUTCMonth()+1).padStart(2,'0')}-${String(endD.getUTCDate()).padStart(2,'0')}`;
+  }
 
-  const salesInvoices = sql.exec(
-    `SELECT invoice_id inboundId, invoice_no inboundNo, customer_id supplierName,
-            date_key dateKey, grand_total_rp totalAmountRp, note, created_at createdAt
-     FROM plastic_sales_invoice
-     WHERE business_unit_id='BU-PLASTIC' AND status <> 'VOID' AND date_key>=?
-     ORDER BY date_key, created_at`
-  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
+  const openingPayables = endDate
+    ? sql.exec(
+        `SELECT payable_id payableId, supplier_name supplierName, date_key dateKey, reference_no referenceNo,
+                payable_type payableType, total_amount_rp totalAmountRp, note, created_at createdAt
+         FROM plastic_supplier_payable
+         WHERE business_unit_id='BU-PLASTIC' AND date_key>=? AND date_key<=?
+         ORDER BY date_key, created_at`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE, endDate
+      ).toArray()
+    : sql.exec(
+        `SELECT payable_id payableId, supplier_name supplierName, date_key dateKey, reference_no referenceNo,
+                payable_type payableType, total_amount_rp totalAmountRp, note, created_at createdAt
+         FROM plastic_supplier_payable
+         WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
+         ORDER BY date_key, created_at`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE
+      ).toArray();
 
-  const payments = sql.exec(
-    `SELECT payment_id paymentId, supplier_name supplierName, date_key dateKey,
-            amount_rp amountRp, funding_source fundingSource, reference_no referenceNo,
-            note, created_at createdAt
-     FROM plastic_supplier_payment
-     WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
-     ORDER BY date_key DESC, created_at DESC`
-  , PLASTIC_MIGRATION_POST_CUTOVER_DATE).toArray();
+  const salesInvoices = endDate
+    ? sql.exec(
+        `SELECT invoice_id inboundId, invoice_no inboundNo, customer_id supplierName,
+                date_key dateKey, grand_total_rp totalAmountRp, note, created_at createdAt
+         FROM plastic_sales_invoice
+         WHERE business_unit_id='BU-PLASTIC' AND status <> 'VOID' AND date_key>=? AND date_key<=?
+         ORDER BY date_key, created_at`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE, endDate
+      ).toArray()
+    : sql.exec(
+        `SELECT invoice_id inboundId, invoice_no inboundNo, customer_id supplierName,
+                date_key dateKey, grand_total_rp totalAmountRp, note, created_at createdAt
+         FROM plastic_sales_invoice
+         WHERE business_unit_id='BU-PLASTIC' AND status <> 'VOID' AND date_key>=?
+         ORDER BY date_key, created_at`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE
+      ).toArray();
 
-  const pamanLedger = sql.exec(
-    `SELECT entry_id entryId, date_key dateKey, entry_type entryType,
-            amount_rp amountRp, reference_no referenceNo, note, created_at createdAt
-     FROM plastic_paman_funding_ledger
-     WHERE business_unit_id='BU-PLASTIC'
-     ORDER BY date_key, created_at`
-  ).toArray();
+  const payments = endDate
+    ? sql.exec(
+        `SELECT payment_id paymentId, supplier_name supplierName, date_key dateKey,
+                amount_rp amountRp, funding_source fundingSource, reference_no referenceNo,
+                note, created_at createdAt
+         FROM plastic_supplier_payment
+         WHERE business_unit_id='BU-PLASTIC' AND date_key>=? AND date_key<=?
+         ORDER BY date_key DESC, created_at DESC`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE, endDate
+      ).toArray()
+    : sql.exec(
+        `SELECT payment_id paymentId, supplier_name supplierName, date_key dateKey,
+                amount_rp amountRp, funding_source fundingSource, reference_no referenceNo,
+                note, created_at createdAt
+         FROM plastic_supplier_payment
+         WHERE business_unit_id='BU-PLASTIC' AND date_key>=?
+         ORDER BY date_key DESC, created_at DESC`,
+        PLASTIC_MIGRATION_POST_CUTOVER_DATE
+      ).toArray();
+
+  const pamanLedger = endDate
+    ? sql.exec(
+        `SELECT entry_id entryId, date_key dateKey, entry_type entryType,
+                amount_rp amountRp, reference_no referenceNo, note, created_at createdAt
+         FROM plastic_paman_funding_ledger
+         WHERE business_unit_id='BU-PLASTIC' AND date_key<=?
+         ORDER BY date_key, created_at`,
+        endDate
+      ).toArray()
+    : sql.exec(
+        `SELECT entry_id entryId, date_key dateKey, entry_type entryType,
+                amount_rp amountRp, reference_no referenceNo, note, created_at createdAt
+         FROM plastic_paman_funding_ledger
+         WHERE business_unit_id='BU-PLASTIC'
+         ORDER BY date_key, created_at`
+      ).toArray();
 
   const openingAmount = openingPayables.reduce((acc:number, r:any)=> acc + N(r.totalAmountRp), 0);
   const inboundAmount = salesInvoices.reduce((acc:number, r:any)=> acc + N(r.totalAmountRp), 0);
@@ -1056,8 +1119,12 @@ if(view==='DASHBOARD'){
   } else {
     sales = scalar(sql, `SELECT COALESCE(SUM(grand_total_rp),0) value FROM plastic_sales_invoice WHERE business_unit_id='BU-PLASTIC' AND status<>'VOID'`);
   }
-
-  const cogs=sales;
+  let cogs = 0;
+  if (startDate && endDate) {
+    cogs = scalar(sql, `SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.date_key>=? AND i.date_key<=? AND i.status<>'VOID'`, startDate, endDate);
+  } else {
+    cogs = scalar(sql, `SELECT COALESCE(SUM(l.cogs_total_rp),0) value FROM plastic_sales_line l JOIN plastic_sales_invoice i ON i.invoice_id=l.invoice_id WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'`);
+  }
 
   const includesMigrationBaseline = !endDate || endDate >= PLASTIC_MIGRATION_CUTOVER_DATE;
   const historicalSalesRp = includesMigrationBaseline
@@ -2087,15 +2154,34 @@ if(view==='RECEIVABLES'){
   if(a.role.includes('SUPERVIS')||a.level==='SUPERVISI'){
     throw Error('PLASTIC_SUPERVISI_FINANCE_DENIED');
   }
+  let startDate = '';
+  let endDate = '';
+  if (period && period !== 'ALL') {
+    if (period.startsWith('RANGE:')) {
+      const parts = period.split(':');
+      if (parts.length === 3) {
+        startDate = parts[1];
+        endDate = parts[2];
+        if (startDate > endDate) { const tmp = startDate; startDate = endDate; endDate = tmp; }
+      }
+    } else if (/^\d{4}-\d{2}$/.test(period)) {
+      startDate = `${period}-01`;
+      const [y, m] = period.split('-').map(Number);
+      const endD = new Date(Date.UTC(y, m, 0));
+      endDate = `${endD.getUTCFullYear()}-${String(endD.getUTCMonth() + 1).padStart(2, '0')}-${String(endD.getUTCDate()).padStart(2, '0')}`;
+    }
+  }
+  const endD = endDate || '9999-12-31';
+
   const rows=sql.exec(
     `SELECT i.invoice_id invoiceId,i.invoice_no invoiceNo,i.date_key dateKey,i.customer_id customerId,
             COALESCE(c.customer_name,'') customerName,i.grand_total_rp grandTotalRp,i.status
      FROM plastic_sales_invoice i
      LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
      WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-       AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+       AND i.date_key<=?
      ORDER BY i.date_key DESC,i.invoice_no DESC`,
-    period,period,period,period
+    endD
   ).toArray().map((r:any)=>{
     const p=paidForView(sql,String(r.invoiceId),period);
     return{...r,paidRp:p,outstandingRp:Math.max(0,N(r.grandTotalRp)-p)};
@@ -2121,6 +2207,13 @@ if(view==='RECEIVABLES'){
     ).toArray();
   }
 
+  const paymentFilter = startDate && endDate
+    ? `AND p.date_key>='${startDate}' AND p.date_key<='${endDate}'`
+    : '';
+  const saleFilter = startDate && endDate
+    ? `AND i.date_key>='${startDate}' AND i.date_key<='${endDate}'`
+    : '';
+
   return{
     view,
     periodKey:period,
@@ -2137,15 +2230,15 @@ if(view==='RECEIVABLES'){
          SELECT invoice_id,SUM(CASE WHEN status='POSTED' THEN amount_rp ELSE 0 END) paid
          FROM plastic_payment
          WHERE business_unit_id='BU-PLASTIC'
-           AND (?='ALL' OR (?='2026-08' AND date_key<='2026-08-31') OR (?='2026-09' AND date_key>='2026-09-01') OR period_key=?)
+           AND date_key<=?
          GROUP BY invoice_id
        )p ON p.invoice_id=i.invoice_id
        WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+         AND i.date_key<=?
        GROUP BY i.customer_id,c.customer_name
        HAVING COALESCE(SUM(MAX(i.grand_total_rp-COALESCE(p.paid,0),0)),0)>0
        ORDER BY outstandingRp DESC,customerName`,
-      period,period,period,period,period,period,period,period
+      endD,endD
     ).toArray(),
     payments:sql.exec(
       `SELECT p.payment_id paymentId,p.invoice_id invoiceId,i.invoice_no invoiceNo,p.customer_id customerId,
@@ -2155,11 +2248,9 @@ if(view==='RECEIVABLES'){
        JOIN plastic_sales_invoice i ON i.invoice_id=p.invoice_id
        LEFT JOIN plastic_customer c ON c.customer_id=p.customer_id
        WHERE p.business_unit_id='BU-PLASTIC'
-         AND (?='ALL' OR (?='2026-08' AND p.date_key<='2026-08-31') OR (?='2026-09' AND p.date_key>='2026-09-01') OR p.period_key=?)
-         AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+         ${paymentFilter}
        ORDER BY p.created_at DESC
-       LIMIT 500`,
-      period,period,period,period,period,period,period,period
+       LIMIT 500`
     ).toArray(),
     ledger:sql.exec(
       `SELECT * FROM(
@@ -2169,7 +2260,7 @@ if(view==='RECEIVABLES'){
          FROM plastic_sales_invoice i
          LEFT JOIN plastic_customer c ON c.customer_id=i.customer_id
          WHERE i.business_unit_id='BU-PLASTIC' AND i.status<>'VOID'
-           AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+           ${saleFilter}
          UNION ALL
          SELECT p.customer_id customerId,COALESCE(c.customer_name,'') customerName,
                 p.date_key dateKey,p.created_at createdAt,
@@ -2180,14 +2271,10 @@ if(view==='RECEIVABLES'){
          JOIN plastic_sales_invoice i ON i.invoice_id=p.invoice_id
          LEFT JOIN plastic_customer c ON c.customer_id=p.customer_id
          WHERE p.business_unit_id='BU-PLASTIC'
-           AND (?='ALL' OR (?='2026-08' AND p.date_key<='2026-08-31') OR (?='2026-09' AND p.date_key>='2026-09-01') OR p.period_key=?)
-           AND (?='ALL' OR (?='2026-08' AND i.date_key<='2026-08-31') OR (?='2026-09' AND i.date_key>='2026-09-01') OR i.period_key=?)
+           ${paymentFilter}
        )
        ORDER BY createdAt DESC
-       LIMIT 1000`,
-      period,period,period,period,
-      period,period,period,period,
-      period,period,period,period
+       LIMIT 1000`
     ).toArray()
   };
 }
@@ -3032,76 +3119,6 @@ if(view==='OPNAME'){
   };
 }
 
-if(view==='OPNAME'){
-  const active=sql.exec(
-    `SELECT so_id soId,so_no soNo,period_key periodKey,date_key dateKey,status,reason,
-            actor_user_id actorUserId,created_at createdAt,updated_at updatedAt
-     FROM plastic_so_session
-     WHERE business_unit_id='BU-PLASTIC'
-        AND (?='ALL' OR period_key=?)
-        AND status IN('DRAFT','REVIEW')
-      ORDER BY date_key DESC,created_at DESC
-      LIMIT 1`,
-     period,period
-  ).toArray()[0]??null;
-
-  const activeLines=active
-    ? sql.exec(
-        `SELECT
-           l.line_id lineId,l.so_id soId,l.variant_id variantId,
-           l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
-           l.physical_entered physicalEntered,l.snapshot_unit_cost_rp snapshotUnitCostRp,l.note,
-           v.product_name productName,v.category,v.color,v.size,v.grade,
-           v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
-           COALESCE(v.units_per_mid,1) unitsPerMid,
-           COALESCE(v.units_per_pack,1) unitsPerPack
-         FROM plastic_so_session_line l
-         JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-         WHERE l.so_id=?
-         ORDER BY v.category,UPPER(v.color),UPPER(v.size),UPPER(v.product_name)`,
-        String(active.soId)
-      ).toArray()
-    : [];
-
-  return{
-    view,
-    periodKey:period,
-    actor:a,
-    active,
-    activeLines,
-    sessions:sql.exec(
-      `SELECT s.so_id soId,s.so_no soNo,s.date_key dateKey,s.status,s.reason,
-              COUNT(l.line_id) totalSku,
-              SUM(CASE WHEN l.physical_entered=1 THEN 1 ELSE 0 END) countedSku,
-              SUM(CASE WHEN l.physical_entered=1 AND ABS(l.physical_qty_base-l.system_qty_base)<0.000001 THEN 1 ELSE 0 END) balanceSku,
-              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base<l.system_qty_base-0.000001 THEN 1 ELSE 0 END) lessSku,
-              SUM(CASE WHEN l.physical_entered=1 AND l.physical_qty_base>l.system_qty_base+0.000001 THEN 1 ELSE 0 END) moreSku
-       FROM plastic_so_session s
-       LEFT JOIN plastic_so_session_line l ON l.so_id=s.so_id
-       WHERE s.business_unit_id='BU-PLASTIC' AND (?='ALL' OR s.period_key=?)
-      GROUP BY s.so_id,s.so_no,s.date_key,s.status,s.reason
-      ORDER BY s.date_key DESC,s.created_at DESC
-      LIMIT 50`,
-     period,period
-    ).toArray(),
-    rows:sql.exec(
-      `SELECT o.opname_no opnameNo,o.date_key dateKey,o.reason,l.variant_id variantId,
-              v.product_name productName,v.category,v.color,v.size,
-              v.base_unit baseUnit,v.mid_unit midUnit,v.pack_unit packUnit,
-              v.units_per_mid unitsPerMid,v.units_per_pack unitsPerPack,
-              l.system_qty_base systemQtyBase,l.physical_qty_base physicalQtyBase,
-              l.variance_qty_base varianceQtyBase
-       FROM plastic_stock_opname o
-       JOIN plastic_stock_opname_line l ON l.opname_id=o.opname_id
-       JOIN plastic_product_variant v ON v.variant_id=l.variant_id
-       WHERE o.business_unit_id='BU-PLASTIC' AND o.period_key=?
-       ORDER BY o.date_key DESC,o.created_at DESC
-       LIMIT 600`,
-      period
-    ).toArray()
-  };
-}
-
 if(view==='ACCESS'||view==='USERS'){
   if(!a.admin && a.level !== 'OWNER') throw Error('PLASTIC_OWNER_DENIED');
 
@@ -3289,9 +3306,11 @@ if(cmd==='UPDATE_USER_ROLE'){
 if(cmd==='UPSERT_PRODUCT'){mg(a);const id=T(p.variantId,120)||crypto.randomUUID(),name=T(p.productName,160);if(!name)throw Error('PLASTIC_PRODUCT_REQUIRED');const t=now(),base=T(p.baseUnit||'ROLL',32).toUpperCase(),mid=T(p.midUnit,32).toUpperCase(),pack=T(p.packUnit||'BALL',32).toUpperCase(),upm=Math.max(1,I(p.unitsPerMid,1)),upp=Math.max(1,I(p.unitsPerPack,1));
 // Strict Zod-like Validation for Polymailer Master Data (RKN Drizzle Inventory)
 const cat = T(p.category||'POLYMAILER',64).toUpperCase();
+const clr = T(p.color||'',80).toUpperCase();
 const sz = T(p.size||'',80).toLowerCase();
-if (cat === 'POLYMAILER' && (sz === '17x30' || sz === '20x30') && upp === 50) {
-  throw Error('VALIDATION_ERROR: Polymailer 17x30 dan 20x30 HARUS isi 80 roll per ball! Dilarang keras input 50 roll.');
+const isWhiteOrBlack = clr.includes('PUTIH') || clr.includes('HITAM') || cat === 'HITAM' || cat.startsWith('PUTIH');
+if (isWhiteOrBlack && (sz === '17x30' || sz === '20x30') && upp === 50) {
+  throw Error('VALIDATION_ERROR: Polymailer Putih & Hitam 17x30 dan 20x30 HARUS isi 80 roll per ball! Dilarang keras input 50 roll.');
 }
 const duplicateVariant=sql.exec(
   `SELECT variant_id variantId FROM plastic_product_variant
@@ -4418,7 +4437,7 @@ if(cmd==='UPDATE_INBOUND'){
 /* RKN_PLASTIC_BACKFILL_OUT_RECORDING_V2R6 */
 /* RKN_PLASTIC_FACTUAL_OUT_MODE_V2R7 */
 if(cmd==='CREATE_SALE'){
-  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=historicalBackfill,saleStockByVariant=new Map(authoritativeSoStockRows(sql,date).map((row:any)=>[T(row.variantId,120),N(row.systemQtyBase)]));open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],avail=N(saleStockByVariant.get(vid)),liveAvail=N(b?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);/* RKN_PLASTIC_EXPLICIT_SALE_PRICE_V2S */if(price<=0){const ph=sql.exec(`SELECT sell_price_pack_rp,sell_price_mid_rp,sell_price_base_rp FROM plastic_product_price_history WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND effective_date_key<=? ORDER BY effective_date_key DESC,created_at DESC LIMIT 1`,vid,date).toArray()[0];const mid=String(v.mid_unit||'').toUpperCase();const pPack=ph?I(ph.sell_price_pack_rp):I(v.default_sell_price_pack_rp);const pMid=ph?I(ph.sell_price_mid_rp):I(v.default_sell_price_mid_rp);const pBase=ph?I(ph.sell_price_base_rp):I(v.default_sell_price_base_rp);price=q.unit===String(v.pack_unit).toUpperCase()?pPack:mid&&q.unit===mid?pMid:pBase}if(price<=0)throw Error('PLASTIC_SALE_PRICE_REQUIRED');const sum=Math.round(q.qty*price),uc=date>='2026-09-01'?Math.round(price/q.multiplier):I(b?.avg_cost_rp),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});/* RKN_PLASTIC_SALE_AGGREGATE_STOCK_GUARD_V2R19 */if(!factualOutMode){const requestedByVariant=new Map<string,{requested:number;available:number}>();for(const row of norm){const current=requestedByVariant.get(row.vid)??{requested:0,available:row.avail};current.requested+=row.baseQty;current.available=Math.min(current.available,row.avail);requestedByVariant.set(row.vid,current)}for(const row of requestedByVariant.values()){if(row.requested>row.available+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK')}}const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}syncAuthoritativeInventory(sql);if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls,stockBasis:'POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS'});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
+  syncAuthoritativeInventory(sql);op(a);const date=DK(p.dateKey),period=date.slice(0,7),historicalBackfill=date<='2026-08-28',factualOutMode=historicalBackfill,saleStockByVariant=new Map(authoritativeSoStockRows(sql,date).map((row:any)=>[T(row.variantId,120),N(row.systemQtyBase)]));open(sql,period);const requestedCustomerId=T(p.customerId,120),requestedCustomerName=T(p.customerName,160);const lines=Array.isArray(p.lines)?p.lines:[];if(!lines.length)throw Error('PLASTIC_SALE_LINES_REQUIRED');return atomic(()=>{let cust=requestedCustomerId,customerName=requestedCustomerName;const t=now();if(cust){const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND customer_id=? AND active=1 LIMIT 1`,cust).toArray()[0];if(!existing)throw Error('PLASTIC_CUSTOMER_NOT_FOUND');customerName=T(existing.customer_name,160)}else{if(!customerName)throw Error('PLASTIC_CUSTOMER_REQUIRED');const existing=sql.exec(`SELECT customer_id,customer_name FROM plastic_customer WHERE business_unit_id='BU-PLASTIC' AND active=1 AND LOWER(TRIM(customer_name))=LOWER(TRIM(?)) ORDER BY created_at LIMIT 1`,customerName).toArray()[0];if(existing){cust=T(existing.customer_id,120);customerName=T(existing.customer_name,160)}else{cust=crypto.randomUUID();sql.exec(`INSERT INTO plastic_customer(customer_id,business_unit_id,customer_name,phone,address,notes,active,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,'','','Auto-created from sales entry',1,?,?)`,cust,customerName,t,t).toArray();audit(sql,a,'PLASTIC_CUSTOMER_AUTO_CREATE','PLASTIC_CUSTOMER',cust,'',{customerName})}}const id=crypto.randomUUID(),no='PTR-'+date.replaceAll('-','')+'-'+id.replaceAll('-','').slice(0,6).toUpperCase();let subtotal=0,cogs=0;const norm=lines.map((r:any)=>{const vid=T(r.variantId,120),v=variant(sql,vid),q=baseQty(v,r.qty,r.unit),b=sql.exec(`SELECT qty_base,avg_cost_rp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,vid).toArray()[0],avail=N(saleStockByVariant.get(vid)),liveAvail=N(b?.qty_base),shortfall=Math.max(0,q.baseQty-avail);if(shortfall>1e-9&&!factualOutMode)throw Error('PLASTIC_INSUFFICIENT_STOCK');let price=I(r.unitPriceRp);/* RKN_PLASTIC_EXPLICIT_SALE_PRICE_V2S */if(price<=0){const ph=sql.exec(`SELECT sell_price_pack_rp,sell_price_mid_rp,sell_price_base_rp FROM plastic_product_price_history WHERE business_unit_id='BU-PLASTIC' AND variant_id=? AND effective_date_key<=? ORDER BY effective_date_key DESC,created_at DESC LIMIT 1`,vid,date).toArray()[0];const mid=String(v.mid_unit||'').toUpperCase();const pPack=ph?I(ph.sell_price_pack_rp):I(v.default_sell_price_pack_rp);const pMid=ph?I(ph.sell_price_mid_rp):I(v.default_sell_price_mid_rp);const pBase=ph?I(ph.sell_price_base_rp):I(v.default_sell_price_base_rp);price=q.unit===String(v.pack_unit).toUpperCase()?pPack:mid&&q.unit===mid?pMid:pBase}if(price<=0)throw Error('PLASTIC_SALE_PRICE_REQUIRED');const sum=Math.round(q.qty*price),uc=I(b?.avg_cost_rp)>0?I(b?.avg_cost_rp):(I(v.default_buy_price_rp)>0?I(v.default_buy_price_rp):Math.round(price/q.multiplier)),cg=Math.round(q.baseQty*uc);subtotal+=sum;cogs+=cg;return{vid,v,...q,avail,liveAvail,shortfall,price,sum,uc,cg}});/* RKN_PLASTIC_SALE_AGGREGATE_STOCK_GUARD_V2R19 */if(!factualOutMode){const requestedByVariant=new Map<string,{requested:number;available:number}>();for(const row of norm){const current=requestedByVariant.get(row.vid)??{requested:0,available:row.avail};current.requested+=row.baseQty;current.available=Math.min(current.available,row.avail);requestedByVariant.set(row.vid,current)}for(const row of requestedByVariant.values()){if(row.requested>row.available+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK')}}const disc=Math.min(subtotal,I(p.discountRp)),ship=0,grand=Math.max(0,subtotal-disc+ship),paymentStatus=T(p.paymentStatus||'NOT_PAID',20).toUpperCase().replaceAll(' ','_');if(!['PAID','NOT_PAID'].includes(paymentStatus))throw Error('PLASTIC_PAYMENT_STATUS_INVALID');const pay=paymentStatus==='PAID'?grand:0,status=paymentStatus==='PAID'?'PAID':'OPEN';sql.exec(`/* RKN_PLASTIC_SALES_INVOICE_ARITY_FIX_V2Q3 */INSERT INTO plastic_sales_invoice(invoice_id,business_unit_id,invoice_no,customer_id,period_key,date_key,status,subtotal_rp,discount_rp,shipping_rp,grand_total_rp,due_date_key,note,actor_user_id,occurred_at,created_at,updated_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,no,cust,period,date,status,subtotal,disc,ship,grand,'',T(p.note,500),a.id,t,t,t).toArray();for(const r of norm){sql.exec(`INSERT INTO plastic_sales_line(line_id,invoice_id,variant_id,qty_input,input_unit,qty_base,unit_price_rp,line_total_rp,unit_cogs_rp,cogs_total_rp,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,crypto.randomUUID(),id,r.vid,r.qty,r.unit,r.baseQty,r.price,r.sum,r.uc,r.cg,t).toArray();const liveAfter=r.liveAvail-r.baseQty;if(liveAfter<-1e-9&&!factualOutMode)throw Error('PLASTIC_STOCK_LEDGER_NEGATIVE_AFTER_BACKFILL');sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,Math.max(0,liveAfter),t,r.vid).toArray();sql.exec(`INSERT INTO plastic_inventory_movement(movement_id,business_unit_id,variant_id,period_key,date_key,movement_type,qty_base,unit_cost_rp,source_type,source_key,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,'OUT',?,?,?,?,?,?,?,?)`,crypto.randomUUID(),r.vid,period,date,r.baseQty,r.uc,'SALE',id,a.id,T(p.note,500),t,t).toArray()}syncAuthoritativeInventory(sql);if(pay>0)sql.exec(`INSERT INTO plastic_payment(payment_id,business_unit_id,invoice_id,customer_id,period_key,date_key,amount_rp,payment_method,status,actor_user_id,note,occurred_at,created_at) VALUES(?,'BU-PLASTIC',?,?,?,?,?,?,'POSTED',?,'Initial payment',?,?)`,crypto.randomUUID(),id,cust,period,date,pay,T(p.paymentMethod,64),a.id,t,t).toArray();const backfillShortfalls=norm.filter((r:any)=>r.shortfall>1e-9).map((r:any)=>({variantId:r.vid,availableBase:r.avail,outBase:r.baseQty,shortfallBase:r.shortfall}));audit(sql,a,'PLASTIC_SALE_CREATE','PLASTIC_SALES_INVOICE',id,'',{no,customerId:cust,customerName,grand,pay,cogs,historicalBackfill,factualOutMode,backfillShortfalls,stockBasis:'POSTED_SO_PHYSICAL_PLUS_OFFICIAL_TRANSACTIONS'});return{ok:true,invoiceId:id,invoiceNo:no,customerId:cust,customerName,grandTotalRp:grand,cogsRp:cogs,grossProfitRp:grand-cogs,outstandingRp:grand-pay}})}
 /* RKN_PLASTIC_SALE_LIFECYCLE_V2O */
 if(cmd==='UPDATE_SALE'){
   mg(a);
@@ -4487,7 +4506,9 @@ if(cmd==='UPDATE_SALE'){
     let totalCogs=0;
 
     for(const r of normalized){
-      const b=sql.exec(`SELECT qty_base qtyBase,avg_cost_rp avgCostRp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,r.vid).toArray()[0],avail=N(b?.qtyBase),uc=I(b?.avgCostRp);
+      const b=sql.exec(`SELECT qty_base qtyBase,avg_cost_rp avgCostRp FROM plastic_inventory_balance WHERE business_unit_id='BU-PLASTIC' AND variant_id=? LIMIT 1`,r.vid).toArray()[0],avail=N(b?.qtyBase);
+      const vb=variant(sql,r.vid);
+      const uc=I(b?.avgCostRp)>0?I(b?.avgCostRp):(I(vb.default_buy_price_rp)>0?I(vb.default_buy_price_rp):Math.round(r.price/(r.baseQty/r.qty)));
       if(r.baseQty>avail+1e-9)throw Error('PLASTIC_INSUFFICIENT_STOCK');
       const cg=Math.round(r.baseQty*uc);totalCogs+=cg;
       sql.exec(`UPDATE plastic_inventory_balance SET qty_base=?,updated_at=? WHERE business_unit_id='BU-PLASTIC' AND variant_id=?`,avail-r.baseQty,t,r.vid).toArray();
@@ -4505,6 +4526,7 @@ if(cmd==='UPDATE_SALE'){
       editKey
     });
 
+    syncAuthoritativeInventory(sql);
     return{ok:true,invoiceId,invoiceNo:T(inv.invoice_no,160),grandTotalRp:grand,outstandingRp:grand-alreadyPaid};
   });
 }
@@ -4568,6 +4590,7 @@ if(cmd==='VOID_SALE'){
     sql.exec(`UPDATE plastic_payment SET status='REVERSED' WHERE business_unit_id='BU-PLASTIC' AND invoice_id=? AND status='POSTED'`,invoiceId).toArray();
     sql.exec(`UPDATE plastic_sales_invoice SET status='VOID',updated_at=? WHERE invoice_id=?`,t,invoiceId).toArray();
     audit(sql,a,'PLASTIC_SALE_VOID','PLASTIC_SALES_INVOICE',invoiceId,reason,{invoiceNo:T(inv.invoice_no,160),grandTotalRp:N(inv.grand_total_rp),restoredLines:lines,reversedPaymentCount:payments.length});
+    syncAuthoritativeInventory(sql);
     return{ok:true,invoiceId,invoiceNo:T(inv.invoice_no,160),status:'VOID'};
   });
 }
