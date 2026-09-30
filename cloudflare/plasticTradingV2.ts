@@ -495,7 +495,7 @@ const open=(sql:Sql,p:string)=>{const r=sql.exec(`SELECT status FROM plastic_mon
 const PLASTIC_MIGRATION_CUTOVER_DATE='2026-08-28';
 const PLASTIC_MIGRATION_POST_CUTOVER_DATE='2026-09-01';
 const PLASTIC_MIGRATION_HISTORICAL_SALES_RP=191391500;
-const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=76225000;
+const PLASTIC_MIGRATION_OPENING_PAYABLE_RP=14406000;
 // Hanya untuk rekap audit historis. Nilai ini sudah membentuk saldo hutang
 // per 31/08 dan tidak boleh mengurangi hutang aktif untuk kedua kalinya.
 const PLASTIC_MIGRATION_HISTORICAL_PAYMENT_RP=159500000;
