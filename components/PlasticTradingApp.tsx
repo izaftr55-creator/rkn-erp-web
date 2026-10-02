@@ -1543,7 +1543,7 @@ function CommissionCalculator({
   data: Row;
 }) {
   const rows = Array.isArray(data.rows) ? data.rows : [];
-  const [filterDateFrom, setFilterDateFrom] = useState(today().slice(0, 7) + "-01");
+  const [filterDateFrom, setFilterDateFrom] = useState("2026-09-01");
   const [filterDateTo, setFilterDateTo] = useState(today());
   const [polyRate, setPolyRate] = useState("200");
   const [thermalStackRate, setThermalStackRate] = useState("250");
