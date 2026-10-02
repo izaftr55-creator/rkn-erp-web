@@ -1457,7 +1457,7 @@ function Payables({
         <MetricCard
           label="Total Kewajiban ke KMS"
           value={money.format(summary.totalBills ?? 0)}
-          note="Saldo hutang per 31/08 + tagihan September"
+          note="Saldo hutang per 31/08 + Penjualan September (Bukan dari stok)"
         />
         <MetricCard
           label="Pembayaran KMS September"
@@ -1467,14 +1467,14 @@ function Payables({
         <MetricCard
           label="Sisa Hutang ke KMS"
           value={money.format(summary.outstandingPayables ?? 0)}
-          note="Saldo per 31/08 + tagihan September − pembayaran September"
+          note="Saldo per 31/08 + Penjualan September − Pembayaran September"
         />
       </section>
 
-      <Panel title="Rekap Hutang dan Pembayaran KMS" subtitle="Rekap historis ditampilkan untuk audit dan tidak mengubah perhitungan hutang aktif.">
+      <Panel title="Rekap Hutang dan Pembayaran KMS (Konsinyasi / Pay-as-Sold)" subtitle="Kewajiban supplier dihitung saat barang laku terjual. Stok fisik di gudang tidak menjadi hutang.">
         <div className={styles.metricGrid}>
           <MetricCard label="Saldo Hutang per 31/08/2026" value={money.format(summary.historicalPayableRp ?? 0)} note="Saldo awal sebelum mutasi September" />
-          <MetricCard label="Tagihan September" value={money.format(postSeptemberBills)} note="Seluruh transaksi sejak 01/09" />
+          <MetricCard label="Penjualan Laku September" value={money.format(postSeptemberBills)} note="Kewajiban bertambah saat barang terjual (Bukan dari stok gudang)" />
           <MetricCard label="Pembayaran KMS s.d. 31/08/2026" value={money.format(historicalPaymentToKms)} note="Rekap historis, sudah membentuk saldo per 31/08" />
           <MetricCard label="Akumulasi Pembayaran KMS" value={money.format(cumulativePaymentsToKms)} note="Rp159.500.000 historis + pembayaran September" />
         </div>
@@ -2479,14 +2479,17 @@ function Dashboard({ data, onNavigate }: { data: Row, onNavigate?: (tab: string)
           padding: "16px"
         }}>
           <p style={{ fontSize: "12px", fontWeight: "bold", color: "#8b9bb4", textTransform: "uppercase" }}>
-            Hutang Aktif KMS
+            Hutang Aktif KMS (Konsinyasi / Penjualan)
           </p>
           <h3 style={{ fontSize: "24px", fontWeight: 900, marginTop: "8px", color: "#d4b27d" }}>
             {money.format(Number(metrics.outstandingPayables || 0))}
           </h3>
           <p style={{ fontSize: "10px", color: "#8b9bb4", marginTop: "8px" }}>
-            Saldo per 31/08 + tagihan September − pembayaran September
+            Saldo per 31/08 + Penjualan Laku September − Pembayaran September
           </p>
+          <div style={{ fontSize: "9px", color: "#38bdf8", marginTop: "4px" }}>
+            ℹ️ Stok gudang tidak dihitung hutang; kewajiban hanya timbul saat barang terjual
+          </div>
         </div>
 
       </div>
